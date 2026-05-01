@@ -1,14 +1,1 @@
-# Default owners for everything in the repo
-* @leandrodamascena @svozza
-
-# Frontend
-/frontend/ @eipasteur @svozza
-
-# Backend (Lambda functions)
-/lambda/ @leandrodamascena @svozza
-
-# Infrastructure
-/terraform/ @leandrodamascena @svozza
-
-# Scripts
-/scripts/ @leandrodamascena @svozza
+* @leandrodamascena @svozza @eipasteur
