@@ -1,5 +1,8 @@
 # AI-DLC: Collaborative AI-Driven Development Lifecycle
 
+[![License: MIT-0](https://img.shields.io/badge/License-MIT--0-yellow.svg)](LICENSE)
+[![Contributing](https://img.shields.io/badge/Contributing-Guide-blue.svg)](CONTRIBUTING.md)
+
 AI-DLC is a platform where humans and AI agents collaborate on software development through a shared, structured workflow. You define what you want built. AI agents plan, implement, and review it. Everything -- requirements, design decisions, tasks, code -- is connected in a graph so nothing gets lost between intent and implementation.
 
 ## Why AI-DLC
@@ -18,7 +21,7 @@ AI-DLC is a platform where humans and AI agents collaborate on software developm
 
 | Tool | Version |
 |------|---------|
-| Node.js | 24+ |
+| Node.js | 22+ |
 | Terraform | 1.0+ |
 | AWS CLI | v2 |
 | Docker | Recent stable |
@@ -81,3 +84,36 @@ The application is available at the CloudFront domain:
 ```bash
 cd terraform && terraform output cloudfront_domain_name
 ```
+
+## Architecture
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────────┐
+│   Frontend   │────▶│ API Gateway  │────▶│  Lambda Functions │
+│ (React/S3/CF)│     │  + WebSocket │     │  (20+ entities)   │
+└──────────────┘     └──────────────┘     └────────┬─────────┘
+                                                    │
+                           ┌────────────────────────┼────────────────┐
+                           │                        │                │
+                    ┌──────▼──────┐         ┌──────▼──────┐  ┌─────▼──────┐
+                    │   Neptune   │         │  DynamoDB   │  │    SSM     │
+                    │ (Graph DB)  │         │ (State/Jobs)│  │ (Secrets)  │
+                    └─────────────┘         └─────────────┘  └────────────┘
+                                                    │
+                                            ┌───────▼───────┐
+                                            │  ECS Workers  │
+                                            │  (AI Agents)  │
+                                            └───────────────┘
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to participate.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting instructions.
+
+## License
+
+This project is licensed under the [MIT-0 License](LICENSE).
