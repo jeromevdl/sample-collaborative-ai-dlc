@@ -8,9 +8,6 @@ Export the full spec as a single Markdown file. This includes all documents merg
 
 Access it from the spec editor toolbar via the **Export** dropdown.
 
-!!! info "NEED IMAGE HERE"
-    Screenshot of the Export dropdown in the spec editor toolbar showing the available export options.
-
 ## ZIP export
 
 Export all spec documents as a ZIP archive. Each document is saved as a separate Markdown file, preserving the original file tree structure.
@@ -37,4 +34,4 @@ The export does not include:
 - Chat history
 - Comments and replies
 - Version history
-- Decompose tasks
+- Generated tasks

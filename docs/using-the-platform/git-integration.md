@@ -27,9 +27,6 @@ GITHUB_OAUTH_CLIENT_SECRET=your_client_secret
 
 Then connect through the Settings page in the UI. The OAuth flow gives per-project token management.
 
-!!! info "NEED IMAGE HERE"
-    Screenshot of the Settings page showing the GitHub connection section with OAuth or PAT configuration.
-
 ## Adding repositories to a project
 
 1. Navigate to your project page
@@ -48,15 +45,12 @@ You can also link local git repositories on the server machine:
 
 Local repos are useful during development when you want agents to work on the same codebase you are working on.
 
-!!! info "NEED IMAGE HERE"
-    Screenshot of the project page showing the Git section with a list of connected repositories.
-
 ## Spec-scoped repos
 
 You can assign specific repos to a spec. This tells the system:
 
 - Which repos the LLM assistant should focus on
-- Which repos the decompose step should target
+- Which repos the Construction Agent should target
 - Where agents should create worktrees
 
 For each spec-repo association, you configure:
@@ -66,11 +60,11 @@ For each spec-repo association, you configure:
 
 ## Pushing tasks as GitHub Issues
 
-After decomposing a spec:
+After running Inception:
 
-1. Choose **Create Issues** in the decompose view
+1. Choose **Create Issues** in the sprint view
 2. Select the target repository
-3. Tasks are created as GitHub Issues in topological order (dependencies first)
+3. Tasks are created as GitHub Issues
 
 Each issue includes:
 
@@ -79,9 +73,6 @@ Each issue includes:
 - Test requirements
 - Dependencies listed as issue references
 - A complexity label (for example, `complexity:M`)
-
-!!! info "NEED IMAGE HERE"
-    Screenshot of the decompose view showing the Create Issues button and GitHub issue mappings after creation.
 
 ## Syncing issue status
 

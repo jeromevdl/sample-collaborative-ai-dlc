@@ -1,58 +1,46 @@
 # Roadmap
 
-!!! abstract "About this section"
-    Where AIDLC Collaborative is today and where it is heading. This page lists what has been built, what is actively being worked on, and what is planned for future releases. Use it to understand the current capabilities and to see which features are coming next.
+Where AIDLC Collaborative is today and where it is heading.
 
 ## Current status
 
-AIDLC Collaborative has three of five pipeline stages working, with the fourth partially implemented.
-
-| Stage | Status | Notes |
+| Phase | Status | Notes |
 |-------|--------|-------|
-| **Specify** | Working | Collaborative editor, LLM chat, comments, documents, methodologies, version history |
-| **Decompose** | Working | Readiness checks, task DAG generation, GitHub issue sync, staleness detection |
-| **Execute** | Working | Agent sessions, worktrees, cascade engine, terminal streaming, diff watching |
-| **Review** | Working | Accept/reject with criteria, review iterations, structured feedback |
-| **Operate** | Planned | Monitoring, alerting, feedback loops back to specs |
+| **Inception** | Working | Inception Agent, requirements, user stories, tasks, Q&A, collaborative editing |
+| **Construction** | Working | Construction Agent, ECS workers, code file tracking, real-time status |
+| **Review** | Working | Blind and full review agents, modify agent, manual comments, pass/fail |
 
 ## What has been built
 
-### Spec editing
-- Real-time collaborative Markdown editor (Yjs + CodeMirror)
-- LLM chat with methodology-aware system prompts
-- Multi-document specs with file explorer
-- Inline comments with threaded replies
-- Version history
-- Markdown and ZIP export
+### Inception
+- Free-form project descriptions as input
+- Inception Agent that generates requirements, user stories, and tasks
+- Structured Q&A for clarifying ambiguities
+- Real-time collaborative editing of all artifacts (Yjs CRDT)
+- Graph-based traceability between requirements, stories, and tasks
 
-### Decomposition
-- Structural and AI readiness checks before decompose
-- LLM-generated task DAGs with dependencies and complexity
-- Content hash-based caching (no duplicate LLM calls)
-- Staleness detection when specs change
-- Push tasks to GitHub as issues with labels and references
-
-### Agent execution
-- Claude CLI sessions via node-pty in isolated git worktrees
-- Cascade engine for automatic task scheduling
-- Live terminal streaming to the browser
-- Real-time diff watching on worktree changes
-- Structured comment injection to running agents
+### Construction
+- Construction Agent running in ECS Fargate containers
+- Code file artifact tracking (path, commit, summary)
+- Follow-up questions during implementation
+- Real-time agent status polling
+- Automatic PR creation on completion
 
 ### Review
-- Accept/reject with per-criterion evaluation
-- Review iteration tracking
-- Structured feedback injection on rejection
-- Configurable review policies (manual, auto_commit, auto_pr)
-- Task validation runner
+- Blind Review Agent (evaluates without file details)
+- Full Review Agent (evaluates with complete context)
+- Risk scores and structured comments
+- Manual comments on both review types
+- Modify Agent for iterative refinement
+- Pass/fail decision workflow
 
 ### Infrastructure
 - Multi-org, multi-project RBAC
-- Provider-agnostic auth (Cognito with OIDC swappable)
-- GitHub integration (OAuth, PAT, issue creation, status sync)
-- Local and remote repo support
-- Terraform for AWS deployment
-- Docker containerization
+- AWS Cognito authentication
+- GitHub integration (OAuth, issue creation, status sync)
+- Neptune graph database for traceability
+- DynamoDB for operational state
+- Terraform for full AWS deployment
 
 ## What is next
 
@@ -61,31 +49,13 @@ AIDLC Collaborative has three of five pipeline stages working, with the fourth p
 - Error tracking and alerting
 - Feedback loop from production incidents back to specs
 
-### Memory system
-- Cross-session memory for agents (similar to ABCA's approach)
-- Repo knowledge persistence
-- Review feedback extraction into reusable rules
-- Task episode summaries for future context
-
-### Validation pipeline
-- Tiered validation (tool checks, code quality, risk analysis)
-- PR risk classification
-- Automated test execution in agent worktrees
-
 ### Agent improvements
-- Multiple LLM provider support (direct Anthropic API, local models)
 - Agent cost tracking and budget limits
-- Turn limits and timeout configuration
 - Agent self-feedback after task completion
+- Review feedback extraction into reusable rules
 
 ### Platform features
-- Notification system (Slack, email)
+- Notification system
 - Dashboard with project metrics
 - Audit log for all actions
-- Search across specs and tasks
-
-### Scale
-- PostgreSQL for production (replacing SQLite)
-- Multi-node agent execution
-- Queueing system for task scheduling
-- Horizontal scaling for the WebSocket server
+- Search across sprints and artifacts

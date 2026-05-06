@@ -11,9 +11,6 @@ Choose a task in "review" status. You see the following information.
 - **Acceptance criteria** with checkboxes for each criterion
 - **Task summary** written by the agent
 
-!!! info "NEED IMAGE HERE"
-    Screenshot of the review panel showing the diff view, acceptance criteria checklist, and approve/reject buttons.
-
 ## Approving a task
 
 1. Review the diff and terminal output
@@ -45,13 +42,12 @@ The review iteration number is tracked on the task, so you can see how many atte
 
 ## Review policies
 
-You can set a review policy per task or per decompose:
+You can set a review policy per sprint:
 
 | Policy | What happens |
 |--------|-------------|
-| **manual** | Task waits for human review (default) |
+| **manual** | Work waits for human review (default) |
 | **auto_commit** | Agent output is committed automatically |
 | **auto_pr** | Agent output is pushed as a pull request automatically |
-| **board_default** | Uses the decompose-level default |
 
-For early development, `manual` is recommended. As you build trust in the agent's output for specific types of tasks, you can switch to `auto_commit` or `auto_pr`.
+For early development, `manual` is recommended. As you build trust in the agent's output, you can switch to `auto_commit` or `auto_pr`.

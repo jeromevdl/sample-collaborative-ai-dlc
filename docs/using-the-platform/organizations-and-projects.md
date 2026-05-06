@@ -17,9 +17,6 @@ Each organization has:
 
 Choose **New Organization** on the home page. Enter a name and URL slug.
 
-!!! info "NEED IMAGE HERE"
-    Screenshot of the home page with the organization list and New Organization button.
-
 ### Member roles
 
 | Role | Can do |
@@ -43,15 +40,12 @@ Each project has:
 
 Navigate to your organization and choose **New Project**. Enter a name and slug.
 
-!!! info "NEED IMAGE HERE"
-    Screenshot of the organization page showing the project list and New Project button.
-
 ### Project roles
 
 | Role | Can do |
 |------|--------|
 | **Admin** | Manage project members, settings, and repos |
-| **Editor** | Create and edit specs, run decompose, start agents |
+| **Editor** | Create and edit specs, run inception, start agents |
 | **Viewer** | Read-only access to specs and tasks |
 
 ### Permission resolution

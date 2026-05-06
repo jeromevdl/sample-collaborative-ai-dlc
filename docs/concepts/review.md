@@ -1,55 +1,59 @@
 # Review
 
-The Review stage is where humans evaluate the code an agent produced and decide whether to accept or reject it.
+The Review phase is where the code produced during Construction is evaluated for quality, correctness, and alignment with requirements.
 
 ## How it works
 
-1. An agent finishes its task and moves to "review" status
-2. A human reviewer opens the task and sees the diff, terminal output, and acceptance criteria
-3. The reviewer checks each acceptance criterion as met, not met, or unclear
-4. The reviewer either approves or rejects the task
+1. The Construction Agent finishes and creates a pull request
+2. Two review agents are launched automatically:
+    - A **Blind Review Agent** that evaluates without seeing file details
+    - A **Full Review Agent** that evaluates with complete context
+3. Each agent produces a review with comments, risk scores, and reasoning
+4. You add manual comments and make the final decision
+5. The review passes or fails
 
-## Approval flow
+## Blind review
 
-When a task is **approved**:
+The Blind Review Agent evaluates the work without seeing the actual file changes. It assesses:
 
-1. The task status changes to "done"
-2. The cascade engine checks for newly unblocked tasks
-3. Dependent tasks move to "ready" and may auto-start
+- Whether the requirements and acceptance criteria are logically met based on the task descriptions and summaries
+- Potential risks or gaps in the approach
+- Questions about coverage
 
-## Rejection flow
+This provides an unbiased first pass that catches conceptual issues before diving into code details.
 
-When a task is **rejected**:
+## Full review
 
-1. A review record is created with the criteria results and notes
-2. The review iteration counter is incremented
-3. The task status resets to "ready"
-4. A new agent session starts with the review feedback injected into the prompt
-5. The agent sees what was wrong and tries to fix it
+The Full Review Agent evaluates with complete context, including the code changes. It assesses:
 
-This creates an iterative improvement loop. The agent gets more specific guidance with each rejection.
+- Code quality and correctness
+- Whether acceptance criteria are actually met in the implementation
+- Risk scores for different aspects of the change
+- Specific comments on code sections
 
-## Review policies
+## Manual review
 
-Each task (or the entire decompose) can have a review policy:
+After the automated reviews, you can:
 
-| Policy | Behavior |
-|--------|----------|
-| **manual** | Task waits in "review" for a human to approve or reject |
-| **auto_commit** | Agent output is automatically committed without review |
-| **auto_pr** | Agent output is automatically pushed as a pull request |
-| **board_default** | Uses the decompose-level default policy |
+- Read both the blind and full review assessments
+- Add your own comments to either review
+- Ask additional questions that require answers
+- Make the final pass/fail decision
 
-## Structured feedback
+## Refinement loop
 
-When rejecting a task, reviewers can provide:
+If the review fails:
 
-- **Per-criterion results** with reasons for each acceptance criterion
-- **Inline comments** on specific files and lines
-- **General notes** explaining what needs to change
+1. You can launch a **Modify Agent** with the review feedback
+2. The agent receives the specific comments and failures
+3. It makes targeted changes to address the feedback
+4. The sprint stays in Review for another evaluation round
 
-All of this is formatted into a structured prompt that the agent receives when it restarts.
+This creates an iterative improvement cycle without going back to Inception.
 
-## Validation
+## Review outcome
 
-Before a task reaches review, it can go through a validation step where automated checks (tests, lint) run against the agent's changes. If validation fails, the agent gets a chance to fix the issues before the human reviewer sees the work.
+A review can result in:
+
+- **Passed**: The pull request is ready to merge
+- **Failed**: The work needs refinement (triggers the loop above)

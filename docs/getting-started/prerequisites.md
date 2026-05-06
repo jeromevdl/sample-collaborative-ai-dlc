@@ -8,7 +8,7 @@ You need the following tools to run AIDLC Collaborative locally.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **Node.js** | 24 or later | Runtime for the Next.js app and Express server |
+| **Node.js** | 22 or later | Runtime for the frontend and Lambda functions |
 | **npm** | 10 or later | Package manager (ships with Node.js) |
 | **Git** | 2.x | Repository cloning and branch management for agent execution |
 
@@ -48,7 +48,6 @@ You also need an AWS account with permissions to manage the following services.
 | Security | Cognito, IAM, Secrets Manager |
 | Integration | EventBridge, ECR |
 
-For details on how each service is used, see [Infrastructure](../architecture/infrastructure.md).
 
 ## Optional tools
 
@@ -57,7 +56,7 @@ The following tools are optional. Install them to enable additional features.
 | Tool | Purpose |
 |------|---------|
 | **AWS credentials** | Required for large language model (LLM) features through [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
-| **GitHub personal access token** | Enables pushing decomposed tasks as GitHub issues and syncing issue status |
+| **GitHub personal access token** | Enables pushing tasks as GitHub issues and syncing issue status |
 | **Kiro CLI** | Required for agent execution in the Construction phase |
 
 ## AWS credentials for LLM features
@@ -75,4 +74,4 @@ export CLAUDE_CODE_USE_BEDROCK=1
 
 You can also use [AWS IAM Identity Center](https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html), IAM roles, or any method supported by the [AWS SDK credential provider chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html).
 
-If you do not have AWS credentials, the platform still starts. You can browse the UI, create organizations and projects, and manage specs. The LLM chat and decompose features fail with a connection error.
+If you do not have AWS credentials, the platform still starts. You can browse the UI, create organizations and projects, and manage specs. The LLM chat and agent features fail with a connection error.

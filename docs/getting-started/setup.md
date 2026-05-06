@@ -102,7 +102,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with values from your Terraform deployment. See [Environment Variables](../configuration/environment-variables.md) for a full reference.
+Edit `.env` with values from your Terraform deployment.
 
 ### Deploy to S3 and CloudFront
 

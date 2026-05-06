@@ -15,19 +15,6 @@ AIDLC Collaborative uses **Yjs**, a conflict-free replicated data type (CRDT) li
 
 The editor shows who else is currently viewing or editing the spec. Each user has a colored cursor and a name label.
 
-!!! info "NEED IMAGE HERE"
-    Screenshot showing two users editing the same spec, with colored cursors and name labels visible.
-
-## WebSocket connections
-
-Each document in a spec has its own WebSocket room. When you open a document, the browser connects to:
-
-```text
-ws://localhost:3001/collab/{specId}/{documentId}
-```
-
-In production, WebSocket connections are authenticated using short-lived tickets. See [Authentication](../configuration/authentication.md) for details.
-
 ## Chat collaboration
 
 The chat history is also shared across users. When the LLM assistant responds, all connected users see the response. Chat messages are synced through the same Yjs infrastructure.

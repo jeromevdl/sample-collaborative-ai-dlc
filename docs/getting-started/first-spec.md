@@ -64,6 +64,6 @@ If your organization has methodology templates, you can select one from the drop
 
 Once your spec is complete, you can:
 
-- [Decompose it into tasks](../using-the-platform/decomposing-specs.md)
+- [Run Inception](../using-the-platform/running-inception.md) to generate requirements, user stories, and tasks
 - [Invite collaborators](../using-the-platform/real-time-collaboration.md) to edit together
 - [Connect a GitHub repo](../using-the-platform/git-integration.md) to push tasks as issues
