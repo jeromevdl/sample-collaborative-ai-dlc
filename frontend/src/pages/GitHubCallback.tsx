@@ -24,7 +24,7 @@ export default function GitHubCallback() {
       .then(data => {
         if (data.success) {
           setStatus('success');
-          setTimeout(() => navigate('/dashboard'), 1500);
+          setTimeout(() => navigate('/dashboard?reopenCreateProject=1'), 1500);
         } else {
           setStatus('error');
           setError(data.error || 'Failed to connect GitHub');
