@@ -10,11 +10,41 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const secrets = new SecretsManagerClient({});
 const ssm = new SSMClient({});
 
+class OAuthNotConfiguredError extends Error {
+  constructor() {
+    super('GitHub OAuth is not configured on this environment. See README §4 for setup instructions.');
+    this.name = 'OAuthNotConfiguredError';
+    this.statusCode = 503;
+    this.errorCode = 'OAUTH_NOT_CONFIGURED';
+  }
+}
+
 const getOAuthCredentials = async () => {
-  const { SecretString } = await secrets.send(new GetSecretValueCommand({
-    SecretId: process.env.GITHUB_OAUTH_SECRET_NAME
-  }));
-  return JSON.parse(SecretString);
+  let result;
+  try {
+    result = await secrets.send(new GetSecretValueCommand({
+      SecretId: process.env.GITHUB_OAUTH_SECRET_NAME
+    }));
+  } catch (e) {
+    if (e.name === 'ResourceNotFoundException') {
+      throw new OAuthNotConfiguredError();
+    }
+    throw e;
+  }
+  if (!result.SecretString) {
+    throw new OAuthNotConfiguredError();
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(result.SecretString);
+  } catch {
+    throw new OAuthNotConfiguredError();
+  }
+  const { client_id, client_secret } = parsed || {};
+  if (typeof client_id !== 'string' || !client_id || typeof client_secret !== 'string' || !client_secret) {
+    throw new OAuthNotConfiguredError();
+  }
+  return { client_id, client_secret };
 };
 
 // Create HMAC-signed state parameter to prevent CSRF/forgery attacks on OAuth callback
@@ -406,6 +436,9 @@ exports.handler = async (event) => {
     return response(404, { error: 'Not found' });
   } catch (err) {
     console.error('Error:', err);
+    if (err.statusCode) {
+      return response(err.statusCode, { error: err.message, code: err.errorCode });
+    }
     return response(500, { error: 'Internal server error' });
   }
 };

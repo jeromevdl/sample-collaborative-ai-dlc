@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { projectsService, type Project } from '@/services/projects';
 import { CreateProjectModal } from '@/components/CreateProjectModal';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -40,6 +41,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  useEffect(() => {
+    if (searchParams.get('reopenCreateProject') === '1') {
+      setShowCreateModal(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleDeleteConfirm = async () => {
     if (!confirmDelete) return;
