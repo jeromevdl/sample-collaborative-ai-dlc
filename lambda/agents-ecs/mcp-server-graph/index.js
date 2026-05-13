@@ -15,7 +15,7 @@ const lambda = new LambdaClient({});
 
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
-const { t: { id: T_id, label: T_label }, P, order: Order, cardinality } = gremlin.process;
+const { t: { label: T_label }, P, order: Order, cardinality } = gremlin.process;
 const __ = gremlin.process.statics;
 
 const LOG_FILE = '/tmp/mcp-graph.log';
@@ -23,7 +23,7 @@ const POLL_INTERVAL_MS = 3000;
 const _origErr = console.error.bind(console);
 console.error = (...args) => {
   _origErr(...args);
-  try { fs.appendFileSync(LOG_FILE, args.join(' ') + '\n'); } catch (_) {}
+  try { fs.appendFileSync(LOG_FILE, args.join(' ') + '\n'); } catch {}
 };
 
 const env = {
@@ -59,7 +59,7 @@ async function ensureConnection() {
       return _g;
     } catch (e) {
       console.error('[neptune] Connection stale, reconnecting:', e.message);
-      try { await _conn.close(); } catch (_) {}
+      try { await _conn.close(); } catch {}
       _conn = null;
       _g = null;
     }
@@ -78,7 +78,7 @@ async function withGraph(fn) {
     // On connection-level errors, reset and retry once
     if (e.message && (e.message.includes('WebSocket') || e.message.includes('Connection') || e.message.includes('ECONNRESET'))) {
       console.error('[neptune] Connection error, retrying:', e.message);
-      try { if (_conn) await _conn.close(); } catch (_) {}
+      try { if (_conn) await _conn.close(); } catch {}
       _conn = null;
       _g = null;
       const g = await ensureConnection();
@@ -607,7 +607,7 @@ function formatStructuredAnswer(questions, structuredAnswerJson) {
       }
       return `Q${i + 1}: ${q.text}\n→ ${parts.join(' | ') || '(no answer)'}`;
     }).join('\n\n');
-  } catch (e) {
+  } catch {
     return String(structuredAnswerJson);
   }
 }

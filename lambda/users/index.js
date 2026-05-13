@@ -9,17 +9,6 @@ const __ = gremlin.process.statics;
 
 const VALID_ROLES = ['owner', 'admin', 'member'];
 
-// Neptune returns Map objects from valueMap() that don't JSON.stringify properly.
-const mapToObj = (val) => {
-  if (val instanceof Map) {
-    const obj = {};
-    for (const [k, v] of val) obj[k] = mapToObj(v);
-    return obj;
-  }
-  if (Array.isArray(val)) return val.map(mapToObj);
-  return val;
-};
-
 const getVal = (obj, key) => {
   if (!obj) return '';
   const raw = obj instanceof Map ? obj.get(key) : obj[key];
