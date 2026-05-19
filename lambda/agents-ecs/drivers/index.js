@@ -58,7 +58,7 @@ function discoverInstalledDrivers() {
           installed.push(name);
         }
       }
-    } catch (_) {
+    } catch {
       // Binary not found — skip silently
     }
   }

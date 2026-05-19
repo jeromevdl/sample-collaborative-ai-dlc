@@ -72,7 +72,7 @@ const getUserId = (event) => {
 
 exports.handler = async (event) => {
   const response = buildResponse(event, { methods: 'GET,POST,DELETE,OPTIONS' });
-  const { gitToken, code, state, accessToken, ...safeEvent } = event;
+  const { gitToken: _gitToken, code: _code, state: _state, accessToken: _accessToken, ...safeEvent } = event;
   console.log('Request:', JSON.stringify({ ...safeEvent, body: '[REDACTED]' }));
 
   if (event.httpMethod === 'OPTIONS') {

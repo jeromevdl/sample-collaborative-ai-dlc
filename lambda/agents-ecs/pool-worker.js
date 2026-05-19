@@ -91,23 +91,6 @@ async function pollForJob() {
   return { action: 'wait' };
 }
 
-// Mark worker as busy (preserve availableClis/cliAuthErrors so it remains queryable)
-async function setBusy() {
-  await ddb.send(new UpdateCommand({
-    TableName: env.poolTable,
-    Key: { workerId: env.workerId },
-    UpdateExpression: 'SET #s = :s, lastHeartbeat = :t, availableClis = :clis, cliAuthErrors = :errs',
-    ExpressionAttributeNames: { '#s': 'status' },
-    ExpressionAttributeValues: {
-      ':s': 'busy',
-      ':t': Date.now(),
-      ':clis': _availableClis,
-      ':errs': _cliAuthErrors,
-    },
-  }));
-}
-
-
 async function saveStatus(executionId, agentType, projectId, status) {
   if (!env.agentOutputsTable) return;
   await ddb.send(new PutCommand({
@@ -228,7 +211,7 @@ function setupWorkspace(job) {
       // Try to clone - may fail if repo is empty
       try {
         execSync(`git clone "https://${auth}github.com/${job.gitRepo}.git" /workspace`, { stdio: 'inherit' });
-      } catch (cloneErr) {
+      } catch {
         // If clone fails (empty repo), initialize new repo
         console.log('[pool-worker] Clone failed (likely empty repo), initializing...');
         execSync(`git init /workspace`, { stdio: 'inherit' });
@@ -920,7 +903,7 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
   // Check if the branch has any commits at all
   try {
     execSync('cd /workspace && git log -1 --format=%H', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-  } catch (_) {
+  } catch {
     console.log(`[pool-worker] Branch ${branch} has no commits — nothing to push. This is normal for orchestrator first-run.`);
     return false;
   }
@@ -1087,7 +1070,7 @@ async function main() {
   }
 
   // Heartbeat loop
-  const heartbeat = setInterval(async () => {
+  setInterval(async () => {
     try {
       await ddb.send(new UpdateCommand({
         TableName: env.poolTable,

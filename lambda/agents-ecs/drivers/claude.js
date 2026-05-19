@@ -100,7 +100,7 @@ async function authenticate(env) {
   // Verify claude-agent-acp is present and executable
   try {
     execFileSync('claude-agent-acp', ['--version'], { stdio: 'pipe' });
-  } catch (err) {
+  } catch {
     throw new Error('[driver:claude] "claude-agent-acp" not found or not executable. Install with: npm install -g @zed-industries/claude-agent-acp');
   }
 
@@ -120,7 +120,7 @@ async function authenticate(env) {
 /**
  * All Bedrock config is applied via env vars at ACP spawn time.
  */
-function configureSettings(env) {
+function configureSettings(_env) {
   console.log('[driver:claude] configureSettings: Bedrock config applied via env vars at ACP spawn time');
 }
 

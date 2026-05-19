@@ -9,18 +9,6 @@ const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 const __ = gremlin.process.statics;
 const { cardinality } = gremlin.process;
 
-// Neptune's gremlin driver returns Map objects from valueMap(). These don't
-// serialize with JSON.stringify (they become "{}"). Convert recursively.
-const mapToObj = (val) => {
-  if (val instanceof Map) {
-    const obj = {};
-    for (const [k, v] of val) obj[k] = mapToObj(v);
-    return obj;
-  }
-  if (Array.isArray(val)) return val.map(mapToObj);
-  return val;
-};
-
 // Extract a property value from a Neptune valueMap result (handles both Map and plain object)
 const getVal = (obj, key) => {
   if (!obj) return '';
@@ -74,7 +62,6 @@ exports.handler = async (event) => {
             .toList();
           if (memberEdges.length === 0) return response(403, { error: 'Access denied' });
           
-          const edgeProps = memberEdges[0] instanceof Map ? memberEdges[0] : mapToObj(memberEdges[0]);
           const userRole = getVal(memberEdges[0], 'role') || 'member';
           
           const result = await g.V().has('Project', 'id', projectId).valueMap().next();

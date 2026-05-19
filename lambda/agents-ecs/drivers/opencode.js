@@ -96,7 +96,7 @@ async function authenticate(env) {
   // Verify `opencode` CLI is present and executable
   try {
     execFileSync('opencode', ['--version'], { stdio: 'pipe' });
-  } catch (err) {
+  } catch {
     throw new Error('[driver:opencode] "opencode" CLI not found or not executable');
   }
 
@@ -112,7 +112,7 @@ async function authenticate(env) {
  * No additional configuration needed — opencode.json written during
  * authenticate() covers provider, region, and model selection.
  */
-function configureSettings(env) {
+function configureSettings(_env) {
   console.log('[driver:opencode] configureSettings: Bedrock config already applied via opencode.json');
 }
 

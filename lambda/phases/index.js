@@ -72,6 +72,6 @@ exports.handler = async (event) => {
     console.error(err);
     return response(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch (e) {}
+    if (conn) try { await conn.close(); } catch {}
   }
 };

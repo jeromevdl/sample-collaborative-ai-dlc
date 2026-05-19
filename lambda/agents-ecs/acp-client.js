@@ -2,7 +2,6 @@
 // via JSON-RPC 2.0 over stdio. The CLI is selected via AGENT_CLI env var (default: kiro).
 const { spawn } = require('child_process');
 const readline = require('readline');
-const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const { DynamoDBClient, QueryCommand: DDBQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
@@ -47,7 +46,6 @@ async function loadExtraMcpServers() {
   return extraMcpServers;
 }
 
-const lambda = new LambdaClient({});
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
@@ -495,7 +493,7 @@ async function runAcpMode() {
   rl.on('line', (line) => {
     try {
       handleMessage(JSON.parse(line));
-    } catch (err) {
+    } catch {
       console.error('[acp] Failed to parse message:', line.slice(0, 200));
     }
   });

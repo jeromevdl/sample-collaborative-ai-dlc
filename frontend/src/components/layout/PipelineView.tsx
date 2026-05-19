@@ -364,9 +364,7 @@ function getPhaseMetrics(
         ...(metrics.codeFiles > 0 ? [{ label: 'files', value: metrics.codeFiles }] : []),
       ]
     case 'REVIEW':
-      return [
-        ...(metrics.codeFiles > 0 ? [{ label: 'files', value: metrics.codeFiles }] : []),
-      ]
+      return metrics.codeFiles > 0 ? [{ label: 'files', value: metrics.codeFiles }] : []
     default:
       return []
   }

@@ -591,7 +591,7 @@ exports.handler = async (event) => {
           await assignJobToWorker(idle.workerId, job);
           taskArn = idle.taskArn || idle.workerId;
           break;
-        } catch (assignErr) {
+        } catch {
           // ConditionalCheckFailed — another request grabbed this worker, try next
           console.log(`[agents] Worker ${idle.workerId} assignment failed (likely race), trying next`);
         }
@@ -869,7 +869,7 @@ exports.handler = async (event) => {
                 .property(cardinality.single, 'current_agent_status', statusStr).next();
             }
             return response(200, { executionArn: arn, executionId: execId, status: taskStatus.status });
-          } catch (e) {
+          } catch {
             await writeTerminalStatus('failed', execId);
             return response(200, { executionArn: arn, executionId: execId, status: 'FAILED' });
           }

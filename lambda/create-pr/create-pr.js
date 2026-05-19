@@ -1,8 +1,3 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand } = require('@aws-sdk/lib-dynamodb');
-
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-
 exports.handler = async (event) => {
   const { projectId, branch, baseBranch, gitRepo, gitToken, executionId } = event;
   console.log('Request:', JSON.stringify({ projectId, branch, baseBranch, gitRepo, executionId }));

@@ -110,7 +110,7 @@ function getAcpCommand() {
  * Returns additional environment variables to pass to the spawned ACP process.
  * These are merged on top of the base env in acp-client.js.
  */
-function getEnvForAcpProcess(baseEnv) {
+function getEnvForAcpProcess(_baseEnv) {
   const extra = {
     KIRO_LOG_LEVEL: 'debug',
   };
@@ -133,7 +133,7 @@ function getEnvForAcpProcess(baseEnv) {
  * @param {string} workspaceDir - absolute path to the workspace root
  * @returns {Array<{type: 'dir'|'file', dest: string}>}
  */
-function getAdditionalSteeringPaths(workspaceDir) {
+function getAdditionalSteeringPaths(_workspaceDir) {
   return [];
 }
 

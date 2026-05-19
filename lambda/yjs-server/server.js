@@ -114,7 +114,7 @@ const messageHandler = (conn, docData, message) => {
             connClientIds.delete(clientId);
           }
         }
-      } catch (_) { /* best-effort tracking */ }
+      } catch { /* best-effort tracking */ }
       docData.conns.set(conn, connClientIds);
       break;
     }
@@ -155,7 +155,7 @@ const rejectUpgrade = (socket, statusCode, reason) => {
       'Content-Length: 0\r\n' +
       '\r\n',
     );
-  } catch (_) { /* socket may already be dead */ }
+  } catch { /* socket may already be dead */ }
   socket.destroy();
 };
 
@@ -166,7 +166,7 @@ server.on('upgrade', async (req, socket, head) => {
   let parsedUrl;
   try {
     parsedUrl = new URL(req.url, 'http://localhost');
-  } catch (_) {
+  } catch {
     rejectUpgrade(socket, 400, 'Bad Request');
     return;
   }
