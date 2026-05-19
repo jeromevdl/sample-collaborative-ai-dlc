@@ -1,16 +1,17 @@
-const {
+import {
   DynamoDBClient,
   PutItemCommand,
   DeleteItemCommand,
   QueryCommand,
-} = require('@aws-sdk/client-dynamodb');
-const {
+} from '@aws-sdk/client-dynamodb';
+import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
-} = require('@aws-sdk/client-apigatewaymanagementapi');
+} from '@aws-sdk/client-apigatewaymanagementapi';
+
 const client = new DynamoDBClient();
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const connectionId = event.requestContext.connectionId;
   const routeKey = event.requestContext.routeKey;
   const userId = event.requestContext.authorizer?.userId || 'anonymous';
