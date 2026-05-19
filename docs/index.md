@@ -12,7 +12,7 @@ This platform is built on a set of principles that survive tool changes and tech
 - **Traceability by design.** Every artifact (requirement, user story, task, code change, review comment) is tracked in a graph database. You can trace from a business requirement down to the exact code that implements it, and back. Task status, ownership, and history are always visible.
 - **Human observability at every phase.** Humans approve, redirect, or refine at natural breakpoints. The key idea: abstract away the noise of each agent's raw output and surface only the high-level, business-relevant information. This prevents cognitive overload for the human reviewer — their "context window" (brain) is limited too.
 - **Real-time collaboration, multi-agent.** Most AI coding tools today are local, individual, and excellent for personal productivity. But they hit a wall in enterprise contexts: data stays local, syncing config files and skills is manual, and there is no shared state. This platform is collaborative-first, with multiple agents and humans working in the same structured workspace simultaneously.
-- **Tool-agnostic architecture.** We take what works best for each module. The platform integrates proven, adopted tools (GitHub, Claude Code, OpenCode, Kiro) rather than locking into a single vendor. The important thing is the *concept* at each layer — structured data, traceability, collaboration, observability — not the specific implementation. See [Concepts](concepts/index.md) for details on technology choices and alternatives.
+- **Tool-agnostic architecture.** We take what works best for each module. The platform integrates proven, adopted tools (GitHub, Claude Code, OpenCode, Kiro) rather than locking into a single vendor. The important thing is the _concept_ at each layer — structured data, traceability, collaboration, observability — not the specific implementation. See [Concepts](concepts/index.md) for details on technology choices and alternatives.
 
 ## The lifecycle
 
@@ -26,11 +26,11 @@ graph LR
 
 Each phase has a clear purpose:
 
-| Phase | Purpose | Output |
-|-------|---------|--------|
-| **Inception** | Define what to build, remove ambiguity | Requirements, user stories, and tasks |
-| **Construction** | Build it | Code changes in a branch |
-| **Review** | Evaluate the result | Approval or feedback for another iteration |
+| Phase            | Purpose                                | Output                                     |
+| ---------------- | -------------------------------------- | ------------------------------------------ |
+| **Inception**    | Define what to build, remove ambiguity | Requirements, user stories, and tasks      |
+| **Construction** | Build it                               | Code changes in a branch                   |
+| **Review**       | Evaluate the result                    | Approval or feedback for another iteration |
 
 A sprint moves through these phases sequentially. The Review phase can send work back to Construction with structured feedback, creating an iterative improvement loop until the result meets expectations.
 

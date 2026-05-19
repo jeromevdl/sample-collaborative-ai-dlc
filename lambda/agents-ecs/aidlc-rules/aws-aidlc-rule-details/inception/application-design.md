@@ -1,9 +1,11 @@
 # Application Design - Detailed Steps
 
 ## Purpose
+
 **High-level component identification and service layer design**
 
 Application Design focuses on:
+
 - Identifying main functional components and their responsibilities
 - Defining component interfaces (not detailed business logic)
 - Designing service layer for orchestration
@@ -12,6 +14,7 @@ Application Design focuses on:
 **Note**: Detailed business logic design happens later in Functional Design (per-unit, CONSTRUCTION phase)
 
 ## Prerequisites
+
 - Workspace Detection must be complete
 - Requirements Analysis recommended
 - User Stories recommended
@@ -30,6 +33,7 @@ Application Design focuses on:
 **DIRECTIVE**: Analyze the requirements and stories to generate ONLY questions relevant to THIS specific application design.
 
 Call `ask_question` with batched questions covering relevant areas:
+
 - **Component Identification** - Only if component boundaries are unclear
 - **Component Methods** - Only if method signatures need clarification
 - **Service Layer Design** - Only if service orchestration is ambiguous
@@ -108,6 +112,7 @@ add_edge(
 ```
 
 **CRITICAL LINKING RULES**:
+
 - **ALWAYS** use the `edges` parameter when creating GeneralInfo nodes to link them to Requirements/UserStories
 - After creating GeneralInfo, use `add_edge` to link Questions that influenced them (Question → GeneralInfo via INFLUENCES)
 - Link to **ALL relevant Requirements** that the design artifact addresses
@@ -127,6 +132,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ### 7. Request Approval
 
 Call `ask_question` with:
+
 ```
 "Application Design Complete
 

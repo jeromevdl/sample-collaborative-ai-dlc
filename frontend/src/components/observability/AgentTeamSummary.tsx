@@ -29,8 +29,8 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function AgentTeamSummary({ projects, lastToolMap }: Props) {
-  const active = projects.filter(p =>
-    p.sprint?.currentAgentStatus === 'running' || p.sprint?.currentAgentStatus === 'waiting'
+  const active = projects.filter(
+    (p) => p.sprint?.currentAgentStatus === 'running' || p.sprint?.currentAgentStatus === 'waiting',
   );
   if (active.length === 0) return null;
 
@@ -51,16 +51,24 @@ export function AgentTeamSummary({ projects, lastToolMap }: Props) {
             const color = STATUS_COLOR[status] ?? 'text-agent-running';
             const lastTool = lastToolMap[sprint.id];
             // For 'waiting', override with a clear message; otherwise use shared logic
-            const focus = status === 'waiting'
-              ? 'Waiting for answer'
-              : buildFocusSentence(sprint.currentAgentType, sprint, progress, lastTool);
+            const focus =
+              status === 'waiting'
+                ? 'Waiting for answer'
+                : buildFocusSentence(sprint.currentAgentType, sprint, progress, lastTool);
 
             return (
               <div key={project.id} className="flex items-center gap-2 text-xs">
-                <Icon className={cn('h-3 w-3 shrink-0', color, status === 'running' && 'animate-spin')} />
+                <Icon
+                  className={cn('h-3 w-3 shrink-0', color, status === 'running' && 'animate-spin')}
+                />
                 <span className="font-medium truncate max-w-[120px]">{project.name}</span>
                 <span className="text-muted-foreground/50">·</span>
-                <span className={cn('text-muted-foreground truncate', status === 'waiting' && 'text-agent-waiting font-medium')}>
+                <span
+                  className={cn(
+                    'text-muted-foreground truncate',
+                    status === 'waiting' && 'text-agent-waiting font-medium',
+                  )}
+                >
                   {focus}
                 </span>
               </div>

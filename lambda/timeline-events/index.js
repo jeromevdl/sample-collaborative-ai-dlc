@@ -40,10 +40,15 @@ exports.handler = async (event) => {
 
     switch (httpMethod) {
       case 'GET': {
-        const list = await g.V().has('Sprint', 'id', sprintId)
-          .out('HAS_TIMELINE_EVENT').hasLabel('TimelineEvent')
-          .order().by('timestamp', order.desc)
-          .valueMap().toList();
+        const list = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .out('HAS_TIMELINE_EVENT')
+          .hasLabel('TimelineEvent')
+          .order()
+          .by('timestamp', order.desc)
+          .valueMap()
+          .toList();
         return res(200, list.map(mapEvent));
       }
 
@@ -52,7 +57,10 @@ exports.handler = async (event) => {
         const id = randomUUID();
         const timestamp = data.timestamp || new Date().toISOString();
 
-        await g.V().has('Sprint', 'id', sprintId).as('s')
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .as('s')
           .addV('TimelineEvent')
           .property('id', id)
           .property('type', data.type)
@@ -63,7 +71,9 @@ exports.handler = async (event) => {
           .property('timestamp', timestamp)
           .property('sprint_id', sprintId)
           .as('e')
-          .addE('HAS_TIMELINE_EVENT').from_('s').to('e')
+          .addE('HAS_TIMELINE_EVENT')
+          .from_('s')
+          .to('e')
           .next();
 
         return res(201, {
@@ -85,6 +95,9 @@ exports.handler = async (event) => {
     console.error('Error:', err);
     return res(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

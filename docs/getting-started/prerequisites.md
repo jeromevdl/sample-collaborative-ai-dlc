@@ -6,11 +6,11 @@ Before you begin, install and verify the following tools.
 
 To run AIDLC Collaborative locally, install the following tools.
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| **Node.js** | 22 or later | Runtime for the frontend and Lambda functions |
-| **npm** | 10 or later | Package manager (ships with Node.js) |
-| **Git** | 2.x | Repository cloning and branch management for agent execution |
+| Tool        | Version     | Purpose                                                      |
+| ----------- | ----------- | ------------------------------------------------------------ |
+| **Node.js** | 22 or later | Runtime for the frontend and Lambda functions                |
+| **npm**     | 10 or later | Package manager (ships with Node.js)                         |
+| **Git**     | 2.x         | Repository cloning and branch management for agent execution |
 
 Run the following commands to verify your local development environment.
 
@@ -24,11 +24,11 @@ git --version    # Expected output: 2.x
 
 To deploy AIDLC Collaborative to AWS, install the following additional tools. For detailed deployment instructions, see [Setup](setup.md).
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| [Terraform](https://developer.hashicorp.com/terraform/install) | 1.0 or later | Infrastructure provisioning |
-| [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | v2 | AWS resource management and credential handling |
-| [Docker](https://docs.docker.com/get-docker/) | 20.10 or later | Lambda packaging and container builds |
+| Tool                                                                                                                  | Version        | Purpose                                         |
+| --------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------- |
+| [Terraform](https://developer.hashicorp.com/terraform/install)                                                        | 1.0 or later   | Infrastructure provisioning                     |
+| [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | v2             | AWS resource management and credential handling |
+| [Docker](https://docs.docker.com/get-docker/)                                                                         | 20.10 or later | Lambda packaging and container builds           |
 
 Run the following commands to confirm your deployment tools are installed.
 
@@ -40,24 +40,23 @@ docker --version     # Expected output: Docker version 20.10 or later
 
 You must also have an AWS account with permissions to manage the following services.
 
-| Category | Services |
-|----------|----------|
-| Compute | AWS Lambda, Amazon ECS with Fargate, AWS Step Functions |
-| Networking | Amazon VPC, Amazon API Gateway (REST and WebSocket), Amazon CloudFront, Elastic Load Balancing |
-| Storage | Amazon S3, Amazon DynamoDB, Amazon Neptune |
-| Security | Amazon Cognito, AWS Identity and Access Management (IAM), AWS Secrets Manager, AWS Systems Manager Parameter Store |
-| Integration | Amazon EventBridge, Amazon Elastic Container Registry (Amazon ECR), Amazon SQS |
-| Observability | Amazon CloudWatch Logs |
-
+| Category      | Services                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Compute       | AWS Lambda, Amazon ECS with Fargate, AWS Step Functions                                                            |
+| Networking    | Amazon VPC, Amazon API Gateway (REST and WebSocket), Amazon CloudFront, Elastic Load Balancing                     |
+| Storage       | Amazon S3, Amazon DynamoDB, Amazon Neptune                                                                         |
+| Security      | Amazon Cognito, AWS Identity and Access Management (IAM), AWS Secrets Manager, AWS Systems Manager Parameter Store |
+| Integration   | Amazon EventBridge, Amazon Elastic Container Registry (Amazon ECR), Amazon SQS                                     |
+| Observability | Amazon CloudWatch Logs                                                                                             |
 
 ## Optional tools
 
 The following tools are optional. Install them to enable additional features.
 
-| Tool | Purpose |
-|------|---------|
-| **AWS credentials** | Required for large language model (LLM) features through [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
-| **GitHub personal access token** | Enables pushing tasks as GitHub issues and syncing issue status |
+| Tool                             | Purpose                                                                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AWS credentials**              | Required for large language model (LLM) features through [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| **GitHub personal access token** | Enables pushing tasks as GitHub issues and syncing issue status                                                                                      |
 
 ## Agent authentication
 

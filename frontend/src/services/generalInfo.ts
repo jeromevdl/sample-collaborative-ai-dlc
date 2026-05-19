@@ -11,7 +11,8 @@ export interface GeneralInfo {
 
 export const generalInfoService = {
   list: (sprintId: string) => api.get<GeneralInfo[]>(`/sprints/${sprintId}/general-info`),
-  get: (sprintId: string, id: string) => api.get<GeneralInfo>(`/sprints/${sprintId}/general-info/${id}`),
+  get: (sprintId: string, id: string) =>
+    api.get<GeneralInfo>(`/sprints/${sprintId}/general-info/${id}`),
   create: (sprintId: string, input: { type: string; title: string; content: string }) =>
     api.post<GeneralInfo>(`/sprints/${sprintId}/general-info`, input),
   update: (sprintId: string, id: string, input: Partial<GeneralInfo>) =>

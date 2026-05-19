@@ -8,7 +8,9 @@
     "test": "vitest run --project=ws-authorizer",
     "test:watch": "vitest --project=ws-authorizer",
     "build": "esbuild index.js --bundle --platform=node --target=node24 --format=esm --external:@aws-sdk/* --outfile=.build/index.mjs",
-    "lint": "oxlint ."
+    "lint": "oxlint .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "aws-jwt-verify": "^4.0.0"

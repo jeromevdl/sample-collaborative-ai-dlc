@@ -18,7 +18,15 @@ interface Props {
   onBlur?: () => void;
 }
 
-export default function QuestionEditor({ question, sprintId, userName, onAnswer, onAutoSave, onFocus, onBlur }: Props) {
+export default function QuestionEditor({
+  question,
+  sprintId,
+  userName,
+  onAnswer,
+  onAutoSave,
+  onFocus,
+  onBlur,
+}: Props) {
   const {
     selections,
     freeTexts,
@@ -30,7 +38,11 @@ export default function QuestionEditor({ question, sprintId, userName, onAnswer,
     initFromDraft,
     toStructuredAnswer,
   } = useCollaborativeStructuredAnswer(
-    sprintId, question.id, question.questions.length, userName, onAutoSave,
+    sprintId,
+    question.id,
+    question.questions.length,
+    userName,
+    onAutoSave,
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -45,8 +57,8 @@ export default function QuestionEditor({ question, sprintId, userName, onAnswer,
   const handleSubmit = async () => {
     if (submitting) return;
     const answer = toStructuredAnswer();
-    const allAnswered = answer.answers.every(a =>
-      a.selectedOptions.length > 0 || (a.freeText && a.freeText.trim().length > 0)
+    const allAnswered = answer.answers.every(
+      (a) => a.selectedOptions.length > 0 || (a.freeText && a.freeText.trim().length > 0),
     );
     if (!allAnswered) return;
 
@@ -120,7 +132,11 @@ export default function QuestionEditor({ question, sprintId, userName, onAnswer,
         className="mt-4 gap-1.5 bg-agent-success hover:bg-agent-success/90 text-white"
       >
         {submitting && <Loader2 className="h-3 w-3 animate-spin" />}
-        {submitting ? 'Submitting...' : question.questions.length > 1 ? 'Submit All Answers' : 'Submit Answer'}
+        {submitting
+          ? 'Submitting...'
+          : question.questions.length > 1
+            ? 'Submit All Answers'
+            : 'Submit Answer'}
       </Button>
     </div>
   );
@@ -163,19 +179,22 @@ function StructuredQuestionBlock({
 
   const isOtherActive = otherOpen || freeText.length > 0;
 
-  const handleOptionToggle = useCallback((optionIdx: number) => {
-    if (disabled) return;
-    if (isSingle) {
-      onSelectionChange([optionIdx]);
-      if (freeText) onFreeTextChange('');
-      setOtherOpen(false);
-    } else {
-      const newSelection = selectedOptions.includes(optionIdx)
-        ? selectedOptions.filter(i => i !== optionIdx)
-        : [...selectedOptions, optionIdx];
-      onSelectionChange(newSelection);
-    }
-  }, [disabled, isSingle, selectedOptions, freeText, onSelectionChange, onFreeTextChange]);
+  const handleOptionToggle = useCallback(
+    (optionIdx: number) => {
+      if (disabled) return;
+      if (isSingle) {
+        onSelectionChange([optionIdx]);
+        if (freeText) onFreeTextChange('');
+        setOtherOpen(false);
+      } else {
+        const newSelection = selectedOptions.includes(optionIdx)
+          ? selectedOptions.filter((i) => i !== optionIdx)
+          : [...selectedOptions, optionIdx];
+        onSelectionChange(newSelection);
+      }
+    },
+    [disabled, isSingle, selectedOptions, freeText, onSelectionChange, onFreeTextChange],
+  );
 
   const handleOtherToggle = useCallback(() => {
     if (disabled) return;
@@ -213,56 +232,133 @@ function StructuredQuestionBlock({
           const requiresFreeText = opt.label.toLowerCase().includes('request changes');
           return (
             <div key={optIdx}>
-            <label
-              className={cn(
-                'flex items-start gap-2 p-2 rounded-md border cursor-pointer transition-colors',
-                isSelected
-                  ? 'bg-primary/10 border-primary/30'
-                  : 'bg-card border-border hover:border-foreground/20 hover:bg-accent/50',
-                disabled && 'opacity-50 cursor-not-allowed',
+              <label
+                className={cn(
+                  'flex items-start gap-2 p-2 rounded-md border cursor-pointer transition-colors',
+                  isSelected
+                    ? 'bg-primary/10 border-primary/30'
+                    : 'bg-card border-border hover:border-foreground/20 hover:bg-accent/50',
+                  disabled && 'opacity-50 cursor-not-allowed',
+                )}
+                onClick={() => handleOptionToggle(optIdx)}
+              >
+                <span className="mt-0.5 flex-shrink-0">
+                  {isSingle ? (
+                    <span
+                      className={cn(
+                        'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                        isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30',
+                      )}
+                    >
+                      {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+                    </span>
+                  ) : (
+                    <span
+                      className={cn(
+                        'w-4 h-4 rounded border-2 flex items-center justify-center',
+                        isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30',
+                      )}
+                    >
+                      {isSelected && (
+                        <svg
+                          className="w-2.5 h-2.5 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                  )}
+                </span>
+                <span className="text-sm">
+                  <span className="font-medium text-foreground">{opt.label}</span>
+                  {opt.description && (
+                    <span className="text-muted-foreground ml-1">&mdash; {opt.description}</span>
+                  )}
+                </span>
+              </label>
+              {isSelected && requiresFreeText && (
+                <div className="mt-1.5 ml-6 mr-2">
+                  <CollaborativeTextarea
+                    value={freeText}
+                    onChange={(val, cursor) => onFreeTextChange(val, cursor)}
+                    onCursorChange={onCursorChange}
+                    remoteUsers={remoteUsers}
+                    placeholder="Describe what needs to change..."
+                    className="w-full px-2 py-1 border border-border rounded-md text-sm bg-background"
+                    rows={2}
+                    disabled={disabled}
+                    onFocus={onFocus}
+                    onBlur={onBlur}
+                  />
+                </div>
               )}
-              onClick={() => handleOptionToggle(optIdx)}
-            >
+            </div>
+          );
+        })}
+
+        {/* "Other" free text option - only show if no "Request changes" option exists */}
+        {!question.options.some((opt) => opt.label.toLowerCase().includes('request changes')) && (
+          <div
+            className={cn(
+              'p-2 rounded-md border transition-colors',
+              isOtherActive ? 'bg-primary/10 border-primary/30' : 'bg-card border-border',
+            )}
+          >
+            <label className="flex items-start gap-2 cursor-pointer" onClick={handleOtherToggle}>
               <span className="mt-0.5 flex-shrink-0">
                 {isSingle ? (
                   <span
                     className={cn(
                       'w-4 h-4 rounded-full border-2 flex items-center justify-center',
-                      isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30',
+                      isOtherActive && selectedOptions.length === 0
+                        ? 'border-primary bg-primary'
+                        : 'border-muted-foreground/30',
                     )}
                   >
-                    {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+                    {isOtherActive && selectedOptions.length === 0 && (
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    )}
                   </span>
                 ) : (
                   <span
                     className={cn(
                       'w-4 h-4 rounded border-2 flex items-center justify-center',
-                      isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30',
+                      isOtherActive ? 'border-primary bg-primary' : 'border-muted-foreground/30',
                     )}
                   >
-                    {isSelected && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    {isOtherActive && (
+                      <svg
+                        className="w-2.5 h-2.5 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </span>
                 )}
               </span>
-              <span className="text-sm">
-                <span className="font-medium text-foreground">{opt.label}</span>
-                {opt.description && (
-                  <span className="text-muted-foreground ml-1">&mdash; {opt.description}</span>
-                )}
-              </span>
+              <span className="text-sm font-medium text-muted-foreground">Other (free text)</span>
             </label>
-            {isSelected && requiresFreeText && (
-              <div className="mt-1.5 ml-6 mr-2">
+            {showTextarea && (
+              <div className="mt-1.5 ml-6">
                 <CollaborativeTextarea
                   value={freeText}
-                  onChange={(val, cursor) => onFreeTextChange(val, cursor)}
+                  onChange={(val, cursor) => {
+                    onFreeTextChange(val, cursor);
+                    if (isSingle && val.length > 0 && selectedOptions.length > 0) {
+                      onSelectionChange([]);
+                    }
+                  }}
                   onCursorChange={onCursorChange}
                   remoteUsers={remoteUsers}
-                  placeholder="Describe what needs to change..."
+                  placeholder="Type your answer..."
                   className="w-full px-2 py-1 border border-border rounded-md text-sm bg-background"
                   rows={2}
                   disabled={disabled}
@@ -271,77 +367,7 @@ function StructuredQuestionBlock({
                 />
               </div>
             )}
-            </div>
-          );
-        })}
-
-        {/* "Other" free text option - only show if no "Request changes" option exists */}
-        {!question.options.some(opt => opt.label.toLowerCase().includes('request changes')) && (
-        <div
-          className={cn(
-            'p-2 rounded-md border transition-colors',
-            isOtherActive
-              ? 'bg-primary/10 border-primary/30'
-              : 'bg-card border-border',
-          )}
-        >
-          <label
-            className="flex items-start gap-2 cursor-pointer"
-            onClick={handleOtherToggle}
-          >
-            <span className="mt-0.5 flex-shrink-0">
-              {isSingle ? (
-                <span
-                  className={cn(
-                    'w-4 h-4 rounded-full border-2 flex items-center justify-center',
-                    isOtherActive && selectedOptions.length === 0
-                      ? 'border-primary bg-primary'
-                      : 'border-muted-foreground/30',
-                  )}
-                >
-                  {isOtherActive && selectedOptions.length === 0 && (
-                    <span className="w-2 h-2 rounded-full bg-white" />
-                  )}
-                </span>
-              ) : (
-                <span
-                  className={cn(
-                    'w-4 h-4 rounded border-2 flex items-center justify-center',
-                    isOtherActive ? 'border-primary bg-primary' : 'border-muted-foreground/30',
-                  )}
-                >
-                  {isOtherActive && (
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-              )}
-            </span>
-            <span className="text-sm font-medium text-muted-foreground">Other (free text)</span>
-          </label>
-          {showTextarea && (
-            <div className="mt-1.5 ml-6">
-              <CollaborativeTextarea
-                value={freeText}
-                onChange={(val, cursor) => {
-                  onFreeTextChange(val, cursor);
-                  if (isSingle && val.length > 0 && selectedOptions.length > 0) {
-                    onSelectionChange([]);
-                  }
-                }}
-                onCursorChange={onCursorChange}
-                remoteUsers={remoteUsers}
-                placeholder="Type your answer..."
-                className="w-full px-2 py-1 border border-border rounded-md text-sm bg-background"
-                rows={2}
-                disabled={disabled}
-                onFocus={onFocus}
-                onBlur={onBlur}
-              />
-            </div>
-          )}
-        </div>
+          </div>
         )}
       </div>
     </div>

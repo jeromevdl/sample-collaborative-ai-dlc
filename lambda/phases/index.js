@@ -32,36 +32,47 @@ exports.handler = async (event) => {
           if (!phase.value) return response(404, { error: 'Phase not found' });
           return response(200, phase.value);
         }
-        const phases = await g.V().has('Project', 'id', projectId)
-          .out('HAS_PHASE').valueMap(true).toList();
+        const phases = await g
+          .V()
+          .has('Project', 'id', projectId)
+          .out('HAS_PHASE')
+          .valueMap(true)
+          .toList();
         return response(200, phases);
 
       case 'PUT': {
         const data = JSON.parse(body);
-        
+
         if (data.status === 'completed') {
-          const pendingQuestions = await g.V().has('Phase', 'id', phaseId)
-            .in('CREATED_IN').hasLabel('Artifact')
-            .in('ASKED_BY').has('AgentQuestion', 'status', 'pending')
-            .count().next();
-          
+          const pendingQuestions = await g
+            .V()
+            .has('Phase', 'id', phaseId)
+            .in('CREATED_IN')
+            .hasLabel('Artifact')
+            .in('ASKED_BY')
+            .has('AgentQuestion', 'status', 'pending')
+            .count()
+            .next();
+
           if (pendingQuestions.value > 0) {
             return response(400, { error: 'Cannot complete phase: pending agent questions' });
           }
-          
-          const staleArtifacts = await g.V().has('Phase', 'id', phaseId)
-            .in('CREATED_IN').has('Artifact', 'stale', true)
-            .count().next();
-          
+
+          const staleArtifacts = await g
+            .V()
+            .has('Phase', 'id', phaseId)
+            .in('CREATED_IN')
+            .has('Artifact', 'stale', true)
+            .count()
+            .next();
+
           if (staleArtifacts.value > 0) {
             return response(400, { error: 'Cannot complete phase: stale artifacts exist' });
           }
         }
-        
-        await g.V().has('Phase', 'id', phaseId)
-          .property('status', data.status)
-          .next();
-        
+
+        await g.V().has('Phase', 'id', phaseId).property('status', data.status).next();
+
         return response(200, { id: phaseId, status: data.status });
       }
 
@@ -72,6 +83,9 @@ exports.handler = async (event) => {
     console.error(err);
     return response(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

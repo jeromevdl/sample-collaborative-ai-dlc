@@ -7,7 +7,7 @@ export function ConnectionStatus({ status }: Props) {
     connected: { color: 'bg-green-500', label: 'Connected' },
     connecting: { color: 'bg-yellow-500', label: 'Connecting...' },
     disconnected: { color: 'bg-gray-500', label: 'Disconnected' },
-    error: { color: 'bg-red-500', label: 'Connection Error' }
+    error: { color: 'bg-red-500', label: 'Connection Error' },
   };
 
   const config = statusConfig[status] || statusConfig.disconnected;

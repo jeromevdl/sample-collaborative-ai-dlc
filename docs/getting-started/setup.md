@@ -30,13 +30,13 @@ cp terraform/environments/dev/terraform.tfvars.example terraform/environments/de
 
 Edit `terraform/environments/dev/terraform.tfvars` to set your configuration.
 
-| Variable | Description |
-|----------|-------------|
-| `project_name` | Resource naming prefix |
-| `environment` | Environment name (`dev` or `prod`) |
-| `vpc_cidr` | VPC CIDR block |
-| `neptune_instance_class` | Neptune instance size |
-| `agent_pool_size` | Number of agent workers |
+| Variable                 | Description                        |
+| ------------------------ | ---------------------------------- |
+| `project_name`           | Resource naming prefix             |
+| `environment`            | Environment name (`dev` or `prod`) |
+| `vpc_cidr`               | VPC CIDR block                     |
+| `neptune_instance_class` | Neptune instance size              |
+| `agent_pool_size`        | Number of agent workers            |
 
 ### Deploy infrastructure
 
@@ -81,11 +81,11 @@ aws cognito-idp admin-add-user-to-group \
 
 Available groups:
 
-| Group | Permissions |
-|-------|-------------|
-| `member` | View and edit specs, run agents |
+| Group      | Permissions                                       |
+| ---------- | ------------------------------------------------- |
+| `member`   | View and edit specs, run agents                   |
 | `approver` | Member permissions plus approve phase transitions |
-| `owner` | Full access including project settings |
+| `owner`    | Full access including project settings            |
 
 ## Set up the frontend
 
@@ -135,10 +135,10 @@ This starts the Vite development server on `http://localhost:5173`.
 
 ## Updating a deployment
 
-| What changed | Command |
-|-------------|---------|
+| What changed                    | Command                             |
+| ------------------------------- | ----------------------------------- |
 | Backend (Lambda, agents, infra) | `./scripts/deploy-terraform.sh dev` |
-| Frontend only | `./scripts/deploy-frontend.sh dev` |
+| Frontend only                   | `./scripts/deploy-frontend.sh dev`  |
 
 ## Destroy infrastructure
 
@@ -149,7 +149,7 @@ To remove all deployed resources:
 ```
 
 !!! danger "Data loss"
-    This permanently deletes all data including DynamoDB tables, Neptune databases, and S3 buckets. This action cannot be undone.
+This permanently deletes all data including DynamoDB tables, Neptune databases, and S3 buckets. This action cannot be undone.
 
 To also remove the Terraform state bucket (created during bootstrap):
 

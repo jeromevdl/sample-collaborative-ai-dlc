@@ -26,13 +26,25 @@ const mapQuestion = (v) => {
   const draftAnswerRaw = v.get('draft_answer')?.[0] || '';
 
   let questions;
-  try { questions = JSON.parse(questionsRaw); } catch { questions = []; }
-  
+  try {
+    questions = JSON.parse(questionsRaw);
+  } catch {
+    questions = [];
+  }
+
   let structuredAnswer;
-  try { structuredAnswer = structuredAnswerRaw ? JSON.parse(structuredAnswerRaw) : undefined; } catch { structuredAnswer = undefined; }
+  try {
+    structuredAnswer = structuredAnswerRaw ? JSON.parse(structuredAnswerRaw) : undefined;
+  } catch {
+    structuredAnswer = undefined;
+  }
 
   let draftAnswer;
-  try { draftAnswer = draftAnswerRaw ? JSON.parse(draftAnswerRaw) : undefined; } catch { draftAnswer = undefined; }
+  try {
+    draftAnswer = draftAnswerRaw ? JSON.parse(draftAnswerRaw) : undefined;
+  } catch {
+    draftAnswer = undefined;
+  }
 
   return {
     id: v.get('id')?.[0] || '',
@@ -63,8 +75,13 @@ exports.handler = async (event) => {
           if (!r.value) return res(404, { error: 'Question not found' });
           return res(200, mapQuestion(r.value));
         }
-        const list = await g.V().has('Sprint', 'id', sprintId)
-          .out('CONTAINS').hasLabel('Question').valueMap().toList();
+        const list = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .out('CONTAINS')
+          .hasLabel('Question')
+          .valueMap()
+          .toList();
         return res(200, list.map(mapQuestion));
       }
 
@@ -74,7 +91,10 @@ exports.handler = async (event) => {
         const createdAt = new Date().toISOString();
         const questionsJson = JSON.stringify(data.questions);
 
-        await g.V().has('Sprint', 'id', sprintId).as('s')
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .as('s')
           .addV('Question')
           .property('id', id)
           .property('agent', data.agent || '')
@@ -84,10 +104,18 @@ exports.handler = async (event) => {
           .property('sprint_id', sprintId)
           .property('created_at', createdAt)
           .as('q')
-          .addE('CONTAINS').from_('s').to('q')
+          .addE('CONTAINS')
+          .from_('s')
+          .to('q')
           .next();
 
-        return res(201, { id, agent: data.agent || '', questions: data.questions, sprintId, createdAt });
+        return res(201, {
+          id,
+          agent: data.agent || '',
+          questions: data.questions,
+          sprintId,
+          createdAt,
+        });
       }
 
       case 'PUT': {
@@ -96,18 +124,29 @@ exports.handler = async (event) => {
         // Submit structured answer
         if (data.structuredAnswer !== undefined) {
           const answerJson = JSON.stringify(data.structuredAnswer);
-          await g.V().has('Question', 'id', questionId)
-            .property(cardinality.single, 'structured_answer', answerJson).next();
+          await g
+            .V()
+            .has('Question', 'id', questionId)
+            .property(cardinality.single, 'structured_answer', answerJson)
+            .next();
 
           // Sync answer to DynamoDB so the agent's ask_question poll sees it
           if (process.env.AGENT_QUESTIONS_TABLE) {
-            await ddb.send(new UpdateCommand({
-              TableName: process.env.AGENT_QUESTIONS_TABLE,
-              Key: { questionId },
-              UpdateExpression: 'SET #s = :s, structuredAnswer = :a, answeredAt = :t',
-              ExpressionAttributeNames: { '#s': 'status' },
-              ExpressionAttributeValues: { ':s': 'answered', ':a': answerJson, ':t': Date.now() },
-            })).catch(e => console.error('DynamoDB sync failed:', e.message));
+            await ddb
+              .send(
+                new UpdateCommand({
+                  TableName: process.env.AGENT_QUESTIONS_TABLE,
+                  Key: { questionId },
+                  UpdateExpression: 'SET #s = :s, structuredAnswer = :a, answeredAt = :t',
+                  ExpressionAttributeNames: { '#s': 'status' },
+                  ExpressionAttributeValues: {
+                    ':s': 'answered',
+                    ':a': answerJson,
+                    ':t': Date.now(),
+                  },
+                }),
+              )
+              .catch((e) => console.error('DynamoDB sync failed:', e.message));
           }
         }
 
@@ -115,42 +154,70 @@ exports.handler = async (event) => {
         // the agent's question-answered flow (status stays 'pending').
         if (data.draftAnswer !== undefined && data.structuredAnswer === undefined) {
           const draftJson = JSON.stringify(data.draftAnswer);
-          await g.V().has('Question', 'id', questionId)
-            .property(cardinality.single, 'draft_answer', draftJson).next();
+          await g
+            .V()
+            .has('Question', 'id', questionId)
+            .property(cardinality.single, 'draft_answer', draftJson)
+            .next();
 
           // Sync draft to DynamoDB (does NOT change status)
           if (process.env.AGENT_QUESTIONS_TABLE) {
-            await ddb.send(new UpdateCommand({
-              TableName: process.env.AGENT_QUESTIONS_TABLE,
-              Key: { questionId },
-              UpdateExpression: 'SET draftAnswer = :d',
-              ExpressionAttributeValues: { ':d': draftJson },
-            })).catch(e => console.error('DynamoDB draft sync failed:', e.message));
+            await ddb
+              .send(
+                new UpdateCommand({
+                  TableName: process.env.AGENT_QUESTIONS_TABLE,
+                  Key: { questionId },
+                  UpdateExpression: 'SET draftAnswer = :d',
+                  ExpressionAttributeValues: { ':d': draftJson },
+                }),
+              )
+              .catch((e) => console.error('DynamoDB draft sync failed:', e.message));
           }
         }
 
         // Add INFLUENCES edges when answer is recorded
         if (data.influencesRequirementIds) {
           for (const rId of data.influencesRequirementIds) {
-            await g.V().has('Question', 'id', questionId).as('q')
-              .V().has('Requirement', 'id', rId).as('r')
-              .addE('INFLUENCES').from_('q').to('r')
+            await g
+              .V()
+              .has('Question', 'id', questionId)
+              .as('q')
+              .V()
+              .has('Requirement', 'id', rId)
+              .as('r')
+              .addE('INFLUENCES')
+              .from_('q')
+              .to('r')
               .next();
           }
         }
         if (data.influencesUserStoryIds) {
           for (const usId of data.influencesUserStoryIds) {
-            await g.V().has('Question', 'id', questionId).as('q')
-              .V().has('UserStory', 'id', usId).as('us')
-              .addE('INFLUENCES').from_('q').to('us')
+            await g
+              .V()
+              .has('Question', 'id', questionId)
+              .as('q')
+              .V()
+              .has('UserStory', 'id', usId)
+              .as('us')
+              .addE('INFLUENCES')
+              .from_('q')
+              .to('us')
               .next();
           }
         }
         if (data.influencesTaskIds) {
           for (const tId of data.influencesTaskIds) {
-            await g.V().has('Question', 'id', questionId).as('q')
-              .V().has('Task', 'id', tId).as('t')
-              .addE('INFLUENCES').from_('q').to('t')
+            await g
+              .V()
+              .has('Question', 'id', questionId)
+              .as('q')
+              .V()
+              .has('Task', 'id', tId)
+              .as('t')
+              .addE('INFLUENCES')
+              .from_('q')
+              .to('t')
               .next();
           }
         }
@@ -166,6 +233,9 @@ exports.handler = async (event) => {
     console.error('Error:', err);
     return res(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

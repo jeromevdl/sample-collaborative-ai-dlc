@@ -45,13 +45,21 @@ function _preseedClaudeJson() {
   const claudeJsonPath = path.join(os.homedir(), '.claude.json');
   if (!fs.existsSync(claudeJsonPath)) {
     try {
-      fs.writeFileSync(claudeJsonPath, JSON.stringify({
-        hasCompletedOnboarding: true,
-        // installMethod tells Claude Code it was installed as a package (not CLI login)
-        installMethod: 'package',
-        // numStartups > 0 prevents first-run prompts
-        numStartups: 1,
-      }, null, 2), 'utf8');
+      fs.writeFileSync(
+        claudeJsonPath,
+        JSON.stringify(
+          {
+            hasCompletedOnboarding: true,
+            // installMethod tells Claude Code it was installed as a package (not CLI login)
+            installMethod: 'package',
+            // numStartups > 0 prevents first-run prompts
+            numStartups: 1,
+          },
+          null,
+          2,
+        ),
+        'utf8',
+      );
       console.log('[driver:claude] Pre-seeded ~/.claude.json (hasCompletedOnboarding=true)');
     } catch (err) {
       // Non-fatal: if we can't write, the SDK will create its own file or error
@@ -78,10 +86,12 @@ async function authenticate(env) {
   if (ssmPath && _cachedBearerToken === null) {
     try {
       const ssm = new SSMClient({ region: env.AWS_REGION || 'us-east-1' });
-      const result = await ssm.send(new GetParameterCommand({ Name: ssmPath, WithDecryption: true }));
+      const result = await ssm.send(
+        new GetParameterCommand({ Name: ssmPath, WithDecryption: true }),
+      );
       const value = result.Parameter?.Value || '';
       // 'placeholder' is the sentinel stored by Terraform when no token is set
-      _cachedBearerToken = (value && value !== 'placeholder') ? value : '';
+      _cachedBearerToken = value && value !== 'placeholder' ? value : '';
       if (_cachedBearerToken) {
         console.log('[driver:claude] Bedrock bearer token loaded from SSM');
       } else {
@@ -94,14 +104,18 @@ async function authenticate(env) {
   }
 
   if (!_cachedBearerToken) {
-    throw new Error('[driver:claude] No Bedrock bearer token configured — set one via Kiro SSO login or the Admin UI settings. Claude requires a bearer token; IAM role auth is not supported.');
+    throw new Error(
+      '[driver:claude] No Bedrock bearer token configured — set one via Kiro SSO login or the Admin UI settings. Claude requires a bearer token; IAM role auth is not supported.',
+    );
   }
 
   // Verify claude-agent-acp is present and executable
   try {
     execFileSync('claude-agent-acp', ['--version'], { stdio: 'pipe' });
   } catch {
-    throw new Error('[driver:claude] "claude-agent-acp" not found or not executable. Install with: npm install -g @zed-industries/claude-agent-acp');
+    throw new Error(
+      '[driver:claude] "claude-agent-acp" not found or not executable. Install with: npm install -g @zed-industries/claude-agent-acp',
+    );
   }
 
   // Pre-seed ~/.claude.json to skip interactive onboarding in the non-interactive
@@ -121,7 +135,9 @@ async function authenticate(env) {
  * All Bedrock config is applied via env vars at ACP spawn time.
  */
 function configureSettings(_env) {
-  console.log('[driver:claude] configureSettings: Bedrock config applied via env vars at ACP spawn time');
+  console.log(
+    '[driver:claude] configureSettings: Bedrock config applied via env vars at ACP spawn time',
+  );
 }
 
 // ---------------------------------------------------------------------------

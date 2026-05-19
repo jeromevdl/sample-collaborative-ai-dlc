@@ -45,18 +45,22 @@ export function StuckAlert({ detections }: Props) {
         const cfg = REASON_CONFIG[d.reason];
         const Icon = cfg.icon;
         return (
-          <div key={`${d.sprintId}-${d.reason}-${i}`}
-            className={cn('flex items-start gap-3 rounded-lg px-4 py-3', cfg.bg, cfg.borderWidth,
-              d.reason === 'blocked_question' && 'animate-pulse shadow-md shadow-yellow-200 dark:shadow-yellow-900/30'
-            )}>
+          <div
+            key={`${d.sprintId}-${d.reason}-${i}`}
+            className={cn(
+              'flex items-start gap-3 rounded-lg px-4 py-3',
+              cfg.bg,
+              cfg.borderWidth,
+              d.reason === 'blocked_question' &&
+                'animate-pulse shadow-md shadow-yellow-200 dark:shadow-yellow-900/30',
+            )}
+          >
             <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', cfg.text)} />
             <div className="flex-1 min-w-0">
               <div className={cn('text-xs font-bold tracking-wider', cfg.text)}>
                 {cfg.label} — {d.projectName}
               </div>
-              <div className={cn('text-xs mt-0.5', cfg.text, 'opacity-80')}>
-                {d.message}
-              </div>
+              <div className={cn('text-xs mt-0.5', cfg.text, 'opacity-80')}>{d.message}</div>
             </div>
             {d.durationMs > 0 && (
               <span className={cn('text-[10px] shrink-0 opacity-60', cfg.text)}>

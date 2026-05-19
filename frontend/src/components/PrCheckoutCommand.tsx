@@ -36,9 +36,18 @@ export function PrCheckoutCommand({ prNumber, branch: _branch, baseBranch, gitRe
       <div className="flex items-center gap-2 bg-muted/60 rounded px-2.5 py-1.5 font-mono text-xs">
         <Terminal className="h-3 w-3 text-muted-foreground shrink-0" />
         <code className="flex-1 select-all truncate">{command}</code>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopy}
-          title="Copy to clipboard">
-          {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0"
+          onClick={handleCopy}
+          title="Copy to clipboard"
+        >
+          {copied ? (
+            <Check className="h-3 w-3 text-green-600" />
+          ) : (
+            <Copy className="h-3 w-3 text-muted-foreground" />
+          )}
         </Button>
       </div>
       <div className="flex items-center gap-1.5 px-1">

@@ -90,10 +90,7 @@ export function AgentStreamPanel({
   }, [streamingText, isStreaming, compact]);
 
   return (
-    <div
-      ref={scrollRef}
-      className="bg-gray-900 rounded-lg overflow-y-auto"
-    >
+    <div ref={scrollRef} className="bg-gray-900 rounded-lg overflow-y-auto">
       {/* Activity indicator when nothing else is showing */}
       {!hasContent && (
         <div className="p-4 flex items-center gap-3 text-gray-400 text-sm">
@@ -119,22 +116,21 @@ export function AgentStreamPanel({
       )}
 
       {/* Active tool call highlight (always visible if active, even without text) */}
-      {activeToolCall && !recentTools.some(t => t.name === activeToolCall && t.status === 'pending') && (
-        <div className="px-4 py-2 border-b border-gray-800">
-          <div className="text-yellow-400 text-xs flex items-center gap-2">
-            <div className="animate-spin h-3 w-3 border border-yellow-400 border-t-transparent rounded-full flex-shrink-0" />
-            <span className="truncate">{activeToolCall}</span>
+      {activeToolCall &&
+        !recentTools.some((t) => t.name === activeToolCall && t.status === 'pending') && (
+          <div className="px-4 py-2 border-b border-gray-800">
+            <div className="text-yellow-400 text-xs flex items-center gap-2">
+              <div className="animate-spin h-3 w-3 border border-yellow-400 border-t-transparent rounded-full flex-shrink-0" />
+              <span className="truncate">{activeToolCall}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Streaming markdown text */}
       {displayText && (
         <div className={compact ? 'p-3' : 'p-4'}>
           <div className={`prose prose-invert max-w-none ${compact ? 'prose-xs' : 'prose-sm'}`}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {displayText}
-            </ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
             {isStreaming && (
               <span className="inline-block w-1.5 h-3.5 bg-gray-400 animate-pulse ml-0.5 align-middle" />
             )}
@@ -153,17 +149,20 @@ function ToolCallRow({ tool, compact }: { tool: ToolCallEvent; compact: boolean 
   return (
     <div className="flex items-center gap-2 text-xs">
       <ToolStatusIcon status={tool.status} />
-      <span className={`truncate ${
-        tool.status === 'pending' ? 'text-yellow-400' :
-        tool.status === 'running' ? 'text-blue-400' :
-        tool.status === 'completed' ? 'text-gray-500' :
-        'text-red-400'
-      }`}>
+      <span
+        className={`truncate ${
+          tool.status === 'pending'
+            ? 'text-yellow-400'
+            : tool.status === 'running'
+              ? 'text-blue-400'
+              : tool.status === 'completed'
+                ? 'text-gray-500'
+                : 'text-red-400'
+        }`}
+      >
         {tool.name}
       </span>
-      {!compact && (
-        <span className="text-gray-600 ml-auto flex-shrink-0">{elapsed}</span>
-      )}
+      {!compact && <span className="text-gray-600 ml-auto flex-shrink-0">{elapsed}</span>}
     </div>
   );
 }
@@ -176,14 +175,24 @@ function ToolStatusIcon({ status }: { status: ToolCallEvent['status'] }) {
   }
   if (status === 'completed') {
     return (
-      <svg className="w-3 h-3 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="w-3 h-3 text-green-500 flex-shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
     );
   }
   // failed
   return (
-    <svg className="w-3 h-3 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className="w-3 h-3 text-red-400 flex-shrink-0"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
   );

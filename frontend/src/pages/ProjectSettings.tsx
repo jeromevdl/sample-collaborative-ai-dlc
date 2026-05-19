@@ -110,9 +110,12 @@ export default function ProjectSettings() {
 
   // Load available CLI capabilities separately (non-blocking)
   useEffect(() => {
-    agentsService.getCapabilities()
-      .then(c => setAvailableCliNames(c.available))
-      .catch(() => { /* non-fatal — keep default ['kiro'] */ });
+    agentsService
+      .getCapabilities()
+      .then((c) => setAvailableCliNames(c.available))
+      .catch(() => {
+        /* non-fatal — keep default ['kiro'] */
+      });
   }, []);
 
   useEffect(() => {
@@ -121,10 +124,7 @@ export default function ProjectSettings() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        userDropdownRef.current &&
-        !userDropdownRef.current.contains(e.target as Node)
-      ) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
         setShowUserDropdown(false);
       }
     };
@@ -144,9 +144,7 @@ export default function ProjectSettings() {
       // Filter out users who are already members
       const memberIds = new Set(members.map((m) => m.userId));
       setCognitoUsers(
-        users.filter(
-          (u) => u.enabled && u.status === 'CONFIRMED' && !memberIds.has(u.userId)
-        )
+        users.filter((u) => u.enabled && u.status === 'CONFIRMED' && !memberIds.has(u.userId)),
       );
     } catch (err) {
       console.error('Failed to load users:', err);
@@ -183,10 +181,7 @@ export default function ProjectSettings() {
   const filteredUsers = cognitoUsers.filter((u) => {
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
-    return (
-      u.email.toLowerCase().includes(q) ||
-      u.displayName.toLowerCase().includes(q)
-    );
+    return u.email.toLowerCase().includes(q) || u.displayName.toLowerCase().includes(q);
   });
 
   const handleSaveProject = async (e: React.FormEvent) => {
@@ -299,12 +294,7 @@ export default function ProjectSettings() {
               onClick={() => navigate(`/project/${projectId}`)}
               className="text-gray-600 hover:text-gray-900 flex items-center"
             >
-              <svg
-                className="w-5 h-5 mr-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -318,13 +308,9 @@ export default function ProjectSettings() {
             <h1 className="text-xl font-semibold">Project Settings</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-gray-700 text-sm">
-              {user?.displayName || user?.email}
-            </span>
+            <span className="text-gray-700 text-sm">{user?.displayName || user?.email}</span>
             {userRole && (
-              <span
-                className={`px-2 py-0.5 text-xs rounded font-medium ${ROLE_COLORS[userRole]}`}
-              >
+              <span className={`px-2 py-0.5 text-xs rounded font-medium ${ROLE_COLORS[userRole]}`}>
                 {ROLE_LABELS[userRole]}
               </span>
             )}
@@ -337,10 +323,7 @@ export default function ProjectSettings() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
             {error}
-            <button
-              onClick={() => setError(null)}
-              className="text-red-500 hover:text-red-700"
-            >
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
               x
             </button>
           </div>
@@ -416,12 +399,17 @@ export default function ProjectSettings() {
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h2 className="text-lg font-semibold mb-1">Agent</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Choose which AI agent CLI runs agents for this project.
-                Only CLIs installed in the current deployment are available.
+                Choose which AI agent CLI runs agents for this project. Only CLIs installed in the
+                current deployment are available.
               </p>
               <form onSubmit={handleSaveAgentCli}>
                 <div className="space-y-3">
-                  {(Object.entries(AGENT_CLI_CONFIG) as [AgentCli, { label: string; description: string }][]).map(([key, cfg]) => {
+                  {(
+                    Object.entries(AGENT_CLI_CONFIG) as [
+                      AgentCli,
+                      { label: string; description: string },
+                    ][]
+                  ).map(([key, cfg]) => {
                     const isAvailable = availableCliNames.includes(key);
                     const isSelected = editAgentCli === key;
                     const isCurrent = project?.agentCli === key;
@@ -434,8 +422,8 @@ export default function ProjectSettings() {
                           isSelected
                             ? 'border-indigo-500 bg-indigo-50'
                             : isSelectable
-                            ? 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                              ? 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
                         }`}
                       >
                         <input
@@ -492,10 +480,10 @@ export default function ProjectSettings() {
             </div>
 
             {/* Members */}
-            <div className="bg-white rounded-lg shadow p-6">              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">
-                  Members ({members.length})
-                </h2>
+            <div className="bg-white rounded-lg shadow p-6">
+              {' '}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Members ({members.length})</h2>
                 {canManageMembers && (
                   <button
                     onClick={openAddMemberModal}
@@ -505,7 +493,6 @@ export default function ProjectSettings() {
                   </button>
                 )}
               </div>
-
               {/* Role legend */}
               <div className="flex gap-4 mb-4 text-xs text-gray-500">
                 {Object.entries(ROLE_DESCRIPTIONS).map(([role, desc]) => (
@@ -519,19 +506,13 @@ export default function ProjectSettings() {
                   </div>
                 ))}
               </div>
-
               {/* Members list */}
               <div className="divide-y">
                 {members.map((member) => (
-                  <div
-                    key={member.userId}
-                    className="py-3 flex items-center justify-between"
-                  >
+                  <div key={member.userId} className="py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
-                        {(member.email || member.userId)
-                          .charAt(0)
-                          .toUpperCase()}
+                        {(member.email || member.userId).charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">
@@ -558,28 +539,25 @@ export default function ProjectSettings() {
                           disabled={
                             // Admins can't change owners or other admins
                             (userRole === 'admin' &&
-                              (member.role === 'owner' ||
-                                member.role === 'admin')) ||
+                              (member.role === 'owner' || member.role === 'admin')) ||
                             // Nobody can edit their own role
                             false
                           }
                           className={`text-sm border rounded px-2 py-1 ${ROLE_COLORS[member.role]} disabled:opacity-60`}
                         >
-                          {(userRole === 'owner'
-                            ? ['owner', 'admin', 'member']
-                            : ['member']
-                          ).map((r) => (
-                            <option key={r} value={r}>
-                              {ROLE_LABELS[r as ProjectRole]}
-                            </option>
-                          ))}
-                          {/* If current value isn't in the options above, show it read-only */}
-                          {userRole !== 'owner' &&
-                            member.role !== 'member' && (
-                              <option value={member.role} disabled>
-                                {ROLE_LABELS[member.role]}
+                          {(userRole === 'owner' ? ['owner', 'admin', 'member'] : ['member']).map(
+                            (r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABELS[r as ProjectRole]}
                               </option>
-                            )}
+                            ),
+                          )}
+                          {/* If current value isn't in the options above, show it read-only */}
+                          {userRole !== 'owner' && member.role !== 'member' && (
+                            <option value={member.role} disabled>
+                              {ROLE_LABELS[member.role]}
+                            </option>
+                          )}
                         </select>
                       ) : (
                         <span
@@ -631,19 +609,12 @@ export default function ProjectSettings() {
             <form onSubmit={handleAddMember}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    User
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User</label>
                   {selectedUser ? (
                     <div className="flex items-center justify-between border rounded px-3 py-2 bg-gray-50">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-medium text-indigo-700 shrink-0">
-                          {(
-                            selectedUser.displayName ||
-                            selectedUser.email
-                          )
-                            .charAt(0)
-                            .toUpperCase()}
+                          {(selectedUser.displayName || selectedUser.email).charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
@@ -689,9 +660,7 @@ export default function ProjectSettings() {
                         onFocus={() => setShowUserDropdown(true)}
                         className="w-full border rounded px-3 py-2 text-sm"
                         placeholder={
-                          loadingUsers
-                            ? 'Loading users...'
-                            : 'Search by email or name...'
+                          loadingUsers ? 'Loading users...' : 'Search by email or name...'
                         }
                         disabled={addingMember || loadingUsers}
                       />
@@ -712,14 +681,10 @@ export default function ProjectSettings() {
                                 className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 border-b last:border-b-0"
                               >
                                 <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">
-                                  {(u.displayName || u.email)
-                                    .charAt(0)
-                                    .toUpperCase()}
+                                  {(u.displayName || u.email).charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-sm text-gray-900 truncate">
-                                    {u.email}
-                                  </p>
+                                  <p className="text-sm text-gray-900 truncate">{u.email}</p>
                                   {u.displayName && (
                                     <p className="text-xs text-gray-500 truncate">
                                       {u.displayName}
@@ -735,14 +700,10 @@ export default function ProjectSettings() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                   <select
                     value={newMemberRole}
-                    onChange={(e) =>
-                      setNewMemberRole(e.target.value as ProjectRole)
-                    }
+                    onChange={(e) => setNewMemberRole(e.target.value as ProjectRole)}
                     className="w-full border rounded px-3 py-2"
                     disabled={addingMember}
                   >
@@ -783,10 +744,7 @@ export default function ProjectSettings() {
             <h3 className="text-lg font-semibold mb-2">Change Role</h3>
             <p className="text-gray-600 mb-4">
               Change this member's role to{' '}
-              <span className="font-semibold">
-                {ROLE_LABELS[confirmRoleChange.newRole]}
-              </span>
-              ?
+              <span className="font-semibold">{ROLE_LABELS[confirmRoleChange.newRole]}</span>?
             </p>
             <p className="text-sm text-gray-500 mb-4">
               {ROLE_DESCRIPTIONS[confirmRoleChange.newRole]}
@@ -800,10 +758,7 @@ export default function ProjectSettings() {
               </button>
               <button
                 onClick={() =>
-                  handleRoleChange(
-                    confirmRoleChange.userId,
-                    confirmRoleChange.newRole
-                  )
+                  handleRoleChange(confirmRoleChange.userId, confirmRoleChange.newRole)
                 }
                 className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
               >
@@ -820,8 +775,8 @@ export default function ProjectSettings() {
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-semibold mb-2">Remove Member</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to remove this member from the project? They
-              will lose access immediately.
+              Are you sure you want to remove this member from the project? They will lose access
+              immediately.
             </p>
             <div className="flex justify-end gap-2">
               <button

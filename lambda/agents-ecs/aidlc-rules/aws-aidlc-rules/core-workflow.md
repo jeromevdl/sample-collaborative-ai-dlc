@@ -1,19 +1,24 @@
 # PRIORITY: This workflow OVERRIDES all other built-in workflows
+
 # When user requests software development, ALWAYS follow this workflow FIRST
 
 ## Adaptive Workflow Principle
+
 **The workflow adapts to the work, not the other way around.**
 
 The AI model intelligently assesses what stages are needed based on:
+
 1. User's stated intent and clarity
 2. Existing codebase state (if any)
 3. Complexity and scope of change
 4. Risk and impact assessment
 
 ## MANDATORY: Rule Details Loading
+
 **CRITICAL**: When performing any phase, you MUST read and use relevant content from rule detail files in `.kiro/steering/` directory.
 
 **Common Rules**: ALWAYS load common rules at workflow start:
+
 - Load `common/process-overview.md` for workflow overview
 - Load `common/session-continuity.md` for session resumption guidance and **cross-sprint context loading**
 - Load `common/content-validation.md` for content validation requirements
@@ -22,15 +27,19 @@ The AI model intelligently assesses what stages are needed based on:
 - Reference these throughout the workflow execution
 
 ## MANDATORY: Content Validation
+
 **CRITICAL**: Before creating ANY code file, you MUST validate content according to `common/content-validation.md` rules:
+
 - Validate code syntax and structure
 - Ensure generated code compiles/parses correctly
 - Test content parsing compatibility
 
 ## MANDATORY: Collaboration via `ask_question`
+
 **CRITICAL**: When asking questions at any phase, you MUST use the `ask_question` MCP tool.
 
 **See `common/question-format-guide.md` for complete rules including**:
+
 - How to ask single questions, batch questions, and follow-ups
 - Ambiguity detection and resolution
 - Approval gate patterns
@@ -38,16 +47,20 @@ The AI model intelligently assesses what stages are needed based on:
 **NEVER create question files, use `[Answer]:` tags, or ask questions inline in chat. The `ask_question` tool is the ONLY way to get human input.**
 
 ## MANDATORY: Custom Welcome Message
+
 **CRITICAL**: When starting ANY software development request, you MUST display the welcome message.
 
 **How to Display Welcome Message**:
+
 1. Load the welcome message from `common/welcome-message.md`
 2. Display the complete message to the user
 3. This should only be done ONCE at the start of a new workflow
 4. Do NOT load this file in subsequent interactions to save context space
 
 ## MANDATORY: Graph as Source of Truth
+
 **CRITICAL**: The Neptune graph database is the single source of truth for all artifacts.
+
 - Use `add_node` to create artifacts (Requirements, UserStories, Tasks, CodeFiles, Reviews). ALWAYS pass the `edges` parameter to link the new node to its parent in the same call (e.g. `edges: [{ direction: "from", label: "Requirement", id: "req-xxx", edgeLabel: "BREAKS_INTO" }]`).
 - Use `add_edge` only when you need to add a relationship after the fact (prefer using `edges` in `add_node` instead)
 - Use `update_node` to track state changes (Sprint phase, stage, Task status)
@@ -67,6 +80,7 @@ The AI model intelligently assesses what stages are needed based on:
 **Focus**: Determine WHAT to build and WHY
 
 **Stages in INCEPTION PHASE**:
+
 - Workspace Detection (ALWAYS)
 - Reverse Engineering (CONDITIONAL - Brownfield only)
 - Requirements Analysis (ALWAYS - Adaptive depth)
@@ -101,19 +115,23 @@ The AI model intelligently assesses what stages are needed based on:
 ## Reverse Engineering (CONDITIONAL - Brownfield Only)
 
 **Execute IF**:
+
 - Existing codebase detected
 - No previous reverse engineering artifacts found in graph (neither fresh nor carried-forward)
 
 **Execute with carried-forward context IF**:
+
 - Existing codebase detected
 - Carried-forward RE artifacts exist (GeneralInfo nodes with `carried_from_sprint` property and `type: "reverse-engineering"`)
 - Agent should use carried-forward artifacts as baseline context, then assess whether the codebase has changed significantly since the last sprint. If changes are minor, update the carried-forward artifacts rather than regenerating from scratch. If changes are major, run full RE using carried-forward artifacts as reference.
 
 **Skip IF**:
+
 - Greenfield project
 - Fresh (non-carried-forward) reverse engineering artifacts already exist in the current sprint's graph
 
 **Execution**:
+
 1. Load all steps from `inception/reverse-engineering.md`
 2. Check for carried-forward RE artifacts: `find_nodes(label: "GeneralInfo", property: "carried_from_sprint", value: "<previous-sprint-id>")`
 3. **If carried-forward RE artifacts exist**:
@@ -130,11 +148,13 @@ The AI model intelligently assesses what stages are needed based on:
 ## Requirements Analysis (ALWAYS EXECUTE - Adaptive Depth)
 
 **Always executes** but depth varies based on request clarity and complexity:
+
 - **Minimal**: Simple, clear request - just document intent analysis
 - **Standard**: Normal complexity - gather functional and non-functional requirements
 - **Comprehensive**: Complex, high-risk - detailed requirements with traceability
 
 **Execution**:
+
 1. Load all steps from `inception/requirements-analysis.md`
 2. Execute requirements analysis:
    - Load reverse engineering artifacts from graph (if brownfield)
@@ -151,6 +171,7 @@ The AI model intelligently assesses what stages are needed based on:
 **INTELLIGENT ASSESSMENT**: Use multi-factor analysis to determine if user stories add value:
 
 **ALWAYS Execute IF** (High Priority Indicators):
+
 - New user-facing features or functionality
 - Changes affecting user workflows or interactions
 - Multiple user types or personas involved
@@ -160,6 +181,7 @@ The AI model intelligently assesses what stages are needed based on:
 - New product capabilities or enhancements
 
 **LIKELY Execute IF** (Medium Priority - Assess Complexity):
+
 - Modifications to existing user-facing features
 - Backend changes that indirectly affect user experience
 - Integration work that impacts user workflows
@@ -168,6 +190,7 @@ The AI model intelligently assesses what stages are needed based on:
 - Data model changes affecting user data or reports
 
 **COMPLEXITY-BASED ASSESSMENT**: For medium priority cases, execute user stories if:
+
 - Request involves multiple components or services
 - Changes span multiple user touchpoints
 - Business logic is complex or has multiple scenarios
@@ -176,6 +199,7 @@ The AI model intelligently assesses what stages are needed based on:
 - Change has significant business impact or risk
 
 **SKIP ONLY IF** (Low Priority - Simple Cases):
+
 - Pure internal refactoring with zero user impact
 - Simple bug fixes with clear, isolated scope
 - Infrastructure changes with no user-facing effects
@@ -186,10 +210,12 @@ The AI model intelligently assesses what stages are needed based on:
 **ASSESSMENT CRITERIA**: When in doubt, favor inclusion of user stories.
 
 **User Stories has two parts within one stage**:
+
 1. **Part 1 - Planning**: Ask questions via `ask_question`, analyze answers for ambiguities, get approval
 2. **Part 2 - Generation**: Execute approved plan to generate UserStory nodes in graph
 
 **Execution**:
+
 1. Load all steps from `inception/user-stories.md`
 2. **MANDATORY**: Perform intelligent assessment to validate user stories are needed
 3. Load reverse engineering artifacts from graph (if brownfield)
@@ -217,17 +243,20 @@ The AI model intelligently assesses what stages are needed based on:
 ## Application Design (CONDITIONAL)
 
 **Execute IF**:
+
 - New components or services needed
 - Component methods and business rules need definition
 - Service layer design required
 - Component dependencies need clarification
 
 **Skip IF**:
+
 - Changes within existing component boundaries
 - No new components or methods
 - Pure implementation changes
 
 **Execution**:
+
 1. Load all steps from `inception/application-design.md`
 2. Load reverse engineering artifacts from graph (if brownfield)
 3. Execute at appropriate depth (minimal/standard/comprehensive)
@@ -239,6 +268,7 @@ The AI model intelligently assesses what stages are needed based on:
 **Always executes.** Tasks are the work items that the Construction phase per-unit loop iterates over. Every UserStory must have at least one Task for the construction phase to have actionable work items.
 
 **Execution**:
+
 1. Load all steps from `inception/units-generation.md`
 2. Load reverse engineering artifacts from graph (if brownfield)
 3. Execute at appropriate depth (minimal/standard/comprehensive)
@@ -280,6 +310,7 @@ When all tasks done:
 **System rules**: PUSH after each agent exits, only re-trigger orchestrator on verified push.
 
 **Stages in CONSTRUCTION PHASE**:
+
 - Per-Unit Loop (executes for each unit):
   - Functional Design (CONDITIONAL, per-unit)
   - NFR Requirements (CONDITIONAL, per-unit)
@@ -299,15 +330,18 @@ When all tasks done:
 ### Functional Design (CONDITIONAL, per-unit)
 
 **Execute IF**:
+
 - New data models or schemas
 - Complex business logic
 - Business rules need detailed design
 
 **Skip IF**:
+
 - Simple logic changes
 - No new business logic
 
 **Execution**:
+
 1. Load all steps from `construction/functional-design.md`
 2. Execute functional design for this unit
 3. Store design as properties on Task nodes or dedicated Requirement nodes in graph
@@ -316,16 +350,19 @@ When all tasks done:
 ### NFR Requirements (CONDITIONAL, per-unit)
 
 **Execute IF**:
+
 - Performance requirements exist
 - Security considerations needed
 - Scalability concerns present
 - Tech stack selection required
 
 **Skip IF**:
+
 - No NFR requirements
 - Tech stack already determined
 
 **Execution**:
+
 1. Load all steps from `construction/nfr-requirements.md`
 2. Execute NFR assessment for this unit
 3. Store NFR requirements as Requirement nodes with `category: "nfr"` in graph
@@ -334,14 +371,17 @@ When all tasks done:
 ### NFR Design (CONDITIONAL, per-unit)
 
 **Execute IF**:
+
 - NFR Requirements was executed
 - NFR patterns need to be incorporated
 
 **Skip IF**:
+
 - No NFR requirements
 - NFR Requirements Assessment was skipped
 
 **Execution**:
+
 1. Load all steps from `construction/nfr-design.md`
 2. Execute NFR design for this unit
 3. Store NFR design as properties on Task nodes in graph
@@ -350,15 +390,18 @@ When all tasks done:
 ### Infrastructure Design (CONDITIONAL, per-unit)
 
 **Execute IF**:
+
 - Infrastructure services need mapping
 - Deployment architecture required
 - Cloud resources need specification
 
 **Skip IF**:
+
 - No infrastructure changes
 - Infrastructure already defined
 
 **Execution**:
+
 1. Load all steps from `construction/infrastructure-design.md`
 2. Execute infrastructure design for this unit
 3. Store infrastructure design as properties on Task nodes in graph
@@ -369,10 +412,12 @@ When all tasks done:
 **Always executes for each unit**
 
 **Code Generation has two parts within one stage**:
+
 1. **Part 1 - Planning**: Create detailed code generation plan, store as Task node properties
 2. **Part 2 - Generation**: Execute approved plan to generate code, tests, and artifacts
 
 **Execution**:
+
 1. Load all steps from `construction/code-generation.md`
 2. **PART 1 - Planning**: Create code generation plan, get user approval via `ask_question`
 3. **PART 2 - Generation**: Execute approved plan to generate code for this unit
@@ -399,6 +444,7 @@ When all tasks done:
 **Focus**: How to DEPLOY and RUN it (future expansion)
 
 **Stages in OPERATIONS PHASE**:
+
 - Operations (PLACEHOLDER)
 
 ---
@@ -408,6 +454,7 @@ When all tasks done:
 **Status**: This stage is currently a placeholder for future expansion.
 
 The Operations stage will eventually include:
+
 - Deployment planning and execution
 - Monitoring and observability setup
 - Incident response procedures

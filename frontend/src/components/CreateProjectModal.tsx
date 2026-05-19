@@ -54,18 +54,30 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Create New Project</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          Create New Project
+        </h2>
 
         {/* Step Indicator */}
         <div className="flex items-center gap-2 mb-6">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                step === s ? 'bg-indigo-600 text-white' : step > s ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-300'
-              }`}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                  step === s
+                    ? 'bg-indigo-600 text-white'
+                    : step > s
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-300'
+                }`}
+              >
                 {step > s ? '✓' : s}
               </div>
-              {s < 3 && <div className={`w-8 h-0.5 ${step > s ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'}`} />}
+              {s < 3 && (
+                <div
+                  className={`w-8 h-0.5 ${step > s ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'}`}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -88,13 +100,13 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
             {statusLoading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
             ) : (
-              <GitHubConnectButton
-                connected={status?.connected || false}
-                onDisconnect={refresh}
-              />
+              <GitHubConnectButton connected={status?.connected || false} onDisconnect={refresh} />
             )}
             <div className="flex justify-end gap-2 mt-6">
-              <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
                 Cancel
               </button>
               <button
@@ -114,7 +126,10 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
             <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Select Repository</h3>
             <GitHubRepoSelect value={formData.gitRepo} onChange={handleRepoSelect} />
             <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setStep(1)} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+              <button
+                onClick={() => setStep(1)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
                 Back
               </button>
               <button
@@ -133,7 +148,9 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
           <form onSubmit={handleSubmit}>
             <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Project Details</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Project Name
+              </label>
               <input
                 type="text"
                 value={formData.name}
@@ -144,7 +161,9 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repository</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Repository
+              </label>
               <input
                 type="text"
                 value={formData.gitRepo}
@@ -153,7 +172,12 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
               />
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <button type="button" onClick={() => setStep(2)} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" disabled={submitting}>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                disabled={submitting}
+              >
                 Back
               </button>
               <button

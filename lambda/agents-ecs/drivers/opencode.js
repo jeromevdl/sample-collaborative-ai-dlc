@@ -47,7 +47,8 @@ async function authenticate(env) {
   }
 
   const region = env.BEDROCK_REGION || env.AWS_REGION || 'us-east-1';
-  const model = env.OPENCODE_MODEL || env.BEDROCK_MODEL || 'amazon-bedrock/us.anthropic.claude-sonnet-4-6';
+  const model =
+    env.OPENCODE_MODEL || env.BEDROCK_MODEL || 'amazon-bedrock/us.anthropic.claude-sonnet-4-6';
 
   // Load bearer token from SSM if configured (set via Kiro SSO or Admin UI)
   // REQUIRED: the ECS task IAM role does not grant Bedrock permissions.
@@ -56,9 +57,11 @@ async function authenticate(env) {
   if (ssmPath && _cachedBearerToken === null) {
     try {
       const ssm = new SSMClient({ region });
-      const result = await ssm.send(new GetParameterCommand({ Name: ssmPath, WithDecryption: true }));
+      const result = await ssm.send(
+        new GetParameterCommand({ Name: ssmPath, WithDecryption: true }),
+      );
       const value = result.Parameter?.Value || '';
-      _cachedBearerToken = (value && value !== 'placeholder') ? value : '';
+      _cachedBearerToken = value && value !== 'placeholder' ? value : '';
       if (_cachedBearerToken) {
         console.log('[driver:opencode] Bedrock bearer token loaded from SSM');
       } else {
@@ -71,7 +74,9 @@ async function authenticate(env) {
   }
 
   if (!_cachedBearerToken) {
-    throw new Error('[driver:opencode] No Bedrock bearer token configured — set one via Kiro SSO login or the Admin UI settings. OpenCode requires a bearer token; IAM role auth is not supported.');
+    throw new Error(
+      '[driver:opencode] No Bedrock bearer token configured — set one via Kiro SSO login or the Admin UI settings. OpenCode requires a bearer token; IAM role auth is not supported.',
+    );
   }
 
   // Write global opencode.json configuring the amazon-bedrock provider
@@ -88,7 +93,9 @@ async function authenticate(env) {
   try {
     fs.mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
     fs.writeFileSync(OPENCODE_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
-    console.log(`[driver:opencode] Wrote config to ${OPENCODE_CONFIG_FILE} (region=${region}, model=${model})`);
+    console.log(
+      `[driver:opencode] Wrote config to ${OPENCODE_CONFIG_FILE} (region=${region}, model=${model})`,
+    );
   } catch (err) {
     throw new Error(`[driver:opencode] Failed to write opencode.json: ${err.message}`);
   }
@@ -113,7 +120,9 @@ async function authenticate(env) {
  * authenticate() covers provider, region, and model selection.
  */
 function configureSettings(_env) {
-  console.log('[driver:opencode] configureSettings: Bedrock config already applied via opencode.json');
+  console.log(
+    '[driver:opencode] configureSettings: Bedrock config already applied via opencode.json',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +170,9 @@ function getEnvForAcpProcess(baseEnv) {
  */
 function writeProjectConfig(workspaceDir, env) {
   const region = (env && (env.BEDROCK_REGION || env.AWS_REGION)) || 'us-east-1';
-  const model = (env && (env.OPENCODE_MODEL || env.BEDROCK_MODEL)) || 'amazon-bedrock/us.anthropic.claude-sonnet-4-6';
+  const model =
+    (env && (env.OPENCODE_MODEL || env.BEDROCK_MODEL)) ||
+    'amazon-bedrock/us.anthropic.claude-sonnet-4-6';
 
   const configDir = path.join(workspaceDir, '.opencode');
   const configFile = path.join(configDir, 'opencode.json');
@@ -179,7 +190,9 @@ function writeProjectConfig(workspaceDir, env) {
   try {
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf8');
-    console.log(`[driver:opencode] Wrote project config to ${configFile} (region=${region}, model=${model})`);
+    console.log(
+      `[driver:opencode] Wrote project config to ${configFile} (region=${region}, model=${model})`,
+    );
   } catch (err) {
     console.error(`[driver:opencode] Failed to write project config: ${err.message}`);
   }

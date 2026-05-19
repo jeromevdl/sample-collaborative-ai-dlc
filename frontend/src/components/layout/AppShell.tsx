@@ -1,26 +1,26 @@
-import { Outlet, useParams } from 'react-router-dom'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { AppSidebar } from '@/components/layout/AppSidebar'
-import { AppHeader } from '@/components/layout/AppHeader'
-import { ActivityPanel } from '@/components/layout/ActivityPanel'
-import { StatusBar } from '@/components/layout/StatusBar'
-import { CommandPalette } from '@/components/layout/CommandPalette'
-import { useState, useCallback } from 'react'
+import { Outlet, useParams } from 'react-router-dom';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { AppSidebar } from '@/components/layout/AppSidebar';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { ActivityPanel } from '@/components/layout/ActivityPanel';
+import { StatusBar } from '@/components/layout/StatusBar';
+import { CommandPalette } from '@/components/layout/CommandPalette';
+import { useState, useCallback } from 'react';
 
 export function AppShell() {
-  const { sprintId } = useParams<{ sprintId: string }>()
-  const inSprint = !!sprintId
+  const { sprintId } = useParams<{ sprintId: string }>();
+  const inSprint = !!sprintId;
 
-  const [activityPanelOpen, setActivityPanelOpen] = useState(true)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [commandOpen, setCommandOpen] = useState(false)
+  const [activityPanelOpen, setActivityPanelOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
 
   // Only show panels when inside a sprint
-  const showSidebar = inSprint && !sidebarCollapsed
-  const showActivity = inSprint && activityPanelOpen
+  const showSidebar = inSprint && !sidebarCollapsed;
+  const showActivity = inSprint && activityPanelOpen;
 
-  const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
-  const toggleActivity = useCallback(() => setActivityPanelOpen(prev => !prev), [])
+  const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), []);
+  const toggleActivity = useCallback(() => setActivityPanelOpen((prev) => !prev), []);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -43,7 +43,9 @@ export function AppShell() {
               showSidebar ? 'minmax(240px, 280px)' : '',
               '1fr',
               showActivity ? 'minmax(280px, 360px)' : '',
-            ].filter(Boolean).join(' '),
+            ]
+              .filter(Boolean)
+              .join(' '),
           }}
         >
           {/* Sidebar - only in sprint views */}
@@ -73,5 +75,5 @@ export function AppShell() {
         <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
       </div>
     </TooltipProvider>
-  )
+  );
 }

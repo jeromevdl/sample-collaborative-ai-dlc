@@ -253,9 +253,9 @@ describe('get-agent-output handler', () => {
 
       const handler = await loadHandler();
 
-      await expect(
-        handler({ executionId: 'exec-1', agentType: 'inception' }),
-      ).rejects.toThrow('ProvisionedThroughputExceeded');
+      await expect(handler({ executionId: 'exec-1', agentType: 'inception' })).rejects.toThrow(
+        'ProvisionedThroughputExceeded',
+      );
     });
 
     it('does not call DynamoDB on the placeholder paths even if it would reject', async () => {

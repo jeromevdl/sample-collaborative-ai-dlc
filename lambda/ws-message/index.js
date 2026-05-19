@@ -1,8 +1,12 @@
 import { DynamoDBClient, QueryCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
-import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
+import {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} from '@aws-sdk/client-apigatewaymanagementapi';
 
 const dynamodb = new DynamoDBClient();
-const getApiClient = () => new ApiGatewayManagementApiClient({ endpoint: process.env.WEBSOCKET_ENDPOINT });
+const getApiClient = () =>
+  new ApiGatewayManagementApiClient({ endpoint: process.env.WEBSOCKET_ENDPOINT });
 
 export const handler = async (event) => {
   const connectionId = event.requestContext.connectionId;
@@ -23,42 +27,65 @@ export const handler = async (event) => {
 };
 
 const broadcastToDocument = async (documentId, message, excludeConnectionId) => {
-  const connections = await dynamodb.send(new QueryCommand({
-    TableName: process.env.CONNECTIONS_TABLE,
-    IndexName: 'DocumentIdIndex',
-    KeyConditionExpression: 'documentId = :docId',
-    ExpressionAttributeValues: { ':docId': { S: documentId } }
-  })).catch((e) => { console.error('Query error:', e); return { Items: [] }; });
+  const connections = await dynamodb
+    .send(
+      new QueryCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+        IndexName: 'DocumentIdIndex',
+        KeyConditionExpression: 'documentId = :docId',
+        ExpressionAttributeValues: { ':docId': { S: documentId } },
+      }),
+    )
+    .catch((e) => {
+      console.error('Query error:', e);
+      return { Items: [] };
+    });
   await broadcast(connections.Items || [], message, excludeConnectionId);
 };
 
 const broadcastToUser = async (userId, message) => {
-  const connections = await dynamodb.send(new QueryCommand({
-    TableName: process.env.CONNECTIONS_TABLE,
-    IndexName: 'UserIdIndex',
-    KeyConditionExpression: 'userId = :uid',
-    ExpressionAttributeValues: { ':uid': { S: userId } }
-  })).catch((e) => { console.error('Query error:', e); return { Items: [] }; });
+  const connections = await dynamodb
+    .send(
+      new QueryCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+        IndexName: 'UserIdIndex',
+        KeyConditionExpression: 'userId = :uid',
+        ExpressionAttributeValues: { ':uid': { S: userId } },
+      }),
+    )
+    .catch((e) => {
+      console.error('Query error:', e);
+      return { Items: [] };
+    });
   await broadcast(connections.Items || [], message);
 };
 
 const broadcastToAll = async (message, excludeConnectionId) => {
-  const connections = await dynamodb.send(new ScanCommand({
-    TableName: process.env.CONNECTIONS_TABLE,
-  })).catch((e) => { console.error('Scan error:', e); return { Items: [] }; });
+  const connections = await dynamodb
+    .send(
+      new ScanCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+      }),
+    )
+    .catch((e) => {
+      console.error('Scan error:', e);
+      return { Items: [] };
+    });
   await broadcast(connections.Items || [], message, excludeConnectionId);
 };
 
 const broadcast = async (items, message, excludeConnectionId) => {
   const api = getApiClient();
   const payload = JSON.stringify(message);
-  await Promise.all(items.map(async (item) => {
-    const connId = item.connectionId.S;
-    if (connId === excludeConnectionId) return;
-    try {
-      await api.send(new PostToConnectionCommand({ ConnectionId: connId, Data: payload }));
-    } catch (e) {
-      if (e.statusCode !== 410) console.log('Send error to', connId, ':', e.message);
-    }
-  }));
+  await Promise.all(
+    items.map(async (item) => {
+      const connId = item.connectionId.S;
+      if (connId === excludeConnectionId) return;
+      try {
+        await api.send(new PostToConnectionCommand({ ConnectionId: connId, Data: payload }));
+      } catch (e) {
+        if (e.statusCode !== 410) console.log('Send error to', connId, ':', e.message);
+      }
+    }),
+  );
 };

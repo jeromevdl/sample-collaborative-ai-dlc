@@ -1,6 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useObservability } from '@/hooks/useObservability';
-import { ProjectDiagram, ActivityFeed, StuckAlert, BusinessView, AgentTeamSummary } from '@/components/observability';
+import {
+  ProjectDiagram,
+  ActivityFeed,
+  StuckAlert,
+  BusinessView,
+  AgentTeamSummary,
+} from '@/components/observability';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,36 +17,49 @@ import { Activity, RefreshCw, Zap, FolderGit2 } from 'lucide-react';
 export default function ObservabilityPage() {
   const navigate = useNavigate();
   const {
-    projects, projectsLoading,
-    activityFeed, lastToolMap, pendingQuestions,
-    stuckDetections, velocityMap, refresh,
+    projects,
+    projectsLoading,
+    activityFeed,
+    lastToolMap,
+    pendingQuestions,
+    stuckDetections,
+    velocityMap,
+    refresh,
   } = useObservability();
 
-  const activeProjects = projects.filter(p =>
-    p.sprint?.currentAgentStatus === 'running' || p.sprint?.currentAgentStatus === 'waiting'
+  const activeProjects = projects.filter(
+    (p) => p.sprint?.currentAgentStatus === 'running' || p.sprint?.currentAgentStatus === 'waiting',
   );
   const sortedProjects = [...projects].sort((a, b) => {
-    const aA = (a.sprint?.currentAgentStatus === 'running' || a.sprint?.currentAgentStatus === 'waiting') ? 1 : 0;
-    const bA = (b.sprint?.currentAgentStatus === 'running' || b.sprint?.currentAgentStatus === 'waiting') ? 1 : 0;
+    const aA =
+      a.sprint?.currentAgentStatus === 'running' || a.sprint?.currentAgentStatus === 'waiting'
+        ? 1
+        : 0;
+    const bA =
+      b.sprint?.currentAgentStatus === 'running' || b.sprint?.currentAgentStatus === 'waiting'
+        ? 1
+        : 0;
     return bA - aA;
   });
 
   // sprintId → project name for activity feed context
   const projectNames = Object.fromEntries(
-    projects.filter(p => p.sprint).map(p => [p.sprint!.id, p.project.name])
+    projects.filter((p) => p.sprint).map((p) => [p.sprint!.id, p.project.name]),
   );
 
   return (
     <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-6xl mx-auto p-6 space-y-4">
-
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-bold tracking-tight">Observability</h1>
             {activeProjects.length > 0 && (
-              <Badge variant="outline" className="gap-1 text-[10px] bg-agent-running/10 text-agent-running border-agent-running/30">
+              <Badge
+                variant="outline"
+                className="gap-1 text-[10px] bg-agent-running/10 text-agent-running border-agent-running/30"
+              >
                 <span className="h-1.5 w-1.5 rounded-full bg-agent-running animate-pulse" />
                 {activeProjects.length} active
               </Badge>
@@ -60,9 +79,9 @@ export default function ObservabilityPage() {
           <TabsList>
             <TabsTrigger value="pipeline" className="gap-1.5">
               Pipeline
-              {stuckDetections.some(d => d.reason === 'blocked_question') && (
+              {stuckDetections.some((d) => d.reason === 'blocked_question') && (
                 <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-yellow-500 text-white text-[9px] font-bold animate-pulse">
-                  {stuckDetections.filter(d => d.reason === 'blocked_question').length}
+                  {stuckDetections.filter((d) => d.reason === 'blocked_question').length}
                 </span>
               )}
             </TabsTrigger>
@@ -76,7 +95,9 @@ export default function ObservabilityPage() {
 
             {projectsLoading ? (
               <div className="space-y-4">
-                {[1, 2].map(i => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} className="h-64 w-full rounded-xl" />
+                ))}
               </div>
             ) : projects.length === 0 ? (
               <Card className="border-dashed">
@@ -87,7 +108,7 @@ export default function ObservabilityPage() {
               </Card>
             ) : (
               <div className="space-y-6">
-                {sortedProjects.map(info => (
+                {sortedProjects.map((info) => (
                   <ProjectDiagram
                     key={info.project.id}
                     info={info}
@@ -106,14 +127,13 @@ export default function ObservabilityPage() {
                   <Zap className="h-3 w-3" />
                   Live Activity
                 </h2>
-                {activityFeed.length > 0
-                  ? <ActivityFeed events={activityFeed} projectNames={projectNames} />
-                  : (
-                    <div className="text-xs text-muted-foreground/50 italic px-3 py-4 border border-dashed rounded-lg text-center">
-                      Listening for agent events…
-                    </div>
-                  )
-                }
+                {activityFeed.length > 0 ? (
+                  <ActivityFeed events={activityFeed} projectNames={projectNames} />
+                ) : (
+                  <div className="text-xs text-muted-foreground/50 italic px-3 py-4 border border-dashed rounded-lg text-center">
+                    Listening for agent events…
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
@@ -127,7 +147,6 @@ export default function ObservabilityPage() {
             />
           </TabsContent>
         </Tabs>
-
       </div>
     </div>
   );

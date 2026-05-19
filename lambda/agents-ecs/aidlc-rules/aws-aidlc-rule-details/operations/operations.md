@@ -5,9 +5,11 @@
 ## Review Types
 
 ### Blind Review
+
 The blind review agent examines code changes WITHOUT access to requirements or specifications. This produces an unbiased assessment of what the code actually does, its quality, and potential issues.
 
 **The agent must:**
+
 - Analyze git diffs and changed files
 - Describe what the code implements
 - Assess code quality, architecture, and patterns
@@ -15,9 +17,11 @@ The blind review agent examines code changes WITHOUT access to requirements or s
 - NOT access the sprint graph for requirements/stories/tasks
 
 ### Full Review
+
 The full review agent cross-references the implementation against all project artifacts.
 
 **The agent must:**
+
 - Read the complete sprint graph (requirements, user stories, tasks)
 - Compare each requirement's acceptance criteria against the implementation
 - Verify each user story is properly fulfilled
@@ -26,9 +30,11 @@ The full review agent cross-references the implementation against all project ar
 - Provide a clear PASS/FAIL verdict with reasoning
 
 ### Code Modification
+
 When review identifies issues, a modification agent can be launched to fix specific problems.
 
 **The agent must:**
+
 - Only make the requested changes
 - Commit changes with descriptive messages
 - Not push (system handles pushing)
@@ -46,11 +52,13 @@ When review identifies issues, a modification agent can be launched to fix speci
 ## Graph Integration
 
 Review agents store their findings on the Review node:
+
 - `blind_review`: Markdown content from blind review agent
 - `full_review`: Markdown content from full review agent
 - `comments`: Human reviewer comments
 - `status`: PENDING | PASSED | FAILED
 
 Review edges:
+
 - `REVIEWS`: Review -> CodeFile (what was reviewed)
 - `VALIDATES`: Review -> Requirement/UserStory (what was validated)

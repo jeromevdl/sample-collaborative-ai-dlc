@@ -15,14 +15,17 @@ export function useGitHubStatus() {
       setStatus(data);
     } catch (err) {
       setStatus({ connected: false });
-      const serverMsg = err instanceof ApiError && typeof err.body?.error === 'string' ? err.body.error : null;
+      const serverMsg =
+        err instanceof ApiError && typeof err.body?.error === 'string' ? err.body.error : null;
       setError(serverMsg ?? 'Could not check GitHub connection status.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
   return { status, loading, error, refresh };
 }

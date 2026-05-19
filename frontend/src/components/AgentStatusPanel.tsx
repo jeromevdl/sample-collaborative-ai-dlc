@@ -23,7 +23,12 @@ const statusIcons: Record<string, string> = {
   ABORTED: '',
 };
 
-export function AgentStatusPanel({ status, questionCount = 0, answeredCount = 0, onCancel }: Props) {
+export function AgentStatusPanel({
+  status,
+  questionCount = 0,
+  answeredCount = 0,
+  onCancel,
+}: Props) {
   if (!status) {
     return (
       <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
@@ -42,9 +47,13 @@ export function AgentStatusPanel({ status, questionCount = 0, answeredCount = 0,
         <div className="flex items-center gap-2">
           <span className="text-2xl">{icon}</span>
           <div>
-            <h3 className="font-semibold">Inception {currentStatus === 'RUNNING' ? 'In Progress' : currentStatus}</h3>
+            <h3 className="font-semibold">
+              Inception {currentStatus === 'RUNNING' ? 'In Progress' : currentStatus}
+            </h3>
             <p className="text-xs opacity-75">
-              {currentStatus === 'RUNNING' ? 'Agent is analyzing your project...' : 'Agent execution ' + currentStatus.toLowerCase()}
+              {currentStatus === 'RUNNING'
+                ? 'Agent is analyzing your project...'
+                : 'Agent execution ' + currentStatus.toLowerCase()}
             </p>
           </div>
         </div>
@@ -58,7 +67,10 @@ export function AgentStatusPanel({ status, questionCount = 0, answeredCount = 0,
           </div>
           {questionCount > 0 && (
             <div className="text-xs">
-              <span className="font-medium">{answeredCount}/{questionCount}</span> questions answered
+              <span className="font-medium">
+                {answeredCount}/{questionCount}
+              </span>{' '}
+              questions answered
             </div>
           )}
         </div>
@@ -75,14 +87,18 @@ export function AgentStatusPanel({ status, questionCount = 0, answeredCount = 0,
 
       {currentStatus === 'SUCCEEDED' && (
         <div className="mt-3 text-sm">
-          <p className="font-medium">Inception complete! Review your requirements and user stories below.</p>
+          <p className="font-medium">
+            Inception complete! Review your requirements and user stories below.
+          </p>
         </div>
       )}
 
       {currentStatus === 'TIMED_OUT' && (
         <div className="mt-3 text-sm">
           <p className="font-medium">Agent timed out waiting for answers</p>
-          <p className="text-xs mt-1 opacity-75">Answer the pending question to restart the agent automatically</p>
+          <p className="text-xs mt-1 opacity-75">
+            Answer the pending question to restart the agent automatically
+          </p>
         </div>
       )}
 

@@ -44,10 +44,10 @@ The review iteration number is tracked on the task, so you can see how many atte
 
 You can set a review policy per sprint:
 
-| Policy | What happens |
-|--------|-------------|
-| **manual** | Work waits for human review (default) |
-| **auto_commit** | Agent output is committed automatically |
-| **auto_pr** | Agent output is pushed as a pull request automatically |
+| Policy          | What happens                                           |
+| --------------- | ------------------------------------------------------ |
+| **manual**      | Work waits for human review (default)                  |
+| **auto_commit** | Agent output is committed automatically                |
+| **auto_pr**     | Agent output is pushed as a pull request automatically |
 
 For early development, `manual` is recommended. As you build trust in the agent's output, you can switch to `auto_commit` or `auto_pr`.

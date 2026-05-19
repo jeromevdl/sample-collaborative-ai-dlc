@@ -30,11 +30,7 @@ Wrap your app with the `AuthProvider`:
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
-  return (
-    <AuthProvider>
-      {/* Your app components */}
-    </AuthProvider>
-  );
+  return <AuthProvider>{/* Your app components */}</AuthProvider>;
 }
 ```
 
@@ -47,7 +43,7 @@ import { useAuth } from './contexts/AuthContext';
 
 function MyComponent() {
   const { user, isAuthenticated, login, logout } = useAuth();
-  
+
   // Component logic
 }
 ```
@@ -59,14 +55,14 @@ Wrap protected components with `ProtectedRoute`:
 ```tsx
 import { ProtectedRoute } from './components/ProtectedRoute';
 
-<Route 
-  path="/dashboard" 
+<Route
+  path="/dashboard"
   element={
     <ProtectedRoute>
       <Dashboard />
     </ProtectedRoute>
-  } 
-/>
+  }
+/>;
 ```
 
 ## Files Structure

@@ -58,10 +58,7 @@ describe('ws-message handler', () => {
   describe('notification action', () => {
     it('queries UserIdIndex and broadcasts to all user connections', async () => {
       ddbMock.on(QueryCommand).resolves({
-        Items: [
-          { connectionId: { S: 'user-conn-1' } },
-          { connectionId: { S: 'user-conn-2' } },
-        ],
+        Items: [{ connectionId: { S: 'user-conn-1' } }, { connectionId: { S: 'user-conn-2' } }],
       });
       apiMock.on(PostToConnectionCommand).resolves({});
 
@@ -99,10 +96,7 @@ describe('ws-message handler', () => {
 
     it('does NOT exclude the sender — broadcasts to all user connections including sender', async () => {
       ddbMock.on(QueryCommand).resolves({
-        Items: [
-          { connectionId: { S: 'sender-conn' } },
-          { connectionId: { S: 'other-conn' } },
-        ],
+        Items: [{ connectionId: { S: 'sender-conn' } }, { connectionId: { S: 'other-conn' } }],
       });
       apiMock.on(PostToConnectionCommand).resolves({});
 
@@ -127,9 +121,7 @@ describe('ws-message handler', () => {
       const body = { action: 'notification', data: { userId: 'u1', text: 'hello' } };
       await handler(makeEvent(body));
 
-      const sent = JSON.parse(
-        apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data,
-      );
+      const sent = JSON.parse(apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data);
       expect(sent).toEqual(body);
     });
 
@@ -188,9 +180,7 @@ describe('ws-message handler', () => {
       const body = { action: 'broadcast', data: { text: 'payload' } };
       await handler(makeEvent(body, 'sender'));
 
-      const sent = JSON.parse(
-        apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data,
-      );
+      const sent = JSON.parse(apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data);
       expect(sent).toEqual(body);
     });
 
@@ -274,9 +264,7 @@ describe('ws-message handler', () => {
       };
       await handler(makeEvent(body, 'sender'));
 
-      const sent = JSON.parse(
-        apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data,
-      );
+      const sent = JSON.parse(apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data);
       expect(sent).toEqual({ type: 'edit', content: 'updated' });
     });
 
@@ -290,9 +278,7 @@ describe('ws-message handler', () => {
       const body = { action: 'broadcastToDocument', documentId: 'doc-1' };
       await handler(makeEvent(body, 'sender'));
 
-      const sent = JSON.parse(
-        apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data,
-      );
+      const sent = JSON.parse(apiMock.commandCalls(PostToConnectionCommand)[0].args[0].input.Data);
       expect(sent).toEqual(body);
     });
 
@@ -309,11 +295,16 @@ describe('ws-message handler', () => {
       ddbMock.on(QueryCommand).resolves({ Items: [] });
 
       const handler = await loadHandler();
-      await handler(makeEvent({
-        action: 'broadcastToDocument',
-        documentId: 'doc-1',
-        data: { type: 'sync' },
-      }, 'sender'));
+      await handler(
+        makeEvent(
+          {
+            action: 'broadcastToDocument',
+            documentId: 'doc-1',
+            data: { type: 'sync' },
+          },
+          'sender',
+        ),
+      );
 
       expect(apiMock).toHaveReceivedCommandTimes(PostToConnectionCommand, 0);
     });
@@ -322,10 +313,15 @@ describe('ws-message handler', () => {
       ddbMock.on(QueryCommand).resolves({});
 
       const handler = await loadHandler();
-      const res = await handler(makeEvent({
-        action: 'broadcastToDocument',
-        documentId: 'doc-1',
-      }, 'sender'));
+      const res = await handler(
+        makeEvent(
+          {
+            action: 'broadcastToDocument',
+            documentId: 'doc-1',
+          },
+          'sender',
+        ),
+      );
 
       expect(res).toEqual({ statusCode: 200 });
       expect(apiMock).toHaveReceivedCommandTimes(PostToConnectionCommand, 0);
@@ -362,10 +358,7 @@ describe('ws-message handler', () => {
 
     it('logs non-410 errors but does not abort the broadcast', async () => {
       ddbMock.on(ScanCommand).resolves({
-        Items: [
-          { connectionId: { S: 'bad' } },
-          { connectionId: { S: 'good' } },
-        ],
+        Items: [{ connectionId: { S: 'bad' } }, { connectionId: { S: 'good' } }],
       });
       const otherError = new Error('InternalError');
       otherError.statusCode = 500;
@@ -382,9 +375,7 @@ describe('ws-message handler', () => {
 
       expect(res).toEqual({ statusCode: 200 });
       expect(apiMock).toHaveReceivedCommandTimes(PostToConnectionCommand, 2);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Send error to', 'bad', ':', 'InternalError',
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Send error to', 'bad', ':', 'InternalError');
       consoleSpy.mockRestore();
     });
 
@@ -395,11 +386,16 @@ describe('ws-message handler', () => {
       const handler = await loadHandler();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const res = await handler(makeEvent({
-        action: 'broadcastToDocument',
-        documentId: 'doc-1',
-        data: { type: 'sync' },
-      }, 'sender'));
+      const res = await handler(
+        makeEvent(
+          {
+            action: 'broadcastToDocument',
+            documentId: 'doc-1',
+            data: { type: 'sync' },
+          },
+          'sender',
+        ),
+      );
 
       expect(res).toEqual({ statusCode: 200 });
       expect(apiMock).toHaveReceivedCommandTimes(PostToConnectionCommand, 0);
@@ -413,10 +409,12 @@ describe('ws-message handler', () => {
       const handler = await loadHandler();
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const res = await handler(makeEvent({
-        action: 'notification',
-        data: { userId: 'user-1' },
-      }));
+      const res = await handler(
+        makeEvent({
+          action: 'notification',
+          data: { userId: 'user-1' },
+        }),
+      );
 
       expect(res).toEqual({ statusCode: 200 });
       expect(apiMock).toHaveReceivedCommandTimes(PostToConnectionCommand, 0);
@@ -441,10 +439,12 @@ describe('ws-message handler', () => {
     it('throws on malformed JSON in event.body', async () => {
       const handler = await loadHandler();
 
-      await expect(handler({
-        requestContext: { connectionId: 'conn-1' },
-        body: 'not valid json{',
-      })).rejects.toThrow();
+      await expect(
+        handler({
+          requestContext: { connectionId: 'conn-1' },
+          body: 'not valid json{',
+        }),
+      ).rejects.toThrow();
     });
   });
 });

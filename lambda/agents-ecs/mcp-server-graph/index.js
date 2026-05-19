@@ -4,7 +4,10 @@ const { z } = require('zod');
 const { DynamoDBClient, QueryCommand: DDBRawQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
-const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
+const {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} = require('@aws-sdk/client-apigatewaymanagementapi');
 const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 const { getUrlAndHeaders } = require('gremlin-aws-sigv4/lib/utils');
@@ -15,7 +18,12 @@ const lambda = new LambdaClient({});
 
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
-const { t: { label: T_label }, P, order: Order, cardinality } = gremlin.process;
+const {
+  t: { label: T_label },
+  P,
+  order: Order,
+  cardinality,
+} = gremlin.process;
 const __ = gremlin.process.statics;
 
 const LOG_FILE = '/tmp/mcp-graph.log';
@@ -23,7 +31,9 @@ const POLL_INTERVAL_MS = 3000;
 const _origErr = console.error.bind(console);
 console.error = (...args) => {
   _origErr(...args);
-  try { fs.appendFileSync(LOG_FILE, args.join(' ') + '\n'); } catch {}
+  try {
+    fs.appendFileSync(LOG_FILE, args.join(' ') + '\n');
+  } catch {}
 };
 
 const env = {
@@ -59,7 +69,9 @@ async function ensureConnection() {
       return _g;
     } catch (e) {
       console.error('[neptune] Connection stale, reconnecting:', e.message);
-      try { await _conn.close(); } catch {}
+      try {
+        await _conn.close();
+      } catch {}
       _conn = null;
       _g = null;
     }
@@ -76,9 +88,16 @@ async function withGraph(fn) {
     return await fn(g);
   } catch (e) {
     // On connection-level errors, reset and retry once
-    if (e.message && (e.message.includes('WebSocket') || e.message.includes('Connection') || e.message.includes('ECONNRESET'))) {
+    if (
+      e.message &&
+      (e.message.includes('WebSocket') ||
+        e.message.includes('Connection') ||
+        e.message.includes('ECONNRESET'))
+    ) {
       console.error('[neptune] Connection error, retrying:', e.message);
-      try { if (_conn) await _conn.close(); } catch {}
+      try {
+        if (_conn) await _conn.close();
+      } catch {}
       _conn = null;
       _g = null;
       const g = await ensureConnection();
@@ -110,14 +129,39 @@ function propsToObj(props) {
   return o;
 }
 
-function ok(data) { return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] }; }
-function err(msg) { return { content: [{ type: 'text', text: msg }], isError: true }; }
+function ok(data) {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+function err(msg) {
+  return { content: [{ type: 'text', text: msg }], isError: true };
+}
 
-const VALID_LABELS = ['Project', 'Sprint', 'Requirement', 'UserStory', 'Task', 'CodeFile', 'Review', 'Question', 'GeneralInfo', 'PullRequest', 'AgentRun'];
+const VALID_LABELS = [
+  'Project',
+  'Sprint',
+  'Requirement',
+  'UserStory',
+  'Task',
+  'CodeFile',
+  'Review',
+  'Question',
+  'GeneralInfo',
+  'PullRequest',
+  'AgentRun',
+];
 const VALID_EDGES = [
-  'HAS_SPRINT', 'CONTAINS', 'HAS_REVIEW', 'HAS_PR',
-  'BREAKS_INTO', 'IMPLEMENTED_BY', 'REVIEWS', 'VALIDATES',
-  'INFLUENCES', 'CARRIED_FROM', 'DEPENDS_ON', 'RELATES_TO',
+  'HAS_SPRINT',
+  'CONTAINS',
+  'HAS_REVIEW',
+  'HAS_PR',
+  'BREAKS_INTO',
+  'IMPLEMENTED_BY',
+  'REVIEWS',
+  'VALIDATES',
+  'INFLUENCES',
+  'CARRIED_FROM',
+  'DEPENDS_ON',
+  'RELATES_TO',
   'HAS_AGENT_RUN',
 ];
 
@@ -183,8 +227,10 @@ Valid labels: ${VALID_LABELS.join(', ')}.`,
         if (!r.value) return err(`${label} with id "${id}" not found`);
         return ok(propsToObj(r.value));
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -213,8 +259,10 @@ Valid labels: ${VALID_LABELS.join(', ')}.`,
         const list = await q.valueMap(true).toList();
         return ok(list.map(propsToObj));
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 // ─── TRAVERSE ───
@@ -228,8 +276,14 @@ Valid edge labels: ${VALID_EDGES.join(', ')}.`,
   {
     label: z.enum(VALID_LABELS).describe('Label of the starting node'),
     id: z.string().describe('The id property of the starting node'),
-    direction: z.enum(['out', 'in', 'both']).default('out').describe('Edge direction: out (default), in, or both'),
-    edgeLabel: z.string().optional().describe('Optional: filter to a specific edge label (e.g. "BREAKS_INTO")'),
+    direction: z
+      .enum(['out', 'in', 'both'])
+      .default('out')
+      .describe('Edge direction: out (default), in, or both'),
+    edgeLabel: z
+      .string()
+      .optional()
+      .describe('Optional: filter to a specific edge label (e.g. "BREAKS_INTO")'),
   },
   async ({ label, id, direction, edgeLabel }) => {
     try {
@@ -240,8 +294,10 @@ Valid edge labels: ${VALID_EDGES.join(', ')}.`,
         const list = await q.valueMap(true).toList();
         return ok(list.map(propsToObj));
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -253,16 +309,22 @@ dependency chain of the sprint at a glance.`,
   async () => {
     try {
       return await withGraph(async (g) => {
-        const vertices = await g.V().has('Sprint', 'id', env.sprintId)
+        const vertices = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
           .union(__.out('CONTAINS'), __.out('HAS_REVIEW'), __.out('HAS_PR'))
           .project('id', 'label', 'props')
-          .by('id').by(T_label).by(__.valueMap())
+          .by('id')
+          .by(T_label)
+          .by(__.valueMap())
           .toList();
 
-        const nodeIds = vertices.map(v => v.get('id'));
+        const nodeIds = vertices.map((v) => v.get('id'));
         if (!nodeIds.length) return ok({ nodes: [], edges: [] });
 
-        const edges = await g.V().has('Sprint', 'id', env.sprintId)
+        const edges = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
           .union(__.out('CONTAINS'), __.out('HAS_REVIEW'), __.out('HAS_PR'))
           .bothE()
           .where(__.otherV().has('id', P.within(...nodeIds)))
@@ -270,21 +332,28 @@ dependency chain of the sprint at a glance.`,
           .by(__.outV().values('id'))
           .by(__.inV().values('id'))
           .by(T_label)
-          .dedup().toList();
+          .dedup()
+          .toList();
 
-        const nodes = vertices.map(v => ({
+        const nodes = vertices.map((v) => ({
           id: v.get('id'),
           label: v.get('label'),
           ...propsToObj(v.get('props')),
         }));
         const edgeList = edges
-          .filter(e => !['CONTAINS', 'HAS_REVIEW', 'HAS_PR'].includes(e.get('label')))
-          .map(e => ({ source: e.get('source'), target: e.get('target'), label: e.get('label') }));
+          .filter((e) => !['CONTAINS', 'HAS_REVIEW', 'HAS_PR'].includes(e.get('label')))
+          .map((e) => ({
+            source: e.get('source'),
+            target: e.get('target'),
+            label: e.get('label'),
+          }));
 
         return ok({ nodes, edges: edgeList });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 // ─── LOOKUP ───
@@ -301,13 +370,13 @@ Use this when you need to find nodes by title, status, file_path, or any other p
   async ({ label, property, value }) => {
     try {
       return await withGraph(async (g) => {
-        const list = await g.V().hasLabel(label)
-          .has(property, value)
-          .valueMap(true).toList();
+        const list = await g.V().hasLabel(label).has(property, value).valueMap(true).toList();
         return ok(list.map(propsToObj));
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -324,27 +393,44 @@ Use this to understand the full implementation lineage of a requirement.`,
         const req = await g.V().has('Requirement', 'id', requirementId).valueMap(true).next();
         if (!req.value) return err(`Requirement "${requirementId}" not found`);
 
-        const stories = await g.V().has('Requirement', 'id', requirementId)
-          .out('BREAKS_INTO').hasLabel('UserStory').valueMap(true).toList();
+        const stories = await g
+          .V()
+          .has('Requirement', 'id', requirementId)
+          .out('BREAKS_INTO')
+          .hasLabel('UserStory')
+          .valueMap(true)
+          .toList();
 
         const chain = { requirement: propsToObj(req.value), stories: [] };
         for (const s of stories) {
           const storyObj = propsToObj(s);
-          const tasks = await g.V().has('UserStory', 'id', storyObj.id)
-            .out('BREAKS_INTO').hasLabel('Task').valueMap(true).toList();
+          const tasks = await g
+            .V()
+            .has('UserStory', 'id', storyObj.id)
+            .out('BREAKS_INTO')
+            .hasLabel('Task')
+            .valueMap(true)
+            .toList();
           const taskList = [];
           for (const t of tasks) {
             const taskObj = propsToObj(t);
-            const files = await g.V().has('Task', 'id', taskObj.id)
-              .out('IMPLEMENTED_BY').hasLabel('CodeFile').valueMap(true).toList();
+            const files = await g
+              .V()
+              .has('Task', 'id', taskObj.id)
+              .out('IMPLEMENTED_BY')
+              .hasLabel('CodeFile')
+              .valueMap(true)
+              .toList();
             taskList.push({ ...taskObj, codeFiles: files.map(propsToObj) });
           }
           chain.stories.push({ ...storyObj, tasks: taskList });
         }
         return ok(chain);
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 // ─── UPDATE ───
@@ -356,7 +442,11 @@ Use this to update status, description, title, or any mutable property.`,
   {
     label: z.enum(VALID_LABELS).describe('Label of the node to update'),
     id: z.string().describe('The id property of the node'),
-    properties: z.record(z.string(), z.string()).describe('Key-value pairs of properties to set (e.g. {"status": "done", "title": "Updated title"})'),
+    properties: z
+      .record(z.string(), z.string())
+      .describe(
+        'Key-value pairs of properties to set (e.g. {"status": "done", "title": "Updated title"})',
+      ),
   },
   async ({ label, id, properties }) => {
     try {
@@ -392,39 +482,59 @@ Use this to update status, description, title, or any mutable property.`,
 
         return ok(propsToObj(updated.value));
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
   'add_node',
   `Create a new node in the graph and link it to the current sprint via a CONTAINS edge (or HAS_REVIEW for Review nodes).
 The node is automatically scoped to the current project and sprint.
-Valid labels: ${VALID_LABELS.filter(l => !['Project', 'Sprint', 'Question'].includes(l)).join(', ')}.
+Valid labels: ${VALID_LABELS.filter((l) => !['Project', 'Sprint', 'Question'].includes(l)).join(', ')}.
 Optionally pass \`edges\` to link the new node to existing nodes in the same call (e.g. link a UserStory FROM its parent Requirement via BREAKS_INTO).
 To ask questions, use the \`ask_question\` tool instead — do NOT create Question nodes directly.`,
   {
-    label: z.enum(VALID_LABELS.filter(l => !['Project', 'Sprint', 'Question'].includes(l))).describe('Label for the new node'),
+    label: z
+      .enum(VALID_LABELS.filter((l) => !['Project', 'Sprint', 'Question'].includes(l)))
+      .describe('Label for the new node'),
     id: z.string().describe('Unique id for the node'),
-    properties: z.record(z.string(), z.string()).describe('Properties to set on the node (e.g. {"title": "...", "description": "..."})'),
-    edges: z.array(z.object({
-      direction: z.enum(['from', 'to']),
-      label: z.enum(VALID_LABELS),
-      id: z.string(),
-      edgeLabel: z.enum(VALID_EDGES),
-    })).optional().describe('Optional edges to create. "from" = existing node -> new node. "to" = new node -> existing node.'),
+    properties: z
+      .record(z.string(), z.string())
+      .describe('Properties to set on the node (e.g. {"title": "...", "description": "..."})'),
+    edges: z
+      .array(
+        z.object({
+          direction: z.enum(['from', 'to']),
+          label: z.enum(VALID_LABELS),
+          id: z.string(),
+          edgeLabel: z.enum(VALID_EDGES),
+        }),
+      )
+      .optional()
+      .describe(
+        'Optional edges to create. "from" = existing node -> new node. "to" = new node -> existing node.',
+      ),
   },
   async ({ label, id, properties, edges: edgeDefs }) => {
     try {
       return await withGraph(async (g) => {
-        let q = g.addV(label).property(cardinality.single, 'id', id).property(cardinality.single, 'sprint_id', env.sprintId);
+        let q = g
+          .addV(label)
+          .property(cardinality.single, 'id', id)
+          .property(cardinality.single, 'sprint_id', env.sprintId);
         for (const [k, v] of Object.entries(properties)) q = q.property(cardinality.single, k, v);
         q = q.property(cardinality.single, 'createdAt', new Date().toISOString());
         await q.next();
 
-        const sprintEdgeLabel = label === 'Review' ? 'HAS_REVIEW' : label === 'PullRequest' ? 'HAS_PR' : 'CONTAINS';
-        await g.V().has('Sprint', 'id', env.sprintId)
-          .addE(sprintEdgeLabel).to(__.V().has(label, 'id', id))
+        const sprintEdgeLabel =
+          label === 'Review' ? 'HAS_REVIEW' : label === 'PullRequest' ? 'HAS_PR' : 'CONTAINS';
+        await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .addE(sprintEdgeLabel)
+          .to(__.V().has(label, 'id', id))
           .next();
 
         // Create optional edges to/from existing nodes
@@ -432,19 +542,34 @@ To ask questions, use the \`ask_question\` tool instead — do NOT create Questi
           for (const edge of edgeDefs) {
             const otherExists = await g.V().has(edge.label, 'id', edge.id).hasNext();
             if (!otherExists) {
-              const allIds = await g.V().hasLabel(edge.label).has('sprint_id', env.sprintId).values('id').toList();
-              console.error(`[add_node] Edge target ${edge.label} "${edge.id}" not found. Available: ${JSON.stringify(allIds)}`);
-              return err(`Edge target ${edge.label} "${edge.id}" not found. Available ids: ${JSON.stringify(allIds)}`);
+              const allIds = await g
+                .V()
+                .hasLabel(edge.label)
+                .has('sprint_id', env.sprintId)
+                .values('id')
+                .toList();
+              console.error(
+                `[add_node] Edge target ${edge.label} "${edge.id}" not found. Available: ${JSON.stringify(allIds)}`,
+              );
+              return err(
+                `Edge target ${edge.label} "${edge.id}" not found. Available ids: ${JSON.stringify(allIds)}`,
+              );
             }
             if (edge.direction === 'from') {
               // existing node -> new node
-              await g.V().has(edge.label, 'id', edge.id)
-                .addE(edge.edgeLabel).to(__.V().has(label, 'id', id))
+              await g
+                .V()
+                .has(edge.label, 'id', edge.id)
+                .addE(edge.edgeLabel)
+                .to(__.V().has(label, 'id', id))
                 .next();
             } else {
               // new node -> existing node
-              await g.V().has(label, 'id', id)
-                .addE(edge.edgeLabel).to(__.V().has(edge.label, 'id', edge.id))
+              await g
+                .V()
+                .has(label, 'id', id)
+                .addE(edge.edgeLabel)
+                .to(__.V().has(edge.label, 'id', edge.id))
                 .next();
             }
           }
@@ -453,8 +578,10 @@ To ask questions, use the \`ask_question\` tool instead — do NOT create Questi
         const created = await g.V().has(label, 'id', id).valueMap(true).next();
         return ok(propsToObj(created.value));
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -474,27 +601,49 @@ Valid edge labels: ${VALID_EDGES.join(', ')}.`,
       return await withGraph(async (g) => {
         const fromExists = await g.V().has(fromLabel, 'id', fromId).hasNext();
         if (!fromExists) {
-          const allIds = await g.V().hasLabel(fromLabel).has('sprint_id', env.sprintId).values('id').toList();
-          console.error(`[add_edge] Source ${fromLabel} "${fromId}" not found. Available: ${JSON.stringify(allIds)}`);
-          return err(`Source ${fromLabel} "${fromId}" not found. Available ids: ${JSON.stringify(allIds)}`);
+          const allIds = await g
+            .V()
+            .hasLabel(fromLabel)
+            .has('sprint_id', env.sprintId)
+            .values('id')
+            .toList();
+          console.error(
+            `[add_edge] Source ${fromLabel} "${fromId}" not found. Available: ${JSON.stringify(allIds)}`,
+          );
+          return err(
+            `Source ${fromLabel} "${fromId}" not found. Available ids: ${JSON.stringify(allIds)}`,
+          );
         }
 
         const toExists = await g.V().has(toLabel, 'id', toId).hasNext();
         if (!toExists) {
-          const allIds = await g.V().hasLabel(toLabel).has('sprint_id', env.sprintId).values('id').toList();
-          console.error(`[add_edge] Target ${toLabel} "${toId}" not found. Available: ${JSON.stringify(allIds)}`);
-          return err(`Target ${toLabel} "${toId}" not found. Available ids: ${JSON.stringify(allIds)}`);
+          const allIds = await g
+            .V()
+            .hasLabel(toLabel)
+            .has('sprint_id', env.sprintId)
+            .values('id')
+            .toList();
+          console.error(
+            `[add_edge] Target ${toLabel} "${toId}" not found. Available: ${JSON.stringify(allIds)}`,
+          );
+          return err(
+            `Target ${toLabel} "${toId}" not found. Available ids: ${JSON.stringify(allIds)}`,
+          );
         }
 
-        await g.V().has(fromLabel, 'id', fromId)
+        await g
+          .V()
+          .has(fromLabel, 'id', fromId)
           .addE(edgeLabel)
           .to(__.V().has(toLabel, 'id', toId))
           .next();
 
         return ok({ created: true, from: fromId, edge: edgeLabel, to: toId });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 // ─── COLLABORATION ───
@@ -502,21 +651,31 @@ Valid edge labels: ${VALID_EDGES.join(', ')}.`,
 async function broadcastEvent(type, data) {
   try {
     const ddbRaw = new DynamoDBClient({});
-    const conns = await ddbRaw.send(new DDBRawQueryCommand({
-      TableName: env.connectionsTable,
-      IndexName: 'DocumentIdIndex',
-      KeyConditionExpression: 'documentId = :docId',
-      ExpressionAttributeValues: { ':docId': { S: env.projectId } },
-    }));
+    const conns = await ddbRaw.send(
+      new DDBRawQueryCommand({
+        TableName: env.connectionsTable,
+        IndexName: 'DocumentIdIndex',
+        KeyConditionExpression: 'documentId = :docId',
+        ExpressionAttributeValues: { ':docId': { S: env.projectId } },
+      }),
+    );
     const wsClient = new ApiGatewayManagementApiClient({ endpoint: env.websocketEndpoint });
     const payload = JSON.stringify({ type, ...data });
-    await Promise.all((conns.Items || []).map(item =>
-      wsClient.send(new PostToConnectionCommand({
-        ConnectionId: item.connectionId.S,
-        Data: payload,
-      })).catch(() => {})
-    ));
-  } catch (e) { console.error('Broadcast failed:', e.message); }
+    await Promise.all(
+      (conns.Items || []).map((item) =>
+        wsClient
+          .send(
+            new PostToConnectionCommand({
+              ConnectionId: item.connectionId.S,
+              Data: payload,
+            }),
+          )
+          .catch(() => {}),
+      ),
+    );
+  } catch (e) {
+    console.error('Broadcast failed:', e.message);
+  }
 }
 
 server.tool(
@@ -525,38 +684,53 @@ server.tool(
 Use this whenever you need human input — ambiguous requirements, design decisions, priority calls, etc.
 Each question has predefined options the user can select from. Users can always provide free-text answers instead.`,
   {
-    questions: z.array(z.object({
-      text: z.string().describe('The question text (markdown OK)'),
-      type: z.enum(['single', 'multi']).describe('single = pick one option, multi = pick many options'),
-      options: z.array(z.object({
-        label: z.string().describe('Short option label'),
-        description: z.string().optional().describe('Longer explanation of the option'),
-      })).describe('Predefined answer options. Users can always provide free text instead.'),
-    })).describe('One or more questions to ask the team'),
+    questions: z
+      .array(
+        z.object({
+          text: z.string().describe('The question text (markdown OK)'),
+          type: z
+            .enum(['single', 'multi'])
+            .describe('single = pick one option, multi = pick many options'),
+          options: z
+            .array(
+              z.object({
+                label: z.string().describe('Short option label'),
+                description: z.string().optional().describe('Longer explanation of the option'),
+              }),
+            )
+            .describe('Predefined answer options. Users can always provide free text instead.'),
+        }),
+      )
+      .describe('One or more questions to ask the team'),
   },
   async ({ questions }) => {
     const questionId = `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const questionsJson = JSON.stringify(questions);
     try {
       // Create question in DynamoDB (for polling) and broadcast via WebSocket
-      await lambda.send(new InvokeCommand({
-        FunctionName: env.submitQuestionLambda,
-        Payload: Buffer.from(JSON.stringify({
-          body: JSON.stringify({ 
-            questionId, 
-            agentTaskId: process.env.EXECUTION_ID, 
-            projectId: env.projectId, 
-            sprintId: env.sprintId,
-            questions: questionsJson,
-          }),
-        })),
-      }));
+      await lambda.send(
+        new InvokeCommand({
+          FunctionName: env.submitQuestionLambda,
+          Payload: Buffer.from(
+            JSON.stringify({
+              body: JSON.stringify({
+                questionId,
+                agentTaskId: process.env.EXECUTION_ID,
+                projectId: env.projectId,
+                sprintId: env.sprintId,
+                questions: questionsJson,
+              }),
+            }),
+          ),
+        }),
+      );
 
       // Also create a Question node in Neptune so the Sprint page can display it
       try {
         await withGraph(async (g) => {
           const __ = gremlin.process.statics;
-          await g.addV('Question')
+          await g
+            .addV('Question')
             .property(cardinality.single, 'id', questionId)
             .property(cardinality.single, 'agent', env.projectId ? 'inception' : 'agent')
             .property(cardinality.single, 'questions', questionsJson)
@@ -564,24 +738,33 @@ Each question has predefined options the user can select from. Users can always 
             .property(cardinality.single, 'sprint_id', env.sprintId)
             .property(cardinality.single, 'created_at', new Date().toISOString())
             .next();
-          await g.V().has('Sprint', 'id', env.sprintId)
-            .addE('CONTAINS').to(__.V().has('Question', 'id', questionId))
+          await g
+            .V()
+            .has('Sprint', 'id', env.sprintId)
+            .addE('CONTAINS')
+            .to(__.V().has('Question', 'id', questionId))
             .next();
         });
-      } catch (e) { console.error('Failed to create Neptune Question node:', e.message); }
+      } catch (e) {
+        console.error('Failed to create Neptune Question node:', e.message);
+      }
 
       // Poll indefinitely - user can answer at any time
       while (true) {
-        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-        const result = await ddb.send(new GetCommand({ TableName: env.questionsTable, Key: { questionId } }));
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        const result = await ddb.send(
+          new GetCommand({ TableName: env.questionsTable, Key: { questionId } }),
+        );
         if (result.Item?.status === 'answered') {
           // Format structured answer as readable text for the agent
           const answerText = formatStructuredAnswer(questions, result.Item.structuredAnswer);
           return { content: [{ type: 'text', text: answerText }] };
         }
       }
-    } catch (e) { return err(`Error asking question: ${e.message}`); }
-  }
+    } catch (e) {
+      return err(`Error asking question: ${e.message}`);
+    }
+  },
 );
 
 /**
@@ -592,21 +775,26 @@ Each question has predefined options the user can select from. Users can always 
  */
 function formatStructuredAnswer(questions, structuredAnswerJson) {
   try {
-    const parsed = typeof structuredAnswerJson === 'string' ? JSON.parse(structuredAnswerJson) : structuredAnswerJson;
+    const parsed =
+      typeof structuredAnswerJson === 'string'
+        ? JSON.parse(structuredAnswerJson)
+        : structuredAnswerJson;
     const answers = parsed.answers || [];
-    return questions.map((q, i) => {
-      const a = answers[i];
-      if (!a) return `Q${i + 1}: ${q.text}\n→ (no answer)`;
-      const parts = [];
-      if (a.selectedOptions && a.selectedOptions.length > 0) {
-        const labels = a.selectedOptions.map(idx => q.options[idx]?.label || `Option ${idx}`);
-        parts.push(labels.join(', '));
-      }
-      if (a.freeText) {
-        parts.push(`[Custom] ${a.freeText}`);
-      }
-      return `Q${i + 1}: ${q.text}\n→ ${parts.join(' | ') || '(no answer)'}`;
-    }).join('\n\n');
+    return questions
+      .map((q, i) => {
+        const a = answers[i];
+        if (!a) return `Q${i + 1}: ${q.text}\n→ (no answer)`;
+        const parts = [];
+        if (a.selectedOptions && a.selectedOptions.length > 0) {
+          const labels = a.selectedOptions.map((idx) => q.options[idx]?.label || `Option ${idx}`);
+          parts.push(labels.join(', '));
+        }
+        if (a.freeText) {
+          parts.push(`[Custom] ${a.freeText}`);
+        }
+        return `Q${i + 1}: ${q.text}\n→ ${parts.join(' | ') || '(no answer)'}`;
+      })
+      .join('\n\n');
   } catch {
     return String(structuredAnswerJson);
   }
@@ -625,14 +813,27 @@ Use this to determine which tasks can be launched in parallel.`,
     try {
       return await withGraph(async (g) => {
         // Get all tasks in the sprint
-        const tasks = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('CONTAINS').hasLabel('Task').valueMap(true).toList();
+        const tasks = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
+          .valueMap(true)
+          .toList();
 
         // Get all DEPENDS_ON edges between tasks in this sprint
-        const deps = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('CONTAINS').hasLabel('Task')
-          .as('t').out('DEPENDS_ON').hasLabel('Task').as('d')
-          .select('t', 'd').by('id').toList();
+        const deps = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
+          .as('t')
+          .out('DEPENDS_ON')
+          .hasLabel('Task')
+          .as('d')
+          .select('t', 'd')
+          .by('id')
+          .toList();
 
         const taskMap = {};
         for (const t of tasks) {
@@ -648,19 +849,21 @@ Use this to determine which tasks can be launched in parallel.`,
           depMap[from].push(to);
         }
 
-        const unblocked = Object.values(taskMap).filter(t => {
+        const unblocked = Object.values(taskMap).filter((t) => {
           if (t.status !== 'todo') return false;
           // Skip tasks that already have an agent dispatched (RUNNING) to avoid double-dispatch.
           // Tasks with COMPLETED/FAILED/orphaned_reset/reset execution status are fine to re-dispatch.
           if (t.task_execution_status === 'RUNNING') return false;
           const dependencies = depMap[t.id] || [];
-          return dependencies.every(depId => taskMap[depId]?.status === 'done');
+          return dependencies.every((depId) => taskMap[depId]?.status === 'done');
         });
 
         return ok({ unblocked, total: tasks.length, depMap });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -686,48 +889,65 @@ Call this before get_unblocked_tasks to self-heal from agent crashes, push failu
         // 1. Find all tasks that might be stuck:
         //    a) status=in_progress (agent started work but may have crashed)
         //    b) status=todo but task_execution_status=RUNNING (agent was dispatched but crashed before starting)
-        const inProgress = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('CONTAINS').hasLabel('Task')
+        const inProgress = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
           .has('status', 'in_progress')
-          .valueMap(true).toList();
+          .valueMap(true)
+          .toList();
 
-        const dispatchedButTodo = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('CONTAINS').hasLabel('Task')
+        const dispatchedButTodo = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
           .has('status', 'todo')
           .has('task_execution_status', 'RUNNING')
-          .valueMap(true).toList();
+          .valueMap(true)
+          .toList();
 
         const candidateTasks = [...inProgress, ...dispatchedButTodo].map(propsToObj);
 
         // 1c. Clean up done tasks that still have task_execution_status="RUNNING"
         //     (agent set status="done" but didn't clear execution status)
-        const doneButRunning = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('CONTAINS').hasLabel('Task')
+        const doneButRunning = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
           .has('status', 'done')
           .has('task_execution_status', 'RUNNING')
-          .valueMap(true).toList();
+          .valueMap(true)
+          .toList();
         const cleanedUp = [];
         for (const raw of doneButRunning) {
           const task = propsToObj(raw);
-          await g.V().has('Task', 'id', task.id)
+          await g
+            .V()
+            .has('Task', 'id', task.id)
             .property(cardinality.single, 'task_execution_status', 'COMPLETED')
             .next();
           cleanedUp.push(task.id);
-          console.error(`[recover_stuck_tasks] Cleaned up done task ${task.id} — set task_execution_status from RUNNING to COMPLETED`);
+          console.error(
+            `[recover_stuck_tasks] Cleaned up done task ${task.id} — set task_execution_status from RUNNING to COMPLETED`,
+          );
         }
 
-        if (!candidateTasks.length) return ok({
-          recovered: [],
-          cleanedUpDoneTasks: cleanedUp,
-          message: cleanedUp.length
-            ? `No stuck tasks found. Cleaned up ${cleanedUp.length} done task(s) with stale RUNNING execution status.`
-            : 'No stuck tasks found',
-        });
+        if (!candidateTasks.length)
+          return ok({
+            recovered: [],
+            cleanedUpDoneTasks: cleanedUp,
+            message: cleanedUp.length
+              ? `No stuck tasks found. Cleaned up ${cleanedUp.length} done task(s) with stale RUNNING execution status.`
+              : 'No stuck tasks found',
+          });
 
         // 2. Get all busy/assigned workers from the pool
         const poolScan = await ddb.send(new ScanCommand({ TableName: poolTable }));
         const activeWorkers = (poolScan.Items || []).filter(
-          w => w.status === 'busy' || w.status === 'assigned'
+          (w) => w.status === 'busy' || w.status === 'assigned',
         );
         // Map taskId -> worker for detailed checks
         const activeWorkerByTaskId = {};
@@ -751,7 +971,9 @@ Call this before get_unblocked_tasks to self-heal from agent crashes, push failu
           } else {
             // Worker exists — check if it's been running too long (likely hung)
             // Prefer task_dispatched_at ISO timestamp, fall back to parsing exec ID
-            let dispatchedAt = task.task_dispatched_at ? new Date(task.task_dispatched_at).getTime() : 0;
+            let dispatchedAt = task.task_dispatched_at
+              ? new Date(task.task_dispatched_at).getTime()
+              : 0;
             if (!dispatchedAt) {
               const execId = task.task_execution_id || '';
               dispatchedAt = parseInt(execId.split('-')[1], 10) || 0;
@@ -764,12 +986,22 @@ Call this before get_unblocked_tasks to self-heal from agent crashes, push failu
           }
 
           if (shouldRecover) {
-            await g.V().has('Task', 'id', task.id)
+            await g
+              .V()
+              .has('Task', 'id', task.id)
               .property(cardinality.single, 'status', 'todo')
               .property(cardinality.single, 'task_execution_status', 'orphaned_reset')
               .next();
-            recovered.push({ id: task.id, title: task.title, previousStatus: task.status, newStatus: 'todo', reason });
-            console.error(`[recover_stuck_tasks] Reset orphaned task ${task.id} ("${task.title}") from ${task.status} (exec_status=${task.task_execution_status}) -> todo (reason: ${reason})`);
+            recovered.push({
+              id: task.id,
+              title: task.title,
+              previousStatus: task.status,
+              newStatus: 'todo',
+              reason,
+            });
+            console.error(
+              `[recover_stuck_tasks] Reset orphaned task ${task.id} ("${task.title}") from ${task.status} (exec_status=${task.task_execution_status}) -> todo (reason: ${reason})`,
+            );
           } else {
             stillRunning.push(task.id);
           }
@@ -784,8 +1016,10 @@ Call this before get_unblocked_tasks to self-heal from agent crashes, push failu
             : 'All candidate tasks have running agents — no recovery needed.',
         });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -795,8 +1029,13 @@ The sub-agent will work on a per-task branch. Only use this from the constructio
 Respects the 50% pool cap — will not use more than half of available idle workers.`,
   {
     taskId: z.string().describe('The task id to assign to the sub-agent'),
-    branch: z.string().describe('The sprint branch name (sub-agent will work on {branch}--task-{taskId})'),
-    baseBranch: z.string().default('main').describe('The base branch to create the task branch from'),
+    branch: z
+      .string()
+      .describe('The sprint branch name (sub-agent will work on {branch}--task-{taskId})'),
+    baseBranch: z
+      .string()
+      .default('main')
+      .describe('The base branch to create the task branch from'),
   },
   async ({ taskId, branch, baseBranch }) => {
     const agentsLambda = process.env.AGENTS_LAMBDA_NAME;
@@ -820,16 +1059,26 @@ Respects the 50% pool cap — will not use more than half of available idle work
         }),
         requestContext: { authorizer: { claims: { sub: 'orchestrator' } } },
       };
-      const result = await lambda.send(new InvokeCommand({
-        FunctionName: agentsLambda,
-        Payload: Buffer.from(JSON.stringify(payload)),
-      }));
+      const result = await lambda.send(
+        new InvokeCommand({
+          FunctionName: agentsLambda,
+          Payload: Buffer.from(JSON.stringify(payload)),
+        }),
+      );
       const resp = JSON.parse(Buffer.from(result.Payload).toString());
       const body = JSON.parse(resp.body || '{}');
-      if (resp.statusCode >= 400) return err(`Failed to launch agent: ${body.error || body.message}`);
-      return ok({ taskId, branch: taskBranch, executionId: body.executionId, executionArn: body.executionArn });
-    } catch (e) { return err(`Failed to launch construction agent: ${e.message}`); }
-  }
+      if (resp.statusCode >= 400)
+        return err(`Failed to launch agent: ${body.error || body.message}`);
+      return ok({
+        taskId,
+        branch: taskBranch,
+        executionId: body.executionId,
+        executionArn: body.executionArn,
+      });
+    } catch (e) {
+      return err(`Failed to launch construction agent: ${e.message}`);
+    }
+  },
 );
 
 server.tool(
@@ -844,19 +1093,25 @@ Only call this when all tasks have status "done" and branches have been merged.`
   async ({ branch, baseBranch, title }) => {
     const createPrLambda = process.env.CREATE_PR_LAMBDA_NAME;
     if (!createPrLambda) return err('CREATE_PR_LAMBDA_NAME not configured');
-    if (!env.gitToken) return err('GIT_TOKEN not available — cannot create PR without authentication');
-    if (!env.gitRepo) return err('GIT_REPO not available — cannot create PR without repository info');
+    if (!env.gitToken)
+      return err('GIT_TOKEN not available — cannot create PR without authentication');
+    if (!env.gitRepo)
+      return err('GIT_REPO not available — cannot create PR without repository info');
     try {
       // Check Neptune first — if an open PR node already exists for this sprint+branch, return it immediately
       // This prevents duplicate PR creation on construction re-runs
       const existingPr = await withGraph(async (g) => {
-        const prNodes = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('HAS_PR').has('PullRequest', 'branch', branch)
+        const prNodes = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('HAS_PR')
+          .has('PullRequest', 'branch', branch)
           .not(__.has('stale', 'true'))
-          .valueMap(true).toList();
+          .valueMap(true)
+          .toList();
         if (prNodes.length > 0) {
           const node = prNodes[0];
-          const get = (k) => node?.get ? node.get(k)?.[0] : node?.[k]?.[0];
+          const get = (k) => (node?.get ? node.get(k)?.[0] : node?.[k]?.[0]);
           return { prUrl: get('pr_url'), prNumber: get('pr_number') };
         }
         return null;
@@ -871,35 +1126,53 @@ Only call this when all tasks have status "done" and branches have been merged.`
           const [owner, repo] = env.gitRepo.split('/');
           const ghRes = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/pulls/${existingPr.prNumber}`,
-            { headers: { 'Authorization': `token ${env.gitToken}`, 'Accept': 'application/vnd.github.v3+json' } }
+            {
+              headers: {
+                Authorization: `token ${env.gitToken}`,
+                Accept: 'application/vnd.github.v3+json',
+              },
+            },
           );
           if (ghRes.ok) {
             const ghPr = await ghRes.json();
             if (ghPr.state !== 'open') {
               prIsOpen = false;
               const prState = ghPr.merged_at ? 'merged' : 'closed';
-              console.error(`[trigger_pr_creation] Existing PR #${existingPr.prNumber} is ${prState} — marking stale and creating a new one`);
+              console.error(
+                `[trigger_pr_creation] Existing PR #${existingPr.prNumber} is ${prState} — marking stale and creating a new one`,
+              );
 
               // Mark the existing PullRequest node as stale in Neptune
               const prId = `pr-${env.sprintId}-${existingPr.prNumber}`;
               await withGraph(async (g) => {
-                await g.V().has('PullRequest', 'id', prId)
+                await g
+                  .V()
+                  .has('PullRequest', 'id', prId)
                   .property(cardinality.single, 'stale', 'true')
                   .property(cardinality.single, 'stale_at', new Date().toISOString())
                   .property(cardinality.single, 'pr_state', prState)
                   .next();
                 // Also clear pr_url/pr_number from the Sprint vertex so a fresh PR can be stored
-                await g.V().has('Sprint', 'id', env.sprintId)
+                await g
+                  .V()
+                  .has('Sprint', 'id', env.sprintId)
                   .property(cardinality.single, 'pr_url', '')
                   .property(cardinality.single, 'pr_number', '')
                   .next();
-              }).catch((e) => console.error('[trigger_pr_creation] Failed to mark PR as stale:', e.message));
+              }).catch((e) =>
+                console.error('[trigger_pr_creation] Failed to mark PR as stale:', e.message),
+              );
             } else {
-              console.error(`[trigger_pr_creation] Existing PR #${existingPr.prNumber} is still open — reusing it`);
+              console.error(
+                `[trigger_pr_creation] Existing PR #${existingPr.prNumber} is still open — reusing it`,
+              );
             }
           }
         } catch (ghCheckErr) {
-          console.error('[trigger_pr_creation] Could not verify PR state on GitHub — reusing cached PR:', ghCheckErr.message);
+          console.error(
+            '[trigger_pr_creation] Could not verify PR state on GitHub — reusing cached PR:',
+            ghCheckErr.message,
+          );
         }
 
         if (prIsOpen) {
@@ -908,18 +1181,22 @@ Only call this when all tasks have status "done" and branches have been merged.`
         // Fall through to create a new PR below
       }
 
-      const result = await lambda.send(new InvokeCommand({
-        FunctionName: createPrLambda,
-        Payload: Buffer.from(JSON.stringify({
-          projectId: env.projectId,
-          branch,
-          baseBranch,
-          title: title || `Construction: ${env.sprintId}`,
-          gitToken: env.gitToken,
-          gitRepo: env.gitRepo,
-          executionId: process.env.EXECUTION_ID || '',
-        })),
-      }));
+      const result = await lambda.send(
+        new InvokeCommand({
+          FunctionName: createPrLambda,
+          Payload: Buffer.from(
+            JSON.stringify({
+              projectId: env.projectId,
+              branch,
+              baseBranch,
+              title: title || `Construction: ${env.sprintId}`,
+              gitToken: env.gitToken,
+              gitRepo: env.gitRepo,
+              executionId: process.env.EXECUTION_ID || '',
+            }),
+          ),
+        }),
+      );
       const resp = JSON.parse(Buffer.from(result.Payload).toString());
 
       // Persist PR data to Neptune: upsert a PullRequest node and link to Sprint
@@ -929,14 +1206,16 @@ Only call this when all tasks have status "done" and branches have been merged.`
             const prId = `pr-${env.sprintId}-${resp.prNumber}`;
 
             // Upsert PullRequest node (coalesce handles both new and existing)
-            await g.V().has('PullRequest', 'id', prId)
+            await g
+              .V()
+              .has('PullRequest', 'id', prId)
               .fold()
               .coalesce(
                 __.unfold(),
                 __.addV('PullRequest')
                   .property(cardinality.single, 'id', prId)
                   .property(cardinality.single, 'sprint_id', env.sprintId)
-                  .property(cardinality.single, 'created_at', new Date().toISOString())
+                  .property(cardinality.single, 'created_at', new Date().toISOString()),
               )
               .property(cardinality.single, 'pr_url', resp.prUrl)
               .property(cardinality.single, 'pr_number', String(resp.prNumber))
@@ -945,16 +1224,26 @@ Only call this when all tasks have status "done" and branches have been merged.`
               .next();
 
             // Link Sprint --HAS_PR--> PullRequest (only if edge doesn't already exist)
-            const edgeExists = await g.V().has('Sprint', 'id', env.sprintId)
-              .outE('HAS_PR').inV().has('PullRequest', 'id', prId).hasNext();
+            const edgeExists = await g
+              .V()
+              .has('Sprint', 'id', env.sprintId)
+              .outE('HAS_PR')
+              .inV()
+              .has('PullRequest', 'id', prId)
+              .hasNext();
             if (!edgeExists) {
-              await g.V().has('Sprint', 'id', env.sprintId)
-                .addE('HAS_PR').to(__.V().has('PullRequest', 'id', prId))
+              await g
+                .V()
+                .has('Sprint', 'id', env.sprintId)
+                .addE('HAS_PR')
+                .to(__.V().has('PullRequest', 'id', prId))
                 .next();
             }
 
             // Also store pr_url and pr_number on the Sprint vertex for quick access
-            await g.V().has('Sprint', 'id', env.sprintId)
+            await g
+              .V()
+              .has('Sprint', 'id', env.sprintId)
               .property(cardinality.single, 'pr_url', resp.prUrl)
               .property(cardinality.single, 'pr_number', String(resp.prNumber))
               .next();
@@ -978,8 +1267,10 @@ Only call this when all tasks have status "done" and branches have been merged.`
       }
 
       return ok(resp);
-    } catch (e) { return err(`Failed to trigger PR creation: ${e.message}`); }
-  }
+    } catch (e) {
+      return err(`Failed to trigger PR creation: ${e.message}`);
+    }
+  },
 );
 
 server.tool(
@@ -1005,7 +1296,8 @@ Requires a PR to exist on the sprint (pr_url and pr_number must be set).`,
         };
       });
 
-      if (!sprintData?.prNumber) return err('No PR found for this sprint — create a PR before posting a comment');
+      if (!sprintData?.prNumber)
+        return err('No PR found for this sprint — create a PR before posting a comment');
 
       const [owner, repo] = env.gitRepo.split('/');
       const response = await fetch(
@@ -1013,12 +1305,12 @@ Requires a PR to exist on the sprint (pr_url and pr_number must be set).`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `token ${env.gitToken}`,
-            'Accept': 'application/vnd.github.v3+json',
+            Authorization: `token ${env.gitToken}`,
+            Accept: 'application/vnd.github.v3+json',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ body: commentBody }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -1027,10 +1319,14 @@ Requires a PR to exist on the sprint (pr_url and pr_number must be set).`,
       }
 
       const comment = await response.json();
-      console.error(`[post_pr_comment] Posted comment to PR #${sprintData.prNumber}: ${comment.html_url}`);
+      console.error(
+        `[post_pr_comment] Posted comment to PR #${sprintData.prNumber}: ${comment.html_url}`,
+      );
       return ok({ commentUrl: comment.html_url, prNumber: sprintData.prNumber });
-    } catch (e) { return err(`Failed to post PR comment: ${e.message}`); }
-  }
+    } catch (e) {
+      return err(`Failed to post PR comment: ${e.message}`);
+    }
+  },
 );
 
 // ─── CROSS-SPRINT CONTEXT TOOLS ───
@@ -1047,45 +1343,73 @@ Results are ordered by creation date (newest first). Use this at sprint start to
     try {
       return await withGraph(async (g) => {
         // Get all sprints for this project except the current one
-        const sprints = await g.V().has('Project', 'id', env.projectId)
+        const sprints = await g
+          .V()
+          .has('Project', 'id', env.projectId)
           .out('HAS_SPRINT')
           .has('id', P.neq(env.sprintId))
-          .order().by('created_at', Order.desc)
-          .valueMap(true).toList();
+          .order()
+          .by('created_at', Order.desc)
+          .valueMap(true)
+          .toList();
 
-        if (!sprints.length) return ok({ sprints: [], message: 'No previous sprints found for this project.' });
+        if (!sprints.length)
+          return ok({ sprints: [], message: 'No previous sprints found for this project.' });
 
         const summaries = [];
         for (const s of sprints) {
           const sprint = propsToObj(s);
 
           // Get artifact counts by label
-          const contained = await g.V().has('Sprint', 'id', sprint.id)
-            .out('CONTAINS').groupCount().by(T_label).next();
+          const contained = await g
+            .V()
+            .has('Sprint', 'id', sprint.id)
+            .out('CONTAINS')
+            .groupCount()
+            .by(T_label)
+            .next();
           const counts = {};
           if (contained.value) {
-            contained.value.forEach((count, label) => { counts[label] = count; });
+            contained.value.forEach((count, label) => {
+              counts[label] = count;
+            });
           }
 
           // Get all GeneralInfo nodes (full content — these are design decisions and RE findings)
-          const generalInfoNodes = await g.V().has('Sprint', 'id', sprint.id)
-            .out('CONTAINS').hasLabel('GeneralInfo')
-            .valueMap(true).toList();
+          const generalInfoNodes = await g
+            .V()
+            .has('Sprint', 'id', sprint.id)
+            .out('CONTAINS')
+            .hasLabel('GeneralInfo')
+            .valueMap(true)
+            .toList();
 
           // Get all Requirement nodes
-          const requirementNodes = await g.V().has('Sprint', 'id', sprint.id)
-            .out('CONTAINS').hasLabel('Requirement')
-            .valueMap(true).toList();
+          const requirementNodes = await g
+            .V()
+            .has('Sprint', 'id', sprint.id)
+            .out('CONTAINS')
+            .hasLabel('Requirement')
+            .valueMap(true)
+            .toList();
 
           // Get task completion metrics
-          const tasks = await g.V().has('Sprint', 'id', sprint.id)
-            .out('CONTAINS').hasLabel('Task')
-            .values('status').toList();
-          const tasksDone = tasks.filter(s => s === 'done').length;
+          const tasks = await g
+            .V()
+            .has('Sprint', 'id', sprint.id)
+            .out('CONTAINS')
+            .hasLabel('Task')
+            .values('status')
+            .toList();
+          const tasksDone = tasks.filter((s) => s === 'done').length;
 
           // Get review status
-          const reviews = await g.V().has('Sprint', 'id', sprint.id)
-            .out('HAS_REVIEW').valueMap(true).toList();
+          const reviews = await g
+            .V()
+            .has('Sprint', 'id', sprint.id)
+            .out('HAS_REVIEW')
+            .valueMap(true)
+            .toList();
 
           summaries.push({
             sprintId: sprint.id,
@@ -1099,15 +1423,19 @@ Results are ordered by creation date (newest first). Use this at sprint start to
               tasksDone,
               reviewStatus: reviews.length > 0 ? propsToObj(reviews[0]).status || 'NONE' : 'NONE',
             },
-            generalInfo: generalInfoNodes.map(n => {
+            generalInfo: generalInfoNodes.map((n) => {
               const obj = propsToObj(n);
               return { id: obj.id, type: obj.type, title: obj.title, content: obj.content };
             }),
-            requirements: requirementNodes.map(n => {
+            requirements: requirementNodes.map((n) => {
               const obj = propsToObj(n);
               return {
-                id: obj.id, title: obj.title, description: obj.description,
-                acceptance_criteria: obj.acceptance_criteria, category: obj.category, priority: obj.priority,
+                id: obj.id,
+                title: obj.title,
+                description: obj.description,
+                acceptance_criteria: obj.acceptance_criteria,
+                category: obj.category,
+                priority: obj.priority,
               };
             }),
           });
@@ -1115,8 +1443,10 @@ Results are ordered by creation date (newest first). Use this at sprint start to
 
         return ok({ sprints: summaries });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -1132,20 +1462,31 @@ The sprint must belong to the current project.`,
     try {
       return await withGraph(async (g) => {
         // Validate the sprint belongs to this project
-        const belongsToProject = await g.V().has('Project', 'id', env.projectId)
-          .out('HAS_SPRINT').has('Sprint', 'id', sprintId).hasNext();
-        if (!belongsToProject) return err(`Sprint "${sprintId}" not found in project "${env.projectId}"`);
+        const belongsToProject = await g
+          .V()
+          .has('Project', 'id', env.projectId)
+          .out('HAS_SPRINT')
+          .has('Sprint', 'id', sprintId)
+          .hasNext();
+        if (!belongsToProject)
+          return err(`Sprint "${sprintId}" not found in project "${env.projectId}"`);
 
-        const vertices = await g.V().has('Sprint', 'id', sprintId)
+        const vertices = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
           .union(__.out('CONTAINS'), __.out('HAS_REVIEW'), __.out('HAS_PR'))
           .project('id', 'label', 'props')
-          .by('id').by(T_label).by(__.valueMap())
+          .by('id')
+          .by(T_label)
+          .by(__.valueMap())
           .toList();
 
-        const nodeIds = vertices.map(v => v.get('id'));
+        const nodeIds = vertices.map((v) => v.get('id'));
         if (!nodeIds.length) return ok({ sprintId, nodes: [], edges: [] });
 
-        const edges = await g.V().has('Sprint', 'id', sprintId)
+        const edges = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
           .union(__.out('CONTAINS'), __.out('HAS_REVIEW'), __.out('HAS_PR'))
           .bothE()
           .where(__.otherV().has('id', P.within(...nodeIds)))
@@ -1153,21 +1494,28 @@ The sprint must belong to the current project.`,
           .by(__.outV().values('id'))
           .by(__.inV().values('id'))
           .by(T_label)
-          .dedup().toList();
+          .dedup()
+          .toList();
 
-        const nodes = vertices.map(v => ({
+        const nodes = vertices.map((v) => ({
           id: v.get('id'),
           label: v.get('label'),
           ...propsToObj(v.get('props')),
         }));
         const edgeList = edges
-          .filter(e => !['CONTAINS', 'HAS_REVIEW', 'HAS_PR'].includes(e.get('label')))
-          .map(e => ({ source: e.get('source'), target: e.get('target'), label: e.get('label') }));
+          .filter((e) => !['CONTAINS', 'HAS_REVIEW', 'HAS_PR'].includes(e.get('label')))
+          .map((e) => ({
+            source: e.get('source'),
+            target: e.get('target'),
+            label: e.get('label'),
+          }));
 
         return ok({ sprintId, nodes, edges: edgeList });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 server.tool(
@@ -1182,24 +1530,35 @@ Returns a summary of what was carried forward. Call this once at sprint start du
     try {
       return await withGraph(async (g) => {
         // Find the most recent previous sprint (by created_at, excluding current)
-        const prevSprints = await g.V().has('Project', 'id', env.projectId)
+        const prevSprints = await g
+          .V()
+          .has('Project', 'id', env.projectId)
           .out('HAS_SPRINT')
           .has('id', P.neq(env.sprintId))
-          .order().by('created_at', Order.desc)
+          .order()
+          .by('created_at', Order.desc)
           .limit(1)
-          .valueMap(true).toList();
+          .valueMap(true)
+          .toList();
 
         if (!prevSprints.length) {
-          return ok({ carried: false, message: 'No previous sprints found. Nothing to carry forward.' });
+          return ok({
+            carried: false,
+            message: 'No previous sprints found. Nothing to carry forward.',
+          });
         }
 
         const prevSprint = propsToObj(prevSprints[0]);
 
         // Check if carry-forward was already done for this sprint
-        const existingCarried = await g.V().has('Sprint', 'id', env.sprintId)
-          .out('CONTAINS').hasLabel('GeneralInfo')
+        const existingCarried = await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
+          .out('CONTAINS')
+          .hasLabel('GeneralInfo')
           .has('carried_from_sprint', prevSprint.id)
-          .count().next();
+          .count()
+          .next();
         if (existingCarried.value > 0) {
           return ok({
             carried: false,
@@ -1208,14 +1567,22 @@ Returns a summary of what was carried forward. Call this once at sprint start du
         }
 
         // Get all GeneralInfo nodes from the previous sprint
-        const generalInfoNodes = await g.V().has('Sprint', 'id', prevSprint.id)
-          .out('CONTAINS').hasLabel('GeneralInfo')
-          .valueMap(true).toList();
+        const generalInfoNodes = await g
+          .V()
+          .has('Sprint', 'id', prevSprint.id)
+          .out('CONTAINS')
+          .hasLabel('GeneralInfo')
+          .valueMap(true)
+          .toList();
 
         // Get all Requirement nodes from the previous sprint
-        const requirementNodes = await g.V().has('Sprint', 'id', prevSprint.id)
-          .out('CONTAINS').hasLabel('Requirement')
-          .valueMap(true).toList();
+        const requirementNodes = await g
+          .V()
+          .has('Sprint', 'id', prevSprint.id)
+          .out('CONTAINS')
+          .hasLabel('Requirement')
+          .valueMap(true)
+          .toList();
 
         const carriedGeneralInfo = [];
         const carriedRequirements = [];
@@ -1226,7 +1593,8 @@ Returns a summary of what was carried forward. Call this once at sprint start du
           const newId = `cf-${orig.id}`;
 
           // Create new node in current sprint
-          let addQ = g.addV('GeneralInfo')
+          let addQ = g
+            .addV('GeneralInfo')
             .property(cardinality.single, 'id', newId)
             .property(cardinality.single, 'sprint_id', env.sprintId)
             .property(cardinality.single, 'carried_from_sprint', prevSprint.id)
@@ -1240,16 +1608,27 @@ Returns a summary of what was carried forward. Call this once at sprint start du
           await addQ.next();
 
           // Link to current sprint via CONTAINS
-          await g.V().has('Sprint', 'id', env.sprintId)
-            .addE('CONTAINS').to(__.V().has('GeneralInfo', 'id', newId))
+          await g
+            .V()
+            .has('Sprint', 'id', env.sprintId)
+            .addE('CONTAINS')
+            .to(__.V().has('GeneralInfo', 'id', newId))
             .next();
 
           // Link back to original via CARRIED_FROM
-          await g.V().has('GeneralInfo', 'id', newId)
-            .addE('CARRIED_FROM').to(__.V().has('GeneralInfo', 'id', orig.id))
+          await g
+            .V()
+            .has('GeneralInfo', 'id', newId)
+            .addE('CARRIED_FROM')
+            .to(__.V().has('GeneralInfo', 'id', orig.id))
             .next();
 
-          carriedGeneralInfo.push({ id: newId, originalId: orig.id, title: orig.title, type: orig.type });
+          carriedGeneralInfo.push({
+            id: newId,
+            originalId: orig.id,
+            title: orig.title,
+            type: orig.type,
+          });
         }
 
         // Carry forward Requirement nodes
@@ -1257,7 +1636,8 @@ Returns a summary of what was carried forward. Call this once at sprint start du
           const orig = propsToObj(node);
           const newId = `cf-${orig.id}`;
 
-          let addQ = g.addV('Requirement')
+          let addQ = g
+            .addV('Requirement')
             .property(cardinality.single, 'id', newId)
             .property(cardinality.single, 'sprint_id', env.sprintId)
             .property(cardinality.single, 'carried_from_sprint', prevSprint.id)
@@ -1265,23 +1645,38 @@ Returns a summary of what was carried forward. Call this once at sprint start du
             .property(cardinality.single, 'createdAt', new Date().toISOString());
 
           // Copy relevant properties
-          for (const prop of ['title', 'description', 'acceptance_criteria', 'category', 'priority']) {
+          for (const prop of [
+            'title',
+            'description',
+            'acceptance_criteria',
+            'category',
+            'priority',
+          ]) {
             if (orig[prop]) addQ = addQ.property(cardinality.single, prop, orig[prop]);
           }
           await addQ.next();
 
           // Link to current sprint via CONTAINS
-          await g.V().has('Sprint', 'id', env.sprintId)
-            .addE('CONTAINS').to(__.V().has('Requirement', 'id', newId))
+          await g
+            .V()
+            .has('Sprint', 'id', env.sprintId)
+            .addE('CONTAINS')
+            .to(__.V().has('Requirement', 'id', newId))
             .next();
 
           // Link back to original via CARRIED_FROM
-          await g.V().has('Requirement', 'id', newId)
-            .addE('CARRIED_FROM').to(__.V().has('Requirement', 'id', orig.id))
+          await g
+            .V()
+            .has('Requirement', 'id', newId)
+            .addE('CARRIED_FROM')
+            .to(__.V().has('Requirement', 'id', orig.id))
             .next();
 
           carriedRequirements.push({
-            id: newId, originalId: orig.id, title: orig.title, category: orig.category,
+            id: newId,
+            originalId: orig.id,
+            title: orig.title,
+            category: orig.category,
           });
         }
 
@@ -1297,8 +1692,10 @@ Returns a summary of what was carried forward. Call this once at sprint start du
           requirements: carriedRequirements,
         });
       });
-    } catch (e) { return err(e.message); }
-  }
+    } catch (e) {
+      return err(e.message);
+    }
+  },
 );
 
 // --- Start ---
@@ -1309,4 +1706,7 @@ async function main() {
   console.error('Graph MCP server started on stdio');
 }
 
-main().catch(e => { console.error('Graph MCP server failed:', e); process.exit(1); });
+main().catch((e) => {
+  console.error('Graph MCP server failed:', e);
+  process.exit(1);
+});

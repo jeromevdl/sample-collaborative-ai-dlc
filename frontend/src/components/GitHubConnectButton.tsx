@@ -19,7 +19,8 @@ export function GitHubConnectButton({ connected, onDisconnect }: Props) {
       window.location.href = url;
     } catch (err) {
       setLoading(false);
-      const serverMsg = err instanceof ApiError && typeof err.body?.error === 'string' ? err.body.error : null;
+      const serverMsg =
+        err instanceof ApiError && typeof err.body?.error === 'string' ? err.body.error : null;
       setError(serverMsg ?? 'Could not start GitHub connection. Please try again.');
     }
   };

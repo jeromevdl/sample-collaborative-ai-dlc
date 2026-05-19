@@ -9,14 +9,14 @@ exports.handler = async (event) => {
   try {
     // Get project details from Neptune via GitHub Lambda
     const [owner, repo] = gitRepo.split('/');
-    
+
     // Create PR using GitHub API
     const prTitle = `AI-DLC: ${branch}`;
     const prBody = `Automated PR created by AI-DLC Construction Agent\n\nExecution ID: ${executionId}\nProject: ${projectId}`;
-    
+
     const ghHeaders = {
-      'Authorization': `token ${gitToken}`,
-      'Accept': 'application/vnd.github.v3+json',
+      Authorization: `token ${gitToken}`,
+      Accept: 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
     };
 
@@ -38,7 +38,7 @@ exports.handler = async (event) => {
         console.log(`PR already exists for branch ${branch}, fetching existing PR...`);
         const listRes = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/pulls?head=${owner}:${branch}&state=open`,
-          { headers: ghHeaders }
+          { headers: ghHeaders },
         );
         if (listRes.ok) {
           const prs = await listRes.json();
@@ -55,7 +55,7 @@ exports.handler = async (event) => {
         // PR is closed/merged — check closed PRs too
         const closedRes = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/pulls?head=${owner}:${branch}&state=all`,
-          { headers: ghHeaders }
+          { headers: ghHeaders },
         );
         if (closedRes.ok) {
           const allPrs = await closedRes.json();

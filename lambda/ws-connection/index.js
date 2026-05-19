@@ -1,5 +1,13 @@
-const { DynamoDBClient, PutItemCommand, DeleteItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
-const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
+const {
+  DynamoDBClient,
+  PutItemCommand,
+  DeleteItemCommand,
+  QueryCommand,
+} = require('@aws-sdk/client-dynamodb');
+const {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} = require('@aws-sdk/client-apigatewaymanagementapi');
 const client = new DynamoDBClient();
 
 exports.handler = async (event) => {
@@ -12,39 +20,53 @@ exports.handler = async (event) => {
   console.log('Connection event:', routeKey, connectionId, documentId);
 
   if (routeKey === '$connect') {
-    await client.send(new PutItemCommand({
-      TableName: process.env.CONNECTIONS_TABLE,
-      Item: {
-        connectionId: { S: connectionId },
-        userId: { S: userId },
-        userName: { S: userName },
-        documentId: { S: documentId },
-        connectedAt: { N: String(Date.now()) },
-        expiresAt: { N: String(Math.floor(Date.now() / 1000) + 3600) }
-      }
-    }));
+    await client.send(
+      new PutItemCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+        Item: {
+          connectionId: { S: connectionId },
+          userId: { S: userId },
+          userName: { S: userName },
+          documentId: { S: documentId },
+          connectedAt: { N: String(Date.now()) },
+          expiresAt: { N: String(Math.floor(Date.now() / 1000) + 3600) },
+        },
+      }),
+    );
   } else if (routeKey === '$disconnect') {
     // Notify others that user left
-    const existing = await client.send(new QueryCommand({
-      TableName: process.env.CONNECTIONS_TABLE,
-      IndexName: 'DocumentIdIndex',
-      KeyConditionExpression: 'documentId = :docId',
-      ExpressionAttributeValues: { ':docId': { S: documentId } }
-    })).catch(() => ({ Items: [] }));
+    const existing = await client
+      .send(
+        new QueryCommand({
+          TableName: process.env.CONNECTIONS_TABLE,
+          IndexName: 'DocumentIdIndex',
+          KeyConditionExpression: 'documentId = :docId',
+          ExpressionAttributeValues: { ':docId': { S: documentId } },
+        }),
+      )
+      .catch(() => ({ Items: [] }));
 
     const api = new ApiGatewayManagementApiClient({ endpoint: process.env.WEBSOCKET_ENDPOINT });
-    await Promise.all((existing.Items || []).map(async (item) => {
-      if (item.connectionId.S === connectionId) return;
-      await api.send(new PostToConnectionCommand({
-        ConnectionId: item.connectionId.S,
-        Data: JSON.stringify({ action: 'awareness', type: 'leave', userId })
-      })).catch(() => {});
-    }));
+    await Promise.all(
+      (existing.Items || []).map(async (item) => {
+        if (item.connectionId.S === connectionId) return;
+        await api
+          .send(
+            new PostToConnectionCommand({
+              ConnectionId: item.connectionId.S,
+              Data: JSON.stringify({ action: 'awareness', type: 'leave', userId }),
+            }),
+          )
+          .catch(() => {});
+      }),
+    );
 
-    await client.send(new DeleteItemCommand({
-      TableName: process.env.CONNECTIONS_TABLE,
-      Key: { connectionId: { S: connectionId } }
-    }));
+    await client.send(
+      new DeleteItemCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+        Key: { connectionId: { S: connectionId } },
+      }),
+    );
   }
   return { statusCode: 200 };
 };

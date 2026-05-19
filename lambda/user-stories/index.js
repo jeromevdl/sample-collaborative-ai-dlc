@@ -42,8 +42,13 @@ exports.handler = async (event) => {
           if (!r.value) return res(404, { error: 'User story not found' });
           return res(200, mapStory(r.value));
         }
-        const list = await g.V().has('Sprint', 'id', sprintId)
-          .out('CONTAINS').hasLabel('UserStory').valueMap().toList();
+        const list = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .out('CONTAINS')
+          .hasLabel('UserStory')
+          .valueMap()
+          .toList();
         return res(200, list.map(mapStory));
       }
 
@@ -51,7 +56,10 @@ exports.handler = async (event) => {
         const data = JSON.parse(body);
         const id = randomUUID();
 
-        await g.V().has('Sprint', 'id', sprintId).as('s')
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .as('s')
           .addV('UserStory')
           .property('id', id)
           .property('title', data.title)
@@ -59,25 +67,55 @@ exports.handler = async (event) => {
           .property('story_points', data.storyPoints || 0)
           .property('sprint_id', sprintId)
           .as('us')
-          .addE('CONTAINS').from_('s').to('us')
+          .addE('CONTAINS')
+          .from_('s')
+          .to('us')
           .next();
 
         // BREAKS_INTO from Requirement
         if (data.requirementId) {
-          await g.V().has('Requirement', 'id', data.requirementId).as('r')
-            .V().has('UserStory', 'id', id).as('us')
-            .addE('BREAKS_INTO').from_('r').to('us')
+          await g
+            .V()
+            .has('Requirement', 'id', data.requirementId)
+            .as('r')
+            .V()
+            .has('UserStory', 'id', id)
+            .as('us')
+            .addE('BREAKS_INTO')
+            .from_('r')
+            .to('us')
             .next();
         }
 
-        return res(201, { id, title: data.title, description: data.description || '', storyPoints: data.storyPoints || 0, sprintId });
+        return res(201, {
+          id,
+          title: data.title,
+          description: data.description || '',
+          storyPoints: data.storyPoints || 0,
+          sprintId,
+        });
       }
 
       case 'PUT': {
         const data = JSON.parse(body);
-        if (data.title) await g.V().has('UserStory', 'id', storyId).property(cardinality.single, 'title', data.title).next();
-        if (data.description !== undefined) await g.V().has('UserStory', 'id', storyId).property(cardinality.single, 'description', data.description).next();
-        if (data.storyPoints !== undefined) await g.V().has('UserStory', 'id', storyId).property(cardinality.single, 'story_points', data.storyPoints).next();
+        if (data.title)
+          await g
+            .V()
+            .has('UserStory', 'id', storyId)
+            .property(cardinality.single, 'title', data.title)
+            .next();
+        if (data.description !== undefined)
+          await g
+            .V()
+            .has('UserStory', 'id', storyId)
+            .property(cardinality.single, 'description', data.description)
+            .next();
+        if (data.storyPoints !== undefined)
+          await g
+            .V()
+            .has('UserStory', 'id', storyId)
+            .property(cardinality.single, 'story_points', data.storyPoints)
+            .next();
         const updated = await g.V().has('UserStory', 'id', storyId).valueMap().next();
         return res(200, mapStory(updated.value));
       }
@@ -94,6 +132,9 @@ exports.handler = async (event) => {
     console.error('Error:', err);
     return res(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

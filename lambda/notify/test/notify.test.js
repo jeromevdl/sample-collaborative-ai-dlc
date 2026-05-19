@@ -18,9 +18,7 @@ const loadHandler = async () => {
 };
 
 const sentPayloads = () =>
-  apiMock
-    .commandCalls(PostToConnectionCommand)
-    .map((c) => JSON.parse(c.args[0].input.Data));
+  apiMock.commandCalls(PostToConnectionCommand).map((c) => JSON.parse(c.args[0].input.Data));
 
 describe('notify handler', () => {
   beforeEach(() => {
@@ -130,11 +128,7 @@ describe('notify handler', () => {
 
   it('swallows per-connection post failures and keeps broadcasting', async () => {
     ddbMock.on(QueryCommand).resolves({
-      Items: [
-        { connectionId: 'c1' },
-        { connectionId: 'c2' },
-        { connectionId: 'c3' },
-      ],
+      Items: [{ connectionId: 'c1' }, { connectionId: 'c2' }, { connectionId: 'c3' }],
     });
     apiMock
       .on(PostToConnectionCommand)

@@ -41,9 +41,7 @@ describe('ws-authorizer handler', () => {
       principalId: 'user',
       policyDocument: {
         Version: '2012-10-17',
-        Statement: [
-          { Action: 'execute-api:Invoke', Effect: 'Deny', Resource: METHOD_ARN },
-        ],
+        Statement: [{ Action: 'execute-api:Invoke', Effect: 'Deny', Resource: METHOD_ARN }],
       },
       context: {},
     });
@@ -80,9 +78,7 @@ describe('ws-authorizer handler', () => {
       principalId: 'user-123',
       policyDocument: {
         Version: '2012-10-17',
-        Statement: [
-          { Action: 'execute-api:Invoke', Effect: 'Allow', Resource: METHOD_ARN },
-        ],
+        Statement: [{ Action: 'execute-api:Invoke', Effect: 'Allow', Resource: METHOD_ARN }],
       },
       context: { userId: 'user-123', userName: 'alice' },
     });
@@ -148,9 +144,7 @@ describe('ws-authorizer handler', () => {
 
     expect(res.policyDocument).toEqual({
       Version: '2012-10-17',
-      Statement: [
-        { Action: 'execute-api:Invoke', Effect: 'Allow', Resource: METHOD_ARN },
-      ],
+      Statement: [{ Action: 'execute-api:Invoke', Effect: 'Allow', Resource: METHOD_ARN }],
     });
   });
 

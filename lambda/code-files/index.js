@@ -42,8 +42,13 @@ exports.handler = async (event) => {
           if (!r.value) return res(404, { error: 'Code file not found' });
           return res(200, mapCodeFile(r.value));
         }
-        const list = await g.V().has('Sprint', 'id', sprintId)
-          .out('CONTAINS').hasLabel('CodeFile').valueMap().toList();
+        const list = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .out('CONTAINS')
+          .hasLabel('CodeFile')
+          .valueMap()
+          .toList();
         return res(200, list.map(mapCodeFile));
       }
 
@@ -51,7 +56,10 @@ exports.handler = async (event) => {
         const data = JSON.parse(body);
         const id = randomUUID();
 
-        await g.V().has('Sprint', 'id', sprintId).as('s')
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .as('s')
           .addV('CodeFile')
           .property('id', id)
           .property('file_path', data.filePath)
@@ -59,32 +67,69 @@ exports.handler = async (event) => {
           .property('summary', data.summary || '')
           .property('sprint_id', sprintId)
           .as('cf')
-          .addE('CONTAINS').from_('s').to('cf')
+          .addE('CONTAINS')
+          .from_('s')
+          .to('cf')
           .next();
 
         // IMPLEMENTED_BY from Task
         if (data.taskId) {
-          await g.V().has('Task', 'id', data.taskId).as('t')
-            .V().has('CodeFile', 'id', id).as('cf')
-            .addE('IMPLEMENTED_BY').from_('t').to('cf')
+          await g
+            .V()
+            .has('Task', 'id', data.taskId)
+            .as('t')
+            .V()
+            .has('CodeFile', 'id', id)
+            .as('cf')
+            .addE('IMPLEMENTED_BY')
+            .from_('t')
+            .to('cf')
             .next();
         }
         // IMPLEMENTED_BY shortcut from UserStory
         if (data.userStoryId) {
-          await g.V().has('UserStory', 'id', data.userStoryId).as('us')
-            .V().has('CodeFile', 'id', id).as('cf')
-            .addE('IMPLEMENTED_BY').from_('us').to('cf')
+          await g
+            .V()
+            .has('UserStory', 'id', data.userStoryId)
+            .as('us')
+            .V()
+            .has('CodeFile', 'id', id)
+            .as('cf')
+            .addE('IMPLEMENTED_BY')
+            .from_('us')
+            .to('cf')
             .next();
         }
 
-        return res(201, { id, filePath: data.filePath, commitRef: data.commitRef || '', summary: data.summary || '', sprintId });
+        return res(201, {
+          id,
+          filePath: data.filePath,
+          commitRef: data.commitRef || '',
+          summary: data.summary || '',
+          sprintId,
+        });
       }
 
       case 'PUT': {
         const data = JSON.parse(body);
-        if (data.filePath) await g.V().has('CodeFile', 'id', codeFileId).property(cardinality.single, 'file_path', data.filePath).next();
-        if (data.commitRef !== undefined) await g.V().has('CodeFile', 'id', codeFileId).property(cardinality.single, 'commit_ref', data.commitRef).next();
-        if (data.summary !== undefined) await g.V().has('CodeFile', 'id', codeFileId).property(cardinality.single, 'summary', data.summary).next();
+        if (data.filePath)
+          await g
+            .V()
+            .has('CodeFile', 'id', codeFileId)
+            .property(cardinality.single, 'file_path', data.filePath)
+            .next();
+        if (data.commitRef !== undefined)
+          await g
+            .V()
+            .has('CodeFile', 'id', codeFileId)
+            .property(cardinality.single, 'commit_ref', data.commitRef)
+            .next();
+        if (data.summary !== undefined)
+          await g
+            .V()
+            .has('CodeFile', 'id', codeFileId)
+            .property(cardinality.single, 'summary', data.summary)
+            .next();
         const updated = await g.V().has('CodeFile', 'id', codeFileId).valueMap().next();
         return res(200, mapCodeFile(updated.value));
       }
@@ -101,6 +146,9 @@ exports.handler = async (event) => {
     console.error('Error:', err);
     return res(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

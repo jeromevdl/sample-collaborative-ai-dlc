@@ -11,18 +11,18 @@ interface Props {
 }
 
 const EVENT_CONFIG: Record<string, { icon: typeof Bot; color: string }> = {
-  'agent.started':   { icon: Bot,                  color: 'text-agent-running'    },
-  'agent.completed': { icon: CheckCircle2,          color: 'text-agent-success'    },
-  'agent.error':     { icon: XCircle,               color: 'text-agent-error'      },
-  'agent.question':  { icon: MessageCircleQuestion, color: 'text-agent-waiting'    },
-  'agent.tool':      { icon: Wrench,                color: 'text-muted-foreground' },
+  'agent.started': { icon: Bot, color: 'text-agent-running' },
+  'agent.completed': { icon: CheckCircle2, color: 'text-agent-success' },
+  'agent.error': { icon: XCircle, color: 'text-agent-error' },
+  'agent.question': { icon: MessageCircleQuestion, color: 'text-agent-waiting' },
+  'agent.tool': { icon: Wrench, color: 'text-muted-foreground' },
 };
 
 const SEMANTIC_LABELS: Record<string, string> = {
-  'agent.started':   'Agent started',
+  'agent.started': 'Agent started',
   'agent.completed': 'Agent completed',
-  'agent.error':     'Agent failed',
-  'agent.question':  '⚠ Question asked — pipeline blocked',
+  'agent.error': 'Agent failed',
+  'agent.question': '⚠ Question asked — pipeline blocked',
 };
 
 function timeAgo(ts: number): string {
@@ -42,7 +42,11 @@ export function ActivityFeed({ events, projectNames = {} }: Props) {
     if (evt.type === 'agent.tool') {
       const label = semanticTool(evt.detail ?? '');
       const last = collapsed[collapsed.length - 1];
-      if (last?.type === 'agent.tool' && semanticTool(last.detail ?? '') === label && last.sprintId === evt.sprintId) {
+      if (
+        last?.type === 'agent.tool' &&
+        semanticTool(last.detail ?? '') === label &&
+        last.sprintId === evt.sprintId
+      ) {
         last.count = (last.count ?? 1) + 1;
         last.timestamp = evt.timestamp;
         continue;
@@ -56,7 +60,7 @@ export function ActivityFeed({ events, projectNames = {} }: Props) {
     <Card>
       <CardContent className="p-0">
         <div className="divide-y divide-border max-h-52 overflow-y-auto">
-          {collapsed.map(evt => {
+          {collapsed.map((evt) => {
             const cfg = EVENT_CONFIG[evt.type] ?? EVENT_CONFIG['agent.tool'];
             const Icon = cfg.icon;
             const isSignificant = evt.type !== 'agent.tool';
@@ -69,12 +73,25 @@ export function ActivityFeed({ events, projectNames = {} }: Props) {
             const suffix = [
               multiProject && projectName ? projectName : null,
               isSignificant && evt.agentType ? evt.agentType.replace(/[_-]/g, ' ') : null,
-            ].filter(Boolean).join(' · ');
+            ]
+              .filter(Boolean)
+              .join(' · ');
 
             return (
-              <div key={evt.id} className={cn('px-3 py-1.5 flex items-center gap-2', isSignificant && 'bg-muted/20')}>
+              <div
+                key={evt.id}
+                className={cn(
+                  'px-3 py-1.5 flex items-center gap-2',
+                  isSignificant && 'bg-muted/20',
+                )}
+              >
                 <Icon className={cn('h-3 w-3 shrink-0', cfg.color)} />
-                <span className={cn('text-xs flex-1 truncate', isSignificant ? 'font-medium' : 'text-muted-foreground')}>
+                <span
+                  className={cn(
+                    'text-xs flex-1 truncate',
+                    isSignificant ? 'font-medium' : 'text-muted-foreground',
+                  )}
+                >
                   {label}
                   {suffix && (
                     <span className="text-muted-foreground/50 ml-1 capitalize">· {suffix}</span>
@@ -83,7 +100,9 @@ export function ActivityFeed({ events, projectNames = {} }: Props) {
                     <span className="text-muted-foreground/60 ml-1">×{evt.count}</span>
                   )}
                 </span>
-                <span className="text-[10px] text-muted-foreground/50 shrink-0">{timeAgo(evt.timestamp)}</span>
+                <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                  {timeAgo(evt.timestamp)}
+                </span>
               </div>
             );
           })}

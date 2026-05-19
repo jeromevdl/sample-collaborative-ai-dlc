@@ -1,17 +1,30 @@
 import type { ProjectAgentInfo, StuckDetection, VelocityMetrics } from '@/hooks/useObservability';
 
-export interface Highlight { text: string }
-export interface Lowlight { text: string }
-export interface Risk { text: string; severity: 'high' | 'medium' }
-export interface ActionItem { text: string; done: boolean }
+export interface Highlight {
+  text: string;
+}
+export interface Lowlight {
+  text: string;
+}
+export interface Risk {
+  text: string;
+  severity: 'high' | 'medium';
+}
+export interface ActionItem {
+  text: string;
+  done: boolean;
+}
 
 /** Estimate remaining time based on velocity and remaining tasks */
-function estimateEta(progress: ProjectAgentInfo['progress'], velocity: VelocityMetrics | undefined): string | null {
+function estimateEta(
+  progress: ProjectAgentInfo['progress'],
+  velocity: VelocityMetrics | undefined,
+): string | null {
   if (!progress || !velocity || velocity.tasksPerHour <= 0) return null;
   const remaining = progress.taskCount - progress.taskDoneCount;
   if (remaining <= 0) return null;
   const hoursLeft = remaining / velocity.tasksPerHour;
-  if (hoursLeft < 1/60) return null;
+  if (hoursLeft < 1 / 60) return null;
   if (hoursLeft < 1) return `~${Math.round(hoursLeft * 60)} min remaining`;
   return `~${Math.round(hoursLeft * 10) / 10}h remaining`;
 }
@@ -19,7 +32,7 @@ function estimateEta(progress: ProjectAgentInfo['progress'], velocity: VelocityM
 export function buildInsights(
   projects: ProjectAgentInfo[],
   stuckDetections: StuckDetection[],
-  velocityMap: Record<string, VelocityMetrics>
+  velocityMap: Record<string, VelocityMetrics>,
 ): { highlights: Highlight[]; lowlights: Lowlight[]; risks: Risk[]; actions: ActionItem[] } {
   const highlights: Highlight[] = [];
   const lowlights: Lowlight[] = [];
@@ -27,11 +40,13 @@ export function buildInsights(
   const actions: ActionItem[] = [];
 
   const totalProjects = projects.length;
-  const activeCount = projects.filter(p =>
-    p.sprint?.currentAgentStatus === 'running' || p.sprint?.currentAgentStatus === 'waiting'
+  const activeCount = projects.filter(
+    (p) => p.sprint?.currentAgentStatus === 'running' || p.sprint?.currentAgentStatus === 'waiting',
   ).length;
-  const completedSprints = projects.filter(p => p.sprint?.currentAgentStatus === 'completed').length;
-  const prCreated = projects.filter(p => p.sprint?.prUrl).length;
+  const completedSprints = projects.filter(
+    (p) => p.sprint?.currentAgentStatus === 'completed',
+  ).length;
+  const prCreated = projects.filter((p) => p.sprint?.prUrl).length;
 
   // ── Calm state (no agents running) ──────────────────────────────────────
   if (activeCount === 0) {
@@ -39,13 +54,21 @@ export function buildInsights(
       highlights.push({ text: 'No projects yet — create a project to get started' });
       return { highlights, lowlights, risks, actions };
     }
-    highlights.push({ text: `${totalProjects} project${totalProjects > 1 ? 's' : ''} in workspace — no agents running` });
+    highlights.push({
+      text: `${totalProjects} project${totalProjects > 1 ? 's' : ''} in workspace — no agents running`,
+    });
     if (completedSprints > 0) {
-      highlights.push({ text: `${completedSprints} sprint${completedSprints > 1 ? 's' : ''} completed successfully` });
+      highlights.push({
+        text: `${completedSprints} sprint${completedSprints > 1 ? 's' : ''} completed successfully`,
+      });
     }
     if (prCreated > 0) {
       highlights.push({ text: `${prCreated} PR${prCreated > 1 ? 's' : ''} ready for review` });
-      actions.push(...projects.filter(p => p.sprint?.prUrl).map(p => ({ text: `Review PR for ${p.project.name}`, done: false })));
+      actions.push(
+        ...projects
+          .filter((p) => p.sprint?.prUrl)
+          .map((p) => ({ text: `Review PR for ${p.project.name}`, done: false })),
+      );
     }
     // Show where each project is paused (useful, not confusing)
     for (const { project, sprint } of projects) {
@@ -54,10 +77,15 @@ export function buildInsights(
         continue;
       }
       const status = sprint.currentAgentStatus;
-      const phase = sprint.phase ? sprint.phase.charAt(0) + sprint.phase.slice(1).toLowerCase() : null;
+      const phase = sprint.phase
+        ? sprint.phase.charAt(0) + sprint.phase.slice(1).toLowerCase()
+        : null;
       if (status === 'completed') continue; // already counted above
       if (status === 'failed') {
-        risks.push({ text: `${project.name} — last sprint failed at ${phase ?? 'unknown'} phase`, severity: 'high' });
+        risks.push({
+          text: `${project.name} — last sprint failed at ${phase ?? 'unknown'} phase`,
+          severity: 'high',
+        });
       } else if (phase) {
         lowlights.push({ text: `${project.name} — sprint paused at ${phase} phase` });
       }
@@ -82,9 +110,13 @@ export function buildInsights(
 
     if (phase === 'INCEPTION') {
       if (progress?.taskCount && progress.taskCount > 0) {
-        highlights.push({ text: `${project.name} — inception: ${progress.requirementCount} req, ${progress.userStoryCount} stories, ${progress.taskCount} tasks` });
+        highlights.push({
+          text: `${project.name} — inception: ${progress.requirementCount} req, ${progress.userStoryCount} stories, ${progress.taskCount} tasks`,
+        });
       } else if (progress?.requirementCount) {
-        highlights.push({ text: `${project.name} — inception: ${progress.requirementCount} requirements analyzed` });
+        highlights.push({
+          text: `${project.name} — inception: ${progress.requirementCount} requirements analyzed`,
+        });
       } else {
         highlights.push({ text: `${project.name} — ${phaseLabel} phase in progress` });
       }
@@ -95,8 +127,11 @@ export function buildInsights(
       if (total > 0) {
         const pct = Math.round((done / total) * 100);
         const eta = estimateEta(progress, vel);
-        highlights.push({ text: `${project.name} — construction: ${done}/${total} tasks (${pct}%), ${progress?.codeFileCount ?? 0} files${eta ? ` · ${eta}` : ''}` });
-        if (done === total) highlights.push({ text: `${project.name} — all ${total} tasks complete` });
+        highlights.push({
+          text: `${project.name} — construction: ${done}/${total} tasks (${pct}%), ${progress?.codeFileCount ?? 0} files${eta ? ` · ${eta}` : ''}`,
+        });
+        if (done === total)
+          highlights.push({ text: `${project.name} — all ${total} tasks complete` });
       } else {
         highlights.push({ text: `${project.name} — ${phaseLabel} phase in progress` });
       }
@@ -111,9 +146,13 @@ export function buildInsights(
     const vel = sprintId ? velocityMap[sprintId] : undefined;
     if (phase !== 'CONSTRUCTION') {
       if (vel?.trend === 'declining' && Math.abs(vel.trendPct) > 20) {
-        lowlights.push({ text: `${project.name} velocity down ${Math.abs(vel.trendPct)}% — ${vel.tasksPerHour} tasks/hr` });
+        lowlights.push({
+          text: `${project.name} velocity down ${Math.abs(vel.trendPct)}% — ${vel.tasksPerHour} tasks/hr`,
+        });
       } else if (vel?.trend === 'improving') {
-        highlights.push({ text: `${project.name} velocity improving (+${vel.trendPct}%, ${vel.tasksPerHour} tasks/hr)` });
+        highlights.push({
+          text: `${project.name} velocity improving (+${vel.trendPct}%, ${vel.tasksPerHour} tasks/hr)`,
+        });
       }
     }
   }

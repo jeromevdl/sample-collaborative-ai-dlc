@@ -104,7 +104,9 @@ export const agentsService = {
     return api.post('/agents/pool/recycle', {});
   },
 
-  async warmPool(count?: number): Promise<{ launched: { workerId: string; taskArn: string }[]; version: string }> {
+  async warmPool(
+    count?: number,
+  ): Promise<{ launched: { workerId: string; taskArn: string }[]; version: string }> {
     return api.post('/agents/pool/warm', { count });
   },
 
@@ -131,12 +133,18 @@ export const agentsService = {
     return api.post(`/projects/${projectId}/agents`, input || {});
   },
 
-  async getCurrentExecution(projectId: string, sprintId?: string): Promise<{ executionArn: string | null; executionId?: string | null; status?: string }> {
+  async getCurrentExecution(
+    projectId: string,
+    sprintId?: string,
+  ): Promise<{ executionArn: string | null; executionId?: string | null; status?: string }> {
     const params = sprintId ? `?sprintId=${encodeURIComponent(sprintId)}` : '';
     return api.get(`/projects/${projectId}/agents${params}`);
   },
 
-  async getTaskAgentStatuses(projectId: string, sprintId: string): Promise<{ tasks: TaskAgentStatus[] }> {
+  async getTaskAgentStatuses(
+    projectId: string,
+    sprintId: string,
+  ): Promise<{ tasks: TaskAgentStatus[] }> {
     return api.get(`/projects/${projectId}/agents/tasks?sprintId=${encodeURIComponent(sprintId)}`);
   },
 
@@ -154,8 +162,14 @@ export const agentsService = {
     return api.get(`/agents/${encodeURIComponent(executionId)}/questions`);
   },
 
-  async answerQuestion(executionId: string, questionId: string, structuredAnswer: StructuredAnswer): Promise<{ success: boolean; restarted?: boolean; newTaskArn?: string }> {
-    return api.post(`/agents/${encodeURIComponent(executionId)}/questions/${questionId}/answer`, { structuredAnswer });
+  async answerQuestion(
+    executionId: string,
+    questionId: string,
+    structuredAnswer: StructuredAnswer,
+  ): Promise<{ success: boolean; restarted?: boolean; newTaskArn?: string }> {
+    return api.post(`/agents/${encodeURIComponent(executionId)}/questions/${questionId}/answer`, {
+      structuredAnswer,
+    });
   },
 
   async getRequirements(projectId: string): Promise<{ requirements: Requirement[] }> {
@@ -166,7 +180,11 @@ export const agentsService = {
     return api.get(`/projects/${projectId}/user-stories`);
   },
 
-  async updateRequirement(projectId: string, reqId: string, data: Partial<Requirement>): Promise<void> {
+  async updateRequirement(
+    projectId: string,
+    reqId: string,
+    data: Partial<Requirement>,
+  ): Promise<void> {
     return api.put(`/projects/${projectId}/requirements/${reqId}`, data);
   },
 
@@ -174,7 +192,11 @@ export const agentsService = {
     return api.delete(`/projects/${projectId}/requirements/${reqId}`);
   },
 
-  async updateUserStory(projectId: string, storyId: string, data: Partial<UserStory>): Promise<void> {
+  async updateUserStory(
+    projectId: string,
+    storyId: string,
+    data: Partial<UserStory>,
+  ): Promise<void> {
     return api.put(`/projects/${projectId}/user-stories/${storyId}`, data);
   },
 

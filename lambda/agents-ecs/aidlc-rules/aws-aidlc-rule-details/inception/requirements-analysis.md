@@ -7,6 +7,7 @@
 **See [depth-levels.md](../common/depth-levels.md) for adaptive depth explanation**
 
 ## Prerequisites
+
 - Workspace Detection must be complete
 - Reverse Engineering must be complete (if brownfield)
 
@@ -15,17 +16,20 @@
 ### Step 1: Load Reverse Engineering Context (if available)
 
 **IF brownfield project**:
+
 - Call `list_nodes(label: "Requirement")` and filter for nodes with `category: "reverse-engineering"`
 - Use these to understand existing system when analyzing request
 
 ### Step 2: Analyze User Request (Intent Analysis)
 
 #### 2.1 Request Clarity
+
 - **Clear**: Specific, well-defined, actionable
 - **Vague**: General, ambiguous, needs clarification
 - **Incomplete**: Missing key information
 
 #### 2.2 Request Type
+
 - **New Feature**: Adding new functionality
 - **Bug Fix**: Fixing existing issue
 - **Refactoring**: Improving code structure
@@ -35,6 +39,7 @@
 - **New Project**: Starting from scratch
 
 #### 2.3 Initial Scope Estimate
+
 - **Single File**: Changes to one file
 - **Single Component**: Changes to one component/package
 - **Multiple Components**: Changes across multiple components
@@ -42,6 +47,7 @@
 - **Cross-system**: Changes affecting multiple systems
 
 #### 2.4 Initial Complexity Estimate
+
 - **Trivial**: Simple, straightforward change
 - **Simple**: Clear implementation path
 - **Moderate**: Some complexity, multiple considerations
@@ -52,14 +58,17 @@
 **Based on request analysis, determine depth:**
 
 **Minimal Depth** - Use when:
+
 - Request is clear and simple
 - No detailed requirements needed
 
 **Standard Depth** - Use when:
+
 - Request needs clarification
 - Functional and non-functional requirements needed
 
 **Comprehensive Depth** - Use when:
+
 - Complex project with multiple stakeholders
 - High risk or critical system
 - Detailed requirements with traceability needed
@@ -67,6 +76,7 @@
 ### Step 4: Assess Current Requirements
 
 Analyze whatever the user has provided:
+
 - Intent statements or descriptions
 - Existing requirements documents (search workspace if mentioned)
 - Pasted content or file references
@@ -76,6 +86,7 @@ Analyze whatever the user has provided:
 **CRITICAL**: Use comprehensive analysis to evaluate requirements completeness. Default to asking questions when there is ANY ambiguity or missing detail.
 
 **MANDATORY**: Evaluate ALL of these areas and ask questions for ANY that are unclear:
+
 - **Functional Requirements**: Core features, user interactions, system behaviors
 - **Non-Functional Requirements**: Performance, security, scalability, usability
 - **User Scenarios**: Use cases, user journeys, edge cases, error scenarios
@@ -92,6 +103,7 @@ Analyze whatever the user has provided:
 Call `ask_question` with a batched list of questions covering any missing, unclear, or ambiguous areas. Focus on functional requirements, non-functional requirements, user scenarios, and business context.
 
 Example:
+
 ```
 Call `ask_question` with:
 "I need clarification on the following requirements:
@@ -107,6 +119,7 @@ Wait for the answer. Then **MANDATORY**: Analyze the answer for ambiguities. If 
 Keep asking until ALL ambiguities are resolved OR the team explicitly asks to proceed.
 
 ### GATE: Await User Answers
+
 DO NOT proceed to Step 7 until all questions are answered and validated.
 
 ### Step 7: Create Requirement Nodes in Graph
@@ -149,6 +162,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ### Step 9: Request Approval
 
 Call `ask_question` with:
+
 ```
 "Requirements Analysis Complete
 

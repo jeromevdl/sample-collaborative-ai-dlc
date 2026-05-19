@@ -18,6 +18,7 @@
 ### 2.1 Transformation Scope Detection (Brownfield Only)
 
 **IF brownfield project**, analyze transformation scope:
+
 - **Single component change** vs **architectural transformation**
 - **Infrastructure changes** vs **application changes**
 - Related component identification
@@ -41,8 +42,11 @@
 ## Step 3: Phase Determination
 
 ### 3.1 User Stories - Already Executed or Skip?
+
 ### 3.2 Application Design - Execute IF new components/services needed
+
 ### 3.3 Units Generation - Execute IF multiple units of work needed
+
 ### 3.4 NFR Implementation - Execute IF performance/security/scalability concerns
 
 ## Step 4: Note Adaptive Detail
@@ -50,6 +54,7 @@
 **See [depth-levels.md](../common/depth-levels.md) for adaptive depth explanation**
 
 For each stage that will execute:
+
 - All defined artifacts will be created as graph nodes
 - Detail level within artifacts adapts to problem complexity
 
@@ -72,6 +77,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ## Step 7: Present Plan to User via `ask_question`
 
 Call `ask_question` with:
+
 ```
 "Workflow Planning Complete
 

@@ -1,67 +1,67 @@
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Button } from '@/components/ui/button'
-import { Settings, ArrowLeft } from 'lucide-react'
-import { PipelineView } from '@/components/layout/PipelineView'
-import { useState, useEffect, useCallback } from 'react'
-import { sprintsService, type Sprint } from '@/services/sprints'
-import { realtimeService } from '@/services/realtime'
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Settings, ArrowLeft } from 'lucide-react';
+import { PipelineView } from '@/components/layout/PipelineView';
+import { useState, useEffect, useCallback } from 'react';
+import { sprintsService, type Sprint } from '@/services/sprints';
+import { realtimeService } from '@/services/realtime';
 
 const PHASE_URL_SUFFIX: Record<string, string> = {
   INCEPTION: '',
   CONSTRUCTION: '/construction',
   REVIEW: '/review',
-}
+};
 
 export function AppSidebar() {
-  const navigate = useNavigate()
-  const params = useParams()
-  const location = useLocation()
-  const [sprint, setSprint] = useState<Sprint | null>(null)
+  const navigate = useNavigate();
+  const params = useParams();
+  const location = useLocation();
+  const [sprint, setSprint] = useState<Sprint | null>(null);
 
-  const projectId = params.projectId || ''
-  const sprintId = params.sprintId || ''
+  const projectId = params.projectId || '';
+  const sprintId = params.sprintId || '';
 
   const loadSprint = useCallback(async () => {
-    if (!projectId || !sprintId) return
+    if (!projectId || !sprintId) return;
     try {
-      const data = await sprintsService.get(projectId, sprintId)
-      setSprint(data)
+      const data = await sprintsService.get(projectId, sprintId);
+      setSprint(data);
     } catch (err) {
-      console.error('Failed to load sprint:', err)
+      console.error('Failed to load sprint:', err);
     }
-  }, [projectId, sprintId])
+  }, [projectId, sprintId]);
 
   useEffect(() => {
-    loadSprint()
-  }, [loadSprint])
+    loadSprint();
+  }, [loadSprint]);
 
   // Re-fetch sprint on agent/phase events and auto-navigate on phase change
   useEffect(() => {
-    if (!sprintId) return
+    if (!sprintId) return;
     const unsubs = [
       realtimeService.on('agent.started', () => loadSprint()),
       realtimeService.on('agent.completed', () => loadSprint()),
       realtimeService.on('agent.error', () => loadSprint()),
       realtimeService.on('sprint.phaseChanged', (data: { phase?: string }) => {
-        loadSprint()
+        loadSprint();
         if (data.phase && PHASE_URL_SUFFIX[data.phase] !== undefined) {
-          navigate(`/project/${projectId}/sprint/${sprintId}${PHASE_URL_SUFFIX[data.phase]}`)
+          navigate(`/project/${projectId}/sprint/${sprintId}${PHASE_URL_SUFFIX[data.phase]}`);
         }
       }),
-    ]
-    return () => unsubs.forEach(unsub => unsub())
-  }, [sprintId, projectId, loadSprint, navigate])
+    ];
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [sprintId, projectId, loadSprint, navigate]);
 
   const currentPhase = location.pathname.includes('/construction')
     ? 'CONSTRUCTION'
     : location.pathname.includes('/review')
-    ? 'REVIEW'
-    : location.pathname.includes('/graph')
-    ? 'GRAPH'
-    : location.pathname.includes('/agent')
-    ? 'AGENT'
-    : 'INCEPTION'
+      ? 'REVIEW'
+      : location.pathname.includes('/graph')
+        ? 'GRAPH'
+        : location.pathname.includes('/agent')
+          ? 'AGENT'
+          : 'INCEPTION';
 
   return (
     <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
@@ -109,5 +109,5 @@ export function AppSidebar() {
         </Button>
       </div>
     </div>
-  )
+  );
 }

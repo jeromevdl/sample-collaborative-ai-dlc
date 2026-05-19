@@ -1,9 +1,9 @@
-import { cn } from '@/lib/utils'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Network, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
-import type { ArtifactNeighbor } from '@/hooks/useSprintGraph'
+import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Network, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import type { ArtifactNeighbor } from '@/hooks/useSprintGraph';
 
 const TYPE_COLORS: Record<string, string> = {
   Requirement: 'bg-orange-500/15 text-orange-600 border-orange-500/30',
@@ -13,7 +13,7 @@ const TYPE_COLORS: Record<string, string> = {
   Review: 'bg-purple-500/15 text-purple-600 border-purple-500/30',
   Question: 'bg-sky-500/15 text-sky-600 border-sky-500/30',
   GeneralInfo: 'bg-blue-500/15 text-blue-600 border-blue-500/30',
-}
+};
 
 const EDGE_LABELS: Record<string, string> = {
   BREAKS_INTO: 'Breaks into',
@@ -24,45 +24,37 @@ const EDGE_LABELS: Record<string, string> = {
   INFLUENCES: 'Influences',
   RELATES_TO: 'Relates to',
   CARRIED_FROM: 'Carried from',
-}
+};
 
 interface ArtifactGraphPopoverProps {
-  neighbors: ArtifactNeighbor[]
-  loading?: boolean
-  className?: string
+  neighbors: ArtifactNeighbor[];
+  loading?: boolean;
+  className?: string;
 }
 
-export function ArtifactGraphPopover({
-  neighbors,
-  loading,
-  className,
-}: ArtifactGraphPopoverProps) {
+export function ArtifactGraphPopover({ neighbors, loading, className }: ArtifactGraphPopoverProps) {
   if (loading) {
     return (
       <Button variant="ghost" size="icon" className={cn('h-6 w-6', className)} disabled>
         <Loader2 className="h-3 w-3 animate-spin" />
       </Button>
-    )
+    );
   }
 
-  if (neighbors.length === 0) return null
+  if (neighbors.length === 0) return null;
 
   // Group by edge label for cleaner display
-  const grouped = new Map<string, ArtifactNeighbor[]>()
-  neighbors.forEach(n => {
-    const key = `${n.direction}:${n.edgeLabel}`
-    if (!grouped.has(key)) grouped.set(key, [])
-    grouped.get(key)!.push(n)
-  })
+  const grouped = new Map<string, ArtifactNeighbor[]>();
+  neighbors.forEach((n) => {
+    const key = `${n.direction}:${n.edgeLabel}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(n);
+  });
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn('h-6 w-6 relative', className)}
-        >
+        <Button variant="ghost" size="icon" className={cn('h-6 w-6 relative', className)}>
           <Network className="h-3 w-3" />
           <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary text-[8px] text-primary-foreground flex items-center justify-center">
             {neighbors.length}
@@ -81,9 +73,10 @@ export function ArtifactGraphPopover({
         </div>
         <div className="max-h-[280px] overflow-y-auto p-2 space-y-2">
           {Array.from(grouped.entries()).map(([key, items]) => {
-            const direction = key.startsWith('outgoing') ? 'outgoing' : 'incoming'
-            const edgeLabel = key.split(':')[1]
-            const readableEdge = EDGE_LABELS[edgeLabel] || edgeLabel.replace(/_/g, ' ').toLowerCase()
+            const direction = key.startsWith('outgoing') ? 'outgoing' : 'incoming';
+            const edgeLabel = key.split(':')[1];
+            const readableEdge =
+              EDGE_LABELS[edgeLabel] || edgeLabel.replace(/_/g, ' ').toLowerCase();
             return (
               <div key={key}>
                 <div className="flex items-center gap-1 mb-1">
@@ -97,11 +90,8 @@ export function ArtifactGraphPopover({
                   </span>
                 </div>
                 <div className="space-y-0.5 ml-4">
-                  {items.map(neighbor => (
-                    <div
-                      key={neighbor.id}
-                      className="flex items-center gap-1.5 py-0.5"
-                    >
+                  {items.map((neighbor) => (
+                    <div key={neighbor.id} className="flex items-center gap-1.5 py-0.5">
                       <Badge
                         variant="outline"
                         className={cn(
@@ -109,7 +99,10 @@ export function ArtifactGraphPopover({
                           TYPE_COLORS[neighbor.type] || 'bg-muted text-muted-foreground',
                         )}
                       >
-                        {neighbor.type.replace('UserStory', 'Story').replace('CodeFile', 'Code').replace('GeneralInfo', 'Info')}
+                        {neighbor.type
+                          .replace('UserStory', 'Story')
+                          .replace('CodeFile', 'Code')
+                          .replace('GeneralInfo', 'Info')}
                       </Badge>
                       <span className="text-[11px] text-foreground truncate" title={neighbor.label}>
                         {neighbor.label}
@@ -118,10 +111,10 @@ export function ArtifactGraphPopover({
                   ))}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

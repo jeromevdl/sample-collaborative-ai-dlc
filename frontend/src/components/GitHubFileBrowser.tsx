@@ -75,9 +75,7 @@ export function GitHubFileBrowser({ owner, repo, branch = 'main' }: GitHubFileBr
     return langMap[ext || ''] || 'text';
   };
 
-  const filteredFiles = files.filter(f => 
-    f.path.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filteredFiles = files.filter((f) => f.path.toLowerCase().includes(filter.toLowerCase()));
 
   const treeData = useMemo(() => {
     const source = filter ? filteredFiles : files;
@@ -88,7 +86,13 @@ export function GitHubFileBrowser({ owner, repo, branch = 'main' }: GitHubFileBr
       if (folders.has(path)) return folders.get(path)!;
       const name = path.split('/').pop()!;
       const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : null;
-      const folder: TreeDataItem = { id: `folder:${path}`, name, icon: Folder, openIcon: Folder, children: [] };
+      const folder: TreeDataItem = {
+        id: `folder:${path}`,
+        name,
+        icon: Folder,
+        openIcon: Folder,
+        children: [],
+      };
       folders.set(path, folder);
       if (parentPath) {
         getOrCreateFolder(parentPath).children!.push(folder);
@@ -101,7 +105,12 @@ export function GitHubFileBrowser({ owner, repo, branch = 'main' }: GitHubFileBr
     for (const file of source) {
       const lastSlash = file.path.lastIndexOf('/');
       const name = lastSlash >= 0 ? file.path.substring(lastSlash + 1) : file.path;
-      const item: TreeDataItem = { id: file.path, name, icon: File, onClick: () => loadFileContent(file.path) };
+      const item: TreeDataItem = {
+        id: file.path,
+        name,
+        icon: File,
+        onClick: () => loadFileContent(file.path),
+      };
       if (lastSlash >= 0) {
         getOrCreateFolder(file.path.substring(0, lastSlash)).children!.push(item);
       } else {
@@ -112,7 +121,9 @@ export function GitHubFileBrowser({ owner, repo, branch = 'main' }: GitHubFileBr
   }, [files, filter, filteredFiles]);
 
   if (loading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading repository files...</div>;
+    return (
+      <div className="text-center py-8 text-muted-foreground">Loading repository files...</div>
+    );
   }
 
   if (error) {
@@ -128,7 +139,7 @@ export function GitHubFileBrowser({ owner, repo, branch = 'main' }: GitHubFileBr
             type="text"
             placeholder="Filter files..."
             value={filter}
-            onChange={e => setFilter(e.target.value)}
+            onChange={(e) => setFilter(e.target.value)}
             className="w-full px-3 py-1.5 text-sm border border-border rounded bg-background text-foreground focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -140,7 +151,9 @@ export function GitHubFileBrowser({ owner, repo, branch = 'main' }: GitHubFileBr
               data={treeData}
               defaultNodeIcon={Folder}
               defaultLeafIcon={File}
-              onSelectChange={(item) => { if (item && !item.children) loadFileContent(item.id); }}
+              onSelectChange={(item) => {
+                if (item && !item.children) loadFileContent(item.id);
+              }}
             />
           )}
         </div>

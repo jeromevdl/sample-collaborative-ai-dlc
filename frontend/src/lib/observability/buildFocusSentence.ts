@@ -19,7 +19,8 @@ export function buildFocusSentence(
     const semantic = semanticTool(lastTool.name);
     if (phase === 'INCEPTION') {
       if (progress?.taskCount) return `${role} — planning (${progress.taskCount} tasks)`;
-      if (progress?.requirementCount) return `${role} — ${semantic} (${progress.requirementCount} req)`;
+      if (progress?.requirementCount)
+        return `${role} — ${semantic} (${progress.requirementCount} req)`;
       return `${role} — ${semantic}`;
     }
     if (phase === 'CONSTRUCTION') {
@@ -34,7 +35,8 @@ export function buildFocusSentence(
   // No live tool — infer from graph state
   if (phase === 'INCEPTION') {
     if (!progress?.requirementCount) return `${role} — analyzing workspace`;
-    if (!progress?.userStoryCount) return `${role} — analyzing ${progress.requirementCount} requirements`;
+    if (!progress?.userStoryCount)
+      return `${role} — analyzing ${progress.requirementCount} requirements`;
     if (!progress?.taskCount) return `${role} — writing user stories`;
     return `${role} — planning ${progress.taskCount} tasks`;
   }

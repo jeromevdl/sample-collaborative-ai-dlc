@@ -1,47 +1,66 @@
-import { useNavigate } from 'react-router-dom'
-import { useEffect, useCallback, useState } from 'react'
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useCallback, useState } from 'react';
 import {
-  CommandDialog, CommandInput, CommandList, CommandEmpty,
-  CommandGroup, CommandItem, CommandSeparator, CommandShortcut,
-} from '@/components/ui/command'
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command';
 import {
-  FolderGit2, Lightbulb, Hammer, Search, Plus,
-  LayoutDashboard, Network, Shield, Activity
-} from 'lucide-react'
-import { projectsService, type Project } from '@/services/projects'
+  FolderGit2,
+  Lightbulb,
+  Hammer,
+  Search,
+  Plus,
+  LayoutDashboard,
+  Network,
+  Shield,
+  Activity,
+} from 'lucide-react';
+import { projectsService, type Project } from '@/services/projects';
 
 interface CommandPaletteProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
-  const navigate = useNavigate()
-  const [projects, setProjects] = useState<Project[]>([])
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState<Project[]>([]);
 
   // Global keyboard shortcut
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        onOpenChange(!open)
+        e.preventDefault();
+        onOpenChange(!open);
       }
-    }
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [open, onOpenChange])
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, [open, onOpenChange]);
 
   // Load projects when opened
   useEffect(() => {
     if (open) {
-      projectsService.list().then(setProjects).catch(() => {})
+      projectsService
+        .list()
+        .then(setProjects)
+        .catch(() => {});
     }
-  }, [open])
+  }, [open]);
 
-  const runCommand = useCallback((command: () => void) => {
-    onOpenChange(false)
-    command()
-  }, [onOpenChange])
+  const runCommand = useCallback(
+    (command: () => void) => {
+      onOpenChange(false);
+      command();
+    },
+    [onOpenChange],
+  );
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
@@ -71,7 +90,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         {/* Projects */}
         {projects.length > 0 && (
           <CommandGroup heading="Projects">
-            {projects.map(project => (
+            {projects.map((project) => (
               <CommandItem
                 key={project.id}
                 onSelect={() => runCommand(() => navigate(`/project/${project.id}`))}
@@ -123,5 +142,5 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         </CommandGroup>
       </CommandList>
     </CommandDialog>
-  )
+  );
 }
