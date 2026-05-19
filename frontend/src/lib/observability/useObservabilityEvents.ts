@@ -34,7 +34,17 @@ export function useObservabilityEvents(cb: Callbacks) {
 
   // Register event handlers once on mount. All callbacks accessed via cbRef to avoid stale closures.
   useEffect(() => {
-    const { addEvent, clearStuck, markBlocked, setLastToolMap, setPendingQuestions, setStuckDetections, refreshProjects, projectsRef, l2 } = cbRef.current;
+    const {
+      addEvent,
+      clearStuck,
+      markBlocked,
+      setLastToolMap,
+      setPendingQuestions,
+      setStuckDetections,
+      refreshProjects,
+      projectsRef,
+      l2,
+    } = cbRef.current;
 
     const unsubs = [
       realtimeService.on('agent.started', (d) => {
@@ -45,7 +55,10 @@ export function useObservabilityEvents(cb: Callbacks) {
       realtimeService.on('agent.completed', (d) => {
         addEvent('agent.completed', d);
         if (d.sprintId) {
-          setPendingQuestions((prev: PendingQuestionsMap) => ({ ...prev, [d.sprintId as string]: 0 }));
+          setPendingQuestions((prev: PendingQuestionsMap) => ({
+            ...prev,
+            [d.sprintId as string]: 0,
+          }));
           clearStuck(d.sprintId as string);
         }
         refreshProjects();
@@ -57,8 +70,13 @@ export function useObservabilityEvents(cb: Callbacks) {
       realtimeService.on('agent.question', (d) => {
         addEvent('agent.question', d);
         if (d.sprintId) {
-          setPendingQuestions((prev: PendingQuestionsMap) => ({ ...prev, [d.sprintId as string]: (prev[d.sprintId as string] ?? 0) + 1 }));
-          const projectName = projectsRef.current?.find(p => p.sprint?.id === d.sprintId)?.project.name ?? 'Unknown';
+          setPendingQuestions((prev: PendingQuestionsMap) => ({
+            ...prev,
+            [d.sprintId as string]: (prev[d.sprintId as string] ?? 0) + 1,
+          }));
+          const projectName =
+            projectsRef.current?.find((p) => p.sprint?.id === d.sprintId)?.project.name ??
+            'Unknown';
           markBlocked(d.sprintId as string, projectName);
         }
       }),
@@ -67,12 +85,19 @@ export function useObservabilityEvents(cb: Callbacks) {
           const toolName = (d.name || d.title || '') as string;
           addEvent('agent.tool', { ...d, detail: toolName });
           if (d.sprintId) {
-            setLastToolMap((prev: LastToolMap) => ({ ...prev, [d.sprintId as string]: { name: toolName, timestamp: Date.now() } }));
-            const projectName = projectsRef.current?.find(p => p.sprint?.id === d.sprintId)?.project.name ?? 'Unknown';
+            setLastToolMap((prev: LastToolMap) => ({
+              ...prev,
+              [d.sprintId as string]: { name: toolName, timestamp: Date.now() },
+            }));
+            const projectName =
+              projectsRef.current?.find((p) => p.sprint?.id === d.sprintId)?.project.name ??
+              'Unknown';
             const detection = l2.current?.recordToolCall(d.sprintId as string, toolName);
             if (detection) {
               setStuckDetections((prev: StuckDetection[]) => {
-                const filtered = prev.filter(s => !(s.sprintId === detection.sprintId && s.reason === 'repeated_tool'));
+                const filtered = prev.filter(
+                  (s) => !(s.sprintId === detection.sprintId && s.reason === 'repeated_tool'),
+                );
                 return [...filtered, { ...detection, projectName }];
               });
             }
@@ -80,6 +105,6 @@ export function useObservabilityEvents(cb: Callbacks) {
         }
       }),
     ];
-    return () => unsubs.forEach(u => u());
+    return () => unsubs.forEach((u) => u());
   }, []); // stable — uses cbRef
 }

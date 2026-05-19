@@ -1,5 +1,5 @@
-import { Outlet } from 'react-router-dom'
-import { SprintProvider } from '@/contexts/SprintContext'
+import { Outlet } from 'react-router-dom';
+import { SprintProvider } from '@/contexts/SprintContext';
 
 /**
  * SprintLayout wraps all phase views (inception, construction, review, graph)
@@ -11,5 +11,5 @@ export function SprintLayout() {
     <SprintProvider>
       <Outlet />
     </SprintProvider>
-  )
+  );
 }

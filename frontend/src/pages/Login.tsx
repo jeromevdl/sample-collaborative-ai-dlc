@@ -16,7 +16,15 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, completeNewPassword, setDisplayName: saveDisplayName, isAuthenticated, isLoading, needsNewPassword, needsDisplayName } = useAuth();
+  const {
+    login,
+    completeNewPassword,
+    setDisplayName: saveDisplayName,
+    isAuthenticated,
+    isLoading,
+    needsNewPassword,
+    needsDisplayName,
+  } = useAuth();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
@@ -35,26 +43,54 @@ export default function Login() {
   if (isAuthenticated && !needsDisplayName) return <Navigate to={from} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(''); setIsSubmitting(true);
-    try { await login(username, password); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Login failed'); }
-    finally { setIsSubmitting(false); }
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await login(username, password);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleNewPassword = async (e: React.FormEvent) => {
-    e.preventDefault(); setError('');
-    if (newPassword !== confirmPassword) { setError('Passwords do not match'); return; }
-    if (newPassword.length < 12) { setError('Password must be at least 12 characters'); return; }
+    e.preventDefault();
+    setError('');
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 12) {
+      setError('Password must be at least 12 characters');
+      return;
+    }
     setIsSubmitting(true);
-    try { await completeNewPassword(newPassword); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Password change failed'); }
-    finally { setIsSubmitting(false); }
+    try {
+      await completeNewPassword(newPassword);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Password change failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDisplayName = async (e: React.FormEvent) => {
-    e.preventDefault(); setError('');
-    if (!displayName.trim() || displayName.trim().length < 2) { setError('Display name must be at least 2 characters'); return; }
+    e.preventDefault();
+    setError('');
+    if (!displayName.trim() || displayName.trim().length < 2) {
+      setError('Display name must be at least 2 characters');
+      return;
+    }
     setIsSubmitting(true);
-    try { await saveDisplayName(displayName.trim()); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to set display name'); }
-    finally { setIsSubmitting(false); }
+    try {
+      await saveDisplayName(displayName.trim());
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to set display name');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const errorBanner = error ? (
@@ -81,10 +117,24 @@ export default function Login() {
               {errorBanner}
               <div>
                 <Label htmlFor="displayName">Display Name</Label>
-                <Input id="displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" disabled={isSubmitting} autoFocus className="mt-1" />
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your name"
+                  disabled={isSubmitting}
+                  autoFocus
+                  className="mt-1"
+                />
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Continue'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  'Continue'
+                )}
               </Button>
             </form>
           </CardContent>
@@ -111,14 +161,36 @@ export default function Login() {
               {errorBanner}
               <div>
                 <Label htmlFor="newPw">New Password</Label>
-                <Input id="newPw" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password" disabled={isSubmitting} className="mt-1" />
+                <Input
+                  id="newPw"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  disabled={isSubmitting}
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label htmlFor="confirmPw">Confirm Password</Label>
-                <Input id="confirmPw" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" disabled={isSubmitting} className="mt-1" />
+                <Input
+                  id="confirmPw"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  disabled={isSubmitting}
+                  className="mt-1"
+                />
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Setting...</> : 'Set Password'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Setting...
+                  </>
+                ) : (
+                  'Set Password'
+                )}
               </Button>
             </form>
           </CardContent>
@@ -144,14 +216,36 @@ export default function Login() {
             {errorBanner}
             <div>
               <Label htmlFor="username">Username</Label>
-              <Input id="username" value={username} onChange={e => setUsername(e.target.value)} placeholder="Username or email" disabled={isSubmitting} autoFocus className="mt-1" />
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username or email"
+                disabled={isSubmitting}
+                autoFocus
+                className="mt-1"
+              />
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" disabled={isSubmitting} className="mt-1" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                disabled={isSubmitting}
+                className="mt-1"
+              />
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</> : 'Sign in'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
             </Button>
           </form>
         </CardContent>

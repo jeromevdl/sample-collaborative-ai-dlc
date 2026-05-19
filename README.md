@@ -19,12 +19,12 @@ AI-DLC is a platform where humans and AI agents collaborate on software developm
 
 ## Prerequisites
 
-| Tool | Version |
-|------|---------|
-| Node.js | 22+ |
-| Terraform | 1.0+ |
-| AWS CLI | v2 |
-| Docker | Recent stable |
+| Tool      | Version       |
+| --------- | ------------- |
+| Node.js   | 22+           |
+| Terraform | 1.0+          |
+| AWS CLI   | v2            |
+| Docker    | Recent stable |
 
 You need an AWS account with permissions to manage VPC, ECS, ECR, Lambda, API Gateway, DynamoDB, Neptune, S3, CloudFront, Cognito, EventBridge, Step Functions, Secrets Manager, and IAM.
 

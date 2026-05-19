@@ -5,6 +5,7 @@
 ## Step 1: Check for Existing Sprint Artifacts
 
 Call `get_sprint_graph` to check the current sprint state:
+
 - **If artifacts exist** (Requirement, UserStory, Task nodes): Resume from current stage (see `common/session-continuity.md`)
 - **If graph is empty**: Continue with new project assessment
 
@@ -21,10 +22,12 @@ Call `get_previous_sprint_summary` to check if previous sprints exist for this p
 ### 1.5.2 Carry Forward Knowledge
 
 If previous sprints are found, call `carry_forward_knowledge` to automatically import:
+
 - All **GeneralInfo** nodes (reverse-engineering findings, design decisions, architecture notes)
 - All **Requirement** nodes (functional requirements, NFRs, acceptance criteria)
 
 These are copied into the current sprint as new nodes with:
+
 - `carried_from_sprint` property linking to the source sprint
 - `CARRIED_FROM` edges linking back to the original nodes
 
@@ -60,6 +63,7 @@ If during context review the agent or user needs more detail about a specific pr
 ## Step 2: Scan Workspace for Existing Code
 
 **Determine if workspace has existing code:**
+
 - Scan workspace for source code files (.java, .py, .js, .ts, .jsx, .tsx, .kt, .kts, .scala, .groovy, .go, .rs, .rb, .php, .c, .h, .cpp, .hpp, .cc, .cs, .fs, etc.)
 - Check for build files (pom.xml, package.json, build.gradle, etc.)
 - Look for project structure indicators
@@ -68,10 +72,12 @@ If during context review the agent or user needs more detail about a specific pr
 ## Step 3: Determine Next Phase
 
 **IF workspace is empty (no existing code)**:
+
 - Set flag: `brownfield = false`
 - Next phase: Requirements Analysis
 
 **IF workspace has existing code**:
+
 - Set flag: `brownfield = true`
 - Check for carried-forward RE artifacts: GeneralInfo nodes with `carried_from_sprint` property AND `type: "reverse-engineering"`
 - Check for fresh RE artifacts: GeneralInfo nodes with `type: "reverse-engineering"` and no `carried_from_sprint` property
@@ -95,6 +101,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ## Step 5: Present Completion Message
 
 **For Brownfield Projects (with previous context):**
+
 ```
 Workspace Detection Complete
 
@@ -106,6 +113,7 @@ Workspace analysis findings:
 ```
 
 **For Brownfield Projects (no previous context):**
+
 ```
 Workspace Detection Complete
 
@@ -116,6 +124,7 @@ Workspace analysis findings:
 ```
 
 **For Greenfield Projects:**
+
 ```
 Workspace Detection Complete
 

@@ -31,7 +31,11 @@ export function useCollaborativeInception(
   userName: string,
   autoSave?: AutoSaveCallbacks,
 ) {
-  const { doc, synced, remoteUsers, setCursor } = useYjsDocument(`inception-${projectId}`, userName, generateColor(userName));
+  const { doc, synced, remoteUsers, setCursor } = useYjsDocument(
+    `inception-${projectId}`,
+    userName,
+    generateColor(userName),
+  );
   const [state, setState] = useState<InceptionState>({
     description: '',
     answers: {},
@@ -101,107 +105,125 @@ export function useCollaborativeInception(
    * Only inserts if the Y.Text is currently empty, so it won't overwrite
    * content that arrived from other Yjs peers.
    */
-  const initDescription = useCallback((text: string) => {
-    if (!doc) return;
-    const descriptionText = doc.getText('description');
-    if (descriptionText.length === 0 && text) {
-      doc.transact(() => {
-        descriptionText.insert(0, text);
-      });
-    }
-  }, [doc]);
+  const initDescription = useCallback(
+    (text: string) => {
+      if (!doc) return;
+      const descriptionText = doc.getText('description');
+      if (descriptionText.length === 0 && text) {
+        doc.transact(() => {
+          descriptionText.insert(0, text);
+        });
+      }
+    },
+    [doc],
+  );
 
   /**
    * Diff-based description setter. Computes minimal edits so remote cursors
    * are preserved and concurrent edits merge correctly via CRDT.
    */
-  const setDescription = useCallback((text: string, cursorPos?: number) => {
-    if (!doc) return;
-    const descriptionText = doc.getText('description');
-    const currentValue = descriptionText.toString();
-    if (currentValue === text) return;
+  const setDescription = useCallback(
+    (text: string, cursorPos?: number) => {
+      if (!doc) return;
+      const descriptionText = doc.getText('description');
+      const currentValue = descriptionText.toString();
+      if (currentValue === text) return;
 
-    const cursor = cursorPos ?? text.length;
-    const diff = simpleDiffStringWithCursor(currentValue, text, cursor);
-    doc.transact(() => {
-      if (diff.remove > 0) descriptionText.delete(diff.index, diff.remove);
-      if (diff.insert) descriptionText.insert(diff.index, diff.insert);
-    });
-  }, [doc]);
+      const cursor = cursorPos ?? text.length;
+      const diff = simpleDiffStringWithCursor(currentValue, text, cursor);
+      doc.transact(() => {
+        if (diff.remove > 0) descriptionText.delete(diff.index, diff.remove);
+        if (diff.insert) descriptionText.insert(diff.index, diff.insert);
+      });
+    },
+    [doc],
+  );
 
   /** Ensure an answer doc exists for a given questionId */
-  const ensureAnswerDoc = useCallback((questionId: string) => {
-    if (!doc) return null;
-    const answersMap = doc.getMap('answers');
-    let answerDoc = answersMap.get(questionId) as Y.Map<any> | undefined;
-    if (!answerDoc) {
-      answerDoc = new Y.Map();
-      answerDoc.set('selections', new Y.Map());
-      answerDoc.set('freeTexts', new Y.Map());
-      answerDoc.set('contributors', new Y.Array());
-      answersMap.set(questionId, answerDoc);
-    }
-    return answerDoc;
-  }, [doc]);
+  const ensureAnswerDoc = useCallback(
+    (questionId: string) => {
+      if (!doc) return null;
+      const answersMap = doc.getMap('answers');
+      let answerDoc = answersMap.get(questionId) as Y.Map<any> | undefined;
+      if (!answerDoc) {
+        answerDoc = new Y.Map();
+        answerDoc.set('selections', new Y.Map());
+        answerDoc.set('freeTexts', new Y.Map());
+        answerDoc.set('contributors', new Y.Array());
+        answersMap.set(questionId, answerDoc);
+      }
+      return answerDoc;
+    },
+    [doc],
+  );
 
   /**
    * Set selected option indices for a sub-question within a question.
    */
-  const updateSelection = useCallback((questionId: string, questionIndex: number, optionIndices: number[]) => {
-    if (!doc) return;
-    doc.transact(() => {
-      const answerDoc = ensureAnswerDoc(questionId);
-      if (!answerDoc) return;
-      const selectionsMap = answerDoc.get('selections') as Y.Map<Y.Array<number>>;
-      const arr = new Y.Array<number>();
-      arr.insert(0, optionIndices);
-      selectionsMap.set(String(questionIndex), arr);
+  const updateSelection = useCallback(
+    (questionId: string, questionIndex: number, optionIndices: number[]) => {
+      if (!doc) return;
+      doc.transact(() => {
+        const answerDoc = ensureAnswerDoc(questionId);
+        if (!answerDoc) return;
+        const selectionsMap = answerDoc.get('selections') as Y.Map<Y.Array<number>>;
+        const arr = new Y.Array<number>();
+        arr.insert(0, optionIndices);
+        selectionsMap.set(String(questionIndex), arr);
 
-      const contributors = answerDoc.get('contributors') as Y.Array<string>;
-      if (!contributors.toArray().includes(userName)) {
-        contributors.push([userName]);
-      }
-    });
-  }, [doc, userName, ensureAnswerDoc]);
+        const contributors = answerDoc.get('contributors') as Y.Array<string>;
+        if (!contributors.toArray().includes(userName)) {
+          contributors.push([userName]);
+        }
+      });
+    },
+    [doc, userName, ensureAnswerDoc],
+  );
 
   /**
    * Diff-based free text updater for a sub-question.
    */
-  const updateFreeText = useCallback((questionId: string, questionIndex: number, text: string, cursorPos?: number) => {
-    if (!doc) return;
-    doc.transact(() => {
-      const answerDoc = ensureAnswerDoc(questionId);
-      if (!answerDoc) return;
-      const freeTextsMap = answerDoc.get('freeTexts') as Y.Map<Y.Text>;
-      const key = String(questionIndex);
-      let textDoc = freeTextsMap.get(key) as Y.Text | undefined;
-      if (!textDoc) {
-        textDoc = new Y.Text();
-        freeTextsMap.set(key, textDoc);
-      }
-      const currentValue = textDoc.toString();
-      if (currentValue !== text) {
-        const cursor = cursorPos ?? text.length;
-        const diff = simpleDiffStringWithCursor(currentValue, text, cursor);
-        if (diff.remove > 0) textDoc.delete(diff.index, diff.remove);
-        if (diff.insert) textDoc.insert(diff.index, diff.insert);
-      }
+  const updateFreeText = useCallback(
+    (questionId: string, questionIndex: number, text: string, cursorPos?: number) => {
+      if (!doc) return;
+      doc.transact(() => {
+        const answerDoc = ensureAnswerDoc(questionId);
+        if (!answerDoc) return;
+        const freeTextsMap = answerDoc.get('freeTexts') as Y.Map<Y.Text>;
+        const key = String(questionIndex);
+        let textDoc = freeTextsMap.get(key) as Y.Text | undefined;
+        if (!textDoc) {
+          textDoc = new Y.Text();
+          freeTextsMap.set(key, textDoc);
+        }
+        const currentValue = textDoc.toString();
+        if (currentValue !== text) {
+          const cursor = cursorPos ?? text.length;
+          const diff = simpleDiffStringWithCursor(currentValue, text, cursor);
+          if (diff.remove > 0) textDoc.delete(diff.index, diff.remove);
+          if (diff.insert) textDoc.insert(diff.index, diff.insert);
+        }
 
-      const contributors = answerDoc.get('contributors') as Y.Array<string>;
-      if (!contributors.toArray().includes(userName)) {
-        contributors.push([userName]);
-      }
-    });
-  }, [doc, userName, ensureAnswerDoc]);
+        const contributors = answerDoc.get('contributors') as Y.Array<string>;
+        if (!contributors.toArray().includes(userName)) {
+          contributors.push([userName]);
+        }
+      });
+    },
+    [doc, userName, ensureAnswerDoc],
+  );
 
-  const setStatus = useCallback((status: InceptionState['status'], startedBy?: string) => {
-    if (!doc) return;
-    const metaMap = doc.getMap('meta');
-    doc.transact(() => {
-      metaMap.set('status', status);
-      if (startedBy) metaMap.set('startedBy', startedBy);
-    });
-  }, [doc]);
+  const setStatus = useCallback(
+    (status: InceptionState['status'], startedBy?: string) => {
+      if (!doc) return;
+      const metaMap = doc.getMap('meta');
+      doc.transact(() => {
+        metaMap.set('status', status);
+        if (startedBy) metaMap.set('startedBy', startedBy);
+      });
+    },
+    [doc],
+  );
 
   const reset = useCallback(() => {
     if (!doc) return;
@@ -215,24 +237,30 @@ export function useCollaborativeInception(
   /**
    * Get the structured answer state for a question.
    */
-  const getAnswer = useCallback((questionId: string): StructuredAnswerState => {
-    return state.answers[questionId] || { answers: [], contributors: [] };
-  }, [state.answers]);
+  const getAnswer = useCallback(
+    (questionId: string): StructuredAnswerState => {
+      return state.answers[questionId] || { answers: [], contributors: [] };
+    },
+    [state.answers],
+  );
 
   /**
    * Snapshot a question's answer state as a StructuredAnswer for submission.
    */
-  const getStructuredAnswer = useCallback((questionId: string, questionCount: number): StructuredAnswer => {
-    const answerState = state.answers[questionId];
-    if (!answerState) {
-      return { answers: Array.from({ length: questionCount }, () => ({ selectedOptions: [] })) };
-    }
-    const answers: QuestionAnswer[] = [];
-    for (let i = 0; i < questionCount; i++) {
-      answers.push(answerState.answers[i] || { selectedOptions: [] });
-    }
-    return { answers };
-  }, [state.answers]);
+  const getStructuredAnswer = useCallback(
+    (questionId: string, questionCount: number): StructuredAnswer => {
+      const answerState = state.answers[questionId];
+      if (!answerState) {
+        return { answers: Array.from({ length: questionCount }, () => ({ selectedOptions: [] })) };
+      }
+      const answers: QuestionAnswer[] = [];
+      for (let i = 0; i < questionCount; i++) {
+        answers.push(answerState.answers[i] || { selectedOptions: [] });
+      }
+      return { answers };
+    },
+    [state.answers],
+  );
 
   // ── Auto-save description to backend ──
   const getDescriptionData = useCallback(() => {
@@ -242,11 +270,14 @@ export function useCollaborativeInception(
     return { description: desc };
   }, [doc, synced]);
 
-  const saveDescription = useCallback(async (data: Record<string, string>) => {
-    if (autoSave?.onSaveDescription && data.description) {
-      await autoSave.onSaveDescription(data.description);
-    }
-  }, [autoSave]);
+  const saveDescription = useCallback(
+    async (data: Record<string, string>) => {
+      if (autoSave?.onSaveDescription && data.description) {
+        await autoSave.onSaveDescription(data.description);
+      }
+    },
+    [autoSave],
+  );
 
   useAutoSave(getDescriptionData, saveDescription, [state.description], {
     enabled: synced && !!autoSave?.onSaveDescription,
@@ -259,8 +290,8 @@ export function useCollaborativeInception(
     if (!doc || !synced || !autoSave?.onSaveDraft) return null;
     const data: Record<string, StructuredAnswer> = {};
     for (const [questionId, answerState] of Object.entries(state.answers)) {
-      const hasData = answerState.answers.some(a =>
-        a.selectedOptions.length > 0 || (a.freeText && a.freeText.length > 0)
+      const hasData = answerState.answers.some(
+        (a) => a.selectedOptions.length > 0 || (a.freeText && a.freeText.length > 0),
       );
       if (hasData) {
         data[questionId] = { answers: answerState.answers };
@@ -270,14 +301,17 @@ export function useCollaborativeInception(
     return data;
   }, [doc, synced, autoSave, state.answers]);
 
-  const saveAnswerDrafts = useCallback(async (data: Record<string, StructuredAnswer>) => {
-    if (!autoSave?.onSaveDraft) return;
-    await Promise.all(
-      Object.entries(data).map(([questionId, draftAnswer]) =>
-        autoSave.onSaveDraft!(questionId, draftAnswer)
-      ),
-    );
-  }, [autoSave]);
+  const saveAnswerDrafts = useCallback(
+    async (data: Record<string, StructuredAnswer>) => {
+      if (!autoSave?.onSaveDraft) return;
+      await Promise.all(
+        Object.entries(data).map(([questionId, draftAnswer]) =>
+          autoSave.onSaveDraft!(questionId, draftAnswer),
+        ),
+      );
+    },
+    [autoSave],
+  );
 
   useAutoSave(getAnswersData, saveAnswerDrafts, [answersKey], {
     enabled: synced && !!autoSave?.onSaveDraft,

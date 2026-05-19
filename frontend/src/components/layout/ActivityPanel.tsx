@@ -1,29 +1,29 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'react-router-dom'
-import { X, Bot, Clock, ChevronDown, Wrench, Check, AlertTriangle, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { realtimeService } from '@/services/realtime'
-import { agentsService } from '@/services/agents'
-import { timelineEventsService, type TimelineEvent } from '@/services/timelineEvents'
-import { useAuth } from '@/contexts/AuthContext'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import { X, Bot, Clock, ChevronDown, Wrench, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { realtimeService } from '@/services/realtime';
+import { agentsService } from '@/services/agents';
+import { timelineEventsService, type TimelineEvent } from '@/services/timelineEvents';
+import { useAuth } from '@/contexts/AuthContext';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface ToolCallEntry {
-  id: string
-  name: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  startedAt: number
-  completedAt?: number
+  id: string;
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startedAt: number;
+  completedAt?: number;
 }
 
 /**
@@ -31,32 +31,32 @@ interface ToolCallEntry {
  * so tool events don't cause text chunks to be dropped.
  */
 class SeqDeduplicator {
-  private seen = new Set<number>()
-  private maxSeen = 0
+  private seen = new Set<number>();
+  private maxSeen = 0;
 
   accept(seq: number | null | undefined): boolean {
-    if (seq == null) return true
-    if (this.seen.has(seq)) return false
-    this.seen.add(seq)
-    this.maxSeen = Math.max(this.maxSeen, seq)
+    if (seq == null) return true;
+    if (this.seen.has(seq)) return false;
+    this.seen.add(seq);
+    this.maxSeen = Math.max(this.maxSeen, seq);
     if (this.seen.size > 1000) {
-      const cutoff = this.maxSeen - 500
+      const cutoff = this.maxSeen - 500;
       for (const s of this.seen) {
-        if (s < cutoff) this.seen.delete(s)
+        if (s < cutoff) this.seen.delete(s);
       }
     }
-    return true
+    return true;
   }
 
   reset() {
-    this.seen.clear()
-    this.maxSeen = 0
+    this.seen.clear();
+    this.maxSeen = 0;
   }
 }
 
 interface ActivityPanelProps {
-  sprintId?: string
-  onClose: () => void
+  sprintId?: string;
+  onClose: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,102 +64,105 @@ interface ActivityPanelProps {
 // ---------------------------------------------------------------------------
 
 export function ActivityPanel({ sprintId, onClose }: ActivityPanelProps) {
-  const { projectId } = useParams<{ projectId: string }>()
-  const { user } = useAuth()
-  const userName = user?.displayName || user?.email || ''
-  const [activeTab, setActiveTab] = useState('agent')
+  const { projectId } = useParams<{ projectId: string }>();
+  const { user } = useAuth();
+  const userName = user?.displayName || user?.email || '';
+  const [activeTab, setActiveTab] = useState('agent');
 
   // -- Agent state --
-  const [streamingText, setStreamingText] = useState('')
-  const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([])
-  const [agentRunning, setAgentRunning] = useState(false)
-  const [agentStatus, setAgentStatus] = useState<string | null>(null)
-  const streamBuffer = useRef('')
+  const [streamingText, setStreamingText] = useState('');
+  const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
+  const [agentRunning, setAgentRunning] = useState(false);
+  const [agentStatus, setAgentStatus] = useState<string | null>(null);
+  const streamBuffer = useRef('');
   // Separate deduplicators per event type to avoid cross-type drops
-  const chunkDedup = useRef(new SeqDeduplicator())
-  const toolDedup = useRef(new SeqDeduplicator())
-  const toolUpdateDedup = useRef(new SeqDeduplicator())
-  const toolCounter = useRef(0)
+  const chunkDedup = useRef(new SeqDeduplicator());
+  const toolDedup = useRef(new SeqDeduplicator());
+  const toolUpdateDedup = useRef(new SeqDeduplicator());
+  const toolCounter = useRef(0);
 
   // -- Timeline state --
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
-  const [timelineLoading, setTimelineLoading] = useState(false)
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   // Fetch timeline events
   const fetchTimeline = useCallback(async () => {
-    if (!sprintId) return
-    setTimelineLoading(true)
+    if (!sprintId) return;
+    setTimelineLoading(true);
     try {
-      const events = await timelineEventsService.list(sprintId)
-      setTimelineEvents(events)
+      const events = await timelineEventsService.list(sprintId);
+      setTimelineEvents(events);
     } catch {
       /* ignore */
     } finally {
-      setTimelineLoading(false)
+      setTimelineLoading(false);
     }
-  }, [sprintId])
+  }, [sprintId]);
 
   useEffect(() => {
-    fetchTimeline()
-    const interval = setInterval(fetchTimeline, 15000)
-    return () => clearInterval(interval)
-  }, [fetchTimeline])
+    fetchTimeline();
+    const interval = setInterval(fetchTimeline, 15000);
+    return () => clearInterval(interval);
+  }, [fetchTimeline]);
 
   // Hydrate agent running state on mount/reload by checking current execution
   useEffect(() => {
-    if (!projectId || !sprintId) return
-    agentsService.getCurrentExecution(projectId, sprintId).then(res => {
-      if (res.status === 'RUNNING') {
-        setAgentRunning(true)
-        setAgentStatus('running')
-      }
-    }).catch(() => {})
-  }, [projectId, sprintId])
+    if (!projectId || !sprintId) return;
+    agentsService
+      .getCurrentExecution(projectId, sprintId)
+      .then((res) => {
+        if (res.status === 'RUNNING') {
+          setAgentRunning(true);
+          setAgentStatus('running');
+        }
+      })
+      .catch(() => {});
+  }, [projectId, sprintId]);
 
   // Subscribe to realtime agent events
   useEffect(() => {
-    if (!sprintId) return
+    if (!sprintId) return;
 
     const unsubs = [
       realtimeService.on('agent.started', () => {
-        streamBuffer.current = ''
-        chunkDedup.current.reset()
-        toolDedup.current.reset()
-        toolUpdateDedup.current.reset()
-        toolCounter.current = 0
-        setStreamingText('')
-        setToolCalls([])
-        setAgentRunning(true)
-        setAgentStatus('running')
+        streamBuffer.current = '';
+        chunkDedup.current.reset();
+        toolDedup.current.reset();
+        toolUpdateDedup.current.reset();
+        toolCounter.current = 0;
+        setStreamingText('');
+        setToolCalls([]);
+        setAgentRunning(true);
+        setAgentStatus('running');
       }),
       realtimeService.on('agent.completed', () => {
-        setAgentRunning(false)
-        setAgentStatus('completed')
-        fetchTimeline()
+        setAgentRunning(false);
+        setAgentStatus('completed');
+        fetchTimeline();
       }),
       realtimeService.on('agent.error', () => {
-        setAgentRunning(false)
-        setAgentStatus('failed')
-        fetchTimeline()
+        setAgentRunning(false);
+        setAgentStatus('failed');
+        fetchTimeline();
       }),
       realtimeService.on('agent.chunk', (data) => {
-        if (!chunkDedup.current.accept(data.seq)) return
-        if (data.agentTaskId) return
+        if (!chunkDedup.current.accept(data.seq)) return;
+        if (data.agentTaskId) return;
         if (data.text) {
-          streamBuffer.current += data.text
-          setStreamingText(streamBuffer.current)
+          streamBuffer.current += data.text;
+          setStreamingText(streamBuffer.current);
         }
       }),
       realtimeService.on('agent.tool', (data) => {
-        if (!toolDedup.current.accept(data.seq)) return
-        const toolName = data.name || data.title
-        const isNewTool = data.status === 'pending' || data.status === 'in_progress'
+        if (!toolDedup.current.accept(data.seq)) return;
+        const toolName = data.name || data.title;
+        const isNewTool = data.status === 'pending' || data.status === 'in_progress';
         if (isNewTool) {
           if (streamBuffer.current && !streamBuffer.current.endsWith('\n\n')) {
-            streamBuffer.current += '\n\n'
-            setStreamingText(streamBuffer.current)
+            streamBuffer.current += '\n\n';
+            setStreamingText(streamBuffer.current);
           }
-          setToolCalls(prev => [
+          setToolCalls((prev) => [
             ...prev,
             {
               id: data.toolCallId || `tool-${++toolCounter.current}`,
@@ -167,60 +170,62 @@ export function ActivityPanel({ sprintId, onClose }: ActivityPanelProps) {
               status: 'pending',
               startedAt: Date.now(),
             },
-          ])
+          ]);
         } else {
-          setToolCalls(prev => {
-            const idx = [...prev].reverse().findIndex(
-              (t) => t.name === toolName && (t.status === 'pending' || t.status === 'running'),
-            )
-            if (idx === -1) return prev
-            const realIdx = prev.length - 1 - idx
-            const updated = [...prev]
+          setToolCalls((prev) => {
+            const idx = [...prev]
+              .reverse()
+              .findIndex(
+                (t) => t.name === toolName && (t.status === 'pending' || t.status === 'running'),
+              );
+            if (idx === -1) return prev;
+            const realIdx = prev.length - 1 - idx;
+            const updated = [...prev];
             updated[realIdx] = {
               ...updated[realIdx],
               status: data.status === 'error' || data.status === 'failed' ? 'failed' : 'completed',
               completedAt: Date.now(),
-            }
-            return updated
-          })
+            };
+            return updated;
+          });
         }
       }),
       realtimeService.on('agent.tool_update', (data) => {
-        if (!toolUpdateDedup.current.accept(data.seq)) return
+        if (!toolUpdateDedup.current.accept(data.seq)) return;
         if (data.toolCallId) {
-          setToolCalls(prev =>
-            prev.map(t =>
+          setToolCalls((prev) =>
+            prev.map((t) =>
               t.id === data.toolCallId
                 ? { ...t, status: data.status === 'error' ? 'failed' : 'running' }
                 : t,
             ),
-          )
+          );
         }
       }),
       // Refresh timeline when artifacts change
       realtimeService.on('artifact.created', () => fetchTimeline()),
       realtimeService.on('agent.question', () => {
         // Timeline event is created server-side in submit-question Lambda (once, not per-client)
-        fetchTimeline()
+        fetchTimeline();
       }),
-    ]
+    ];
 
-    return () => unsubs.forEach(u => u())
-  }, [sprintId, fetchTimeline, userName])
+    return () => unsubs.forEach((u) => u());
+  }, [sprintId, fetchTimeline, userName]);
 
   // Reset state when sprint changes
   useEffect(() => {
-    streamBuffer.current = ''
-    chunkDedup.current.reset()
-    toolDedup.current.reset()
-    toolUpdateDedup.current.reset()
-    toolCounter.current = 0
-    setStreamingText('')
-    setToolCalls([])
-    setAgentRunning(false)
-    setAgentStatus(null)
-    setTimelineEvents([])
-  }, [sprintId])
+    streamBuffer.current = '';
+    chunkDedup.current.reset();
+    toolDedup.current.reset();
+    toolUpdateDedup.current.reset();
+    toolCounter.current = 0;
+    setStreamingText('');
+    setToolCalls([]);
+    setAgentRunning(false);
+    setAgentStatus(null);
+    setTimelineEvents([]);
+  }, [sprintId]);
 
   return (
     <div className="flex h-full w-full flex-col bg-background border-l">
@@ -268,7 +273,7 @@ export function ActivityPanel({ sprintId, onClose }: ActivityPanelProps) {
         )}
       </ScrollArea>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -281,13 +286,13 @@ function AgentTab({
   agentRunning,
   agentStatus,
 }: {
-  streamingText: string
-  toolCalls: ToolCallEntry[]
-  agentRunning: boolean
-  agentStatus: string | null
+  streamingText: string;
+  toolCalls: ToolCallEntry[];
+  agentRunning: boolean;
+  agentStatus: string | null;
 }) {
   if (!agentRunning && !agentStatus && !streamingText && toolCalls.length === 0) {
-    return <AgentIdleState />
+    return <AgentIdleState />;
   }
 
   return (
@@ -295,7 +300,7 @@ function AgentTab({
       {/* Agent stream view */}
       <AgentStreamView
         streamingText={streamingText}
-        toolCalls={toolCalls.map(tc => ({
+        toolCalls={toolCalls.map((tc) => ({
           name: tc.name,
           status: tc.status,
           elapsed: tc.completedAt ? tc.completedAt - tc.startedAt : undefined,
@@ -304,7 +309,7 @@ function AgentTab({
         agentStatus={agentStatus}
       />
     </div>
-  )
+  );
 }
 
 function AgentIdleState() {
@@ -318,7 +323,7 @@ function AgentIdleState() {
         Launch an agent from the main view to see activity here
       </p>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -332,24 +337,28 @@ export function AgentStreamView({
   agentStatus,
   onCancel,
 }: {
-  streamingText: string
-  toolCalls: Array<{ name: string; status: string; elapsed?: number }>
-  isStreaming: boolean
-  agentStatus: string | null
-  onCancel?: () => void
+  streamingText: string;
+  toolCalls: Array<{ name: string; status: string; elapsed?: number }>;
+  isStreaming: boolean;
+  agentStatus: string | null;
+  onCancel?: () => void;
 }) {
-  const [historyExpanded, setHistoryExpanded] = useState(false)
-  const outputRef = useRef<HTMLDivElement>(null)
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const outputRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new content arrives
   useEffect(() => {
     if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [streamingText, toolCalls.length])
+  }, [streamingText, toolCalls.length]);
 
-  const activeTool = [...toolCalls].reverse().find(tc => tc.status === 'pending' || tc.status === 'running')
-  const completedTools = toolCalls.filter(tc => tc.status === 'completed' || tc.status === 'failed')
+  const activeTool = [...toolCalls]
+    .reverse()
+    .find((tc) => tc.status === 'pending' || tc.status === 'running');
+  const completedTools = toolCalls.filter(
+    (tc) => tc.status === 'completed' || tc.status === 'failed',
+  );
 
   return (
     <div className="space-y-3">
@@ -384,7 +393,12 @@ export function AgentStreamView({
           )}
         </div>
         {isStreaming && onCancel && (
-          <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive" onClick={onCancel}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs text-destructive"
+            onClick={onCancel}
+          >
             Cancel
           </Button>
         )}
@@ -395,7 +409,10 @@ export function AgentStreamView({
         <div className="flex items-center gap-2 rounded-md border border-agent-running/30 bg-agent-running/5 px-2.5 py-1.5">
           <Loader2 className="h-3 w-3 text-agent-running animate-spin shrink-0" />
           <span className="text-xs font-mono text-agent-running truncate">{activeTool.name}</span>
-          <Badge variant="outline" className="ml-auto h-4 px-1 text-[9px] border-agent-running/30 text-agent-running shrink-0">
+          <Badge
+            variant="outline"
+            className="ml-auto h-4 px-1 text-[9px] border-agent-running/30 text-agent-running shrink-0"
+          >
             running
           </Badge>
         </div>
@@ -408,7 +425,9 @@ export function AgentStreamView({
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full"
             onClick={() => setHistoryExpanded(!historyExpanded)}
           >
-            <ChevronDown className={cn('h-3 w-3 transition-transform', !historyExpanded && '-rotate-90')} />
+            <ChevronDown
+              className={cn('h-3 w-3 transition-transform', !historyExpanded && '-rotate-90')}
+            />
             <Wrench className="h-3 w-3" />
             <span>Tool history ({completedTools.length})</span>
           </button>
@@ -438,14 +457,9 @@ export function AgentStreamView({
       {streamingText && (
         <>
           <Separator />
-          <div
-            ref={outputRef}
-            className="rounded-md bg-zinc-950 p-3 max-h-[600px] overflow-y-auto"
-          >
+          <div ref={outputRef} className="rounded-md bg-zinc-950 p-3 max-h-[600px] overflow-y-auto">
             <div className="prose prose-invert prose-xs max-w-none [&_p]:text-xs [&_p]:leading-relaxed [&_li]:text-xs [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_pre]:text-[10px] [&_code]:text-[10px]">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {streamingText}
-              </ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
               {isStreaming && (
                 <span className="inline-block w-1.5 h-3.5 bg-zinc-400 animate-pulse ml-0.5 align-middle" />
               )}
@@ -462,7 +476,7 @@ export function AgentStreamView({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -483,20 +497,20 @@ function TimelineTab({ events, loading }: { events: TimelineEvent[]; loading: bo
           </div>
         ))}
       </div>
-    )
+    );
   }
 
   if (events.length === 0) {
-    return <TimelineEmptyState />
+    return <TimelineEmptyState />;
   }
 
   return (
     <div className="p-3 space-y-0">
-      {events.map(event => (
+      {events.map((event) => (
         <TimelineEventItem key={event.id} event={event} />
       ))}
     </div>
-  )
+  );
 }
 
 function TimelineEmptyState() {
@@ -510,7 +524,7 @@ function TimelineEmptyState() {
         Sprint activity will appear here as it happens
       </p>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -518,8 +532,8 @@ function TimelineEmptyState() {
 // ---------------------------------------------------------------------------
 
 export function TimelineEventItem({ event }: { event: TimelineEvent }) {
-  const timeAgo = getTimeAgo(event.timestamp)
-  const { color } = getEventStyle(event.type)
+  const timeAgo = getTimeAgo(event.timestamp);
+  const { color } = getEventStyle(event.type);
 
   return (
     <div className="flex gap-3 py-2">
@@ -540,7 +554,7 @@ export function TimelineEventItem({ event }: { event: TimelineEvent }) {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -548,34 +562,34 @@ export function TimelineEventItem({ event }: { event: TimelineEvent }) {
 // ---------------------------------------------------------------------------
 
 function getTimeAgo(timestamp: string): string {
-  const now = Date.now()
-  const then = new Date(timestamp).getTime()
-  const diff = now - then
-  if (diff < 60000) return 'just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  return `${Math.floor(diff / 86400000)}d ago`
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  const diff = now - then;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
 }
 
 function getEventStyle(type: string): { color: string } {
   switch (type) {
     case 'agent_started':
     case 'agent_completed':
-      return { color: 'bg-phase-inception' }
+      return { color: 'bg-phase-inception' };
     case 'agent_failed':
-      return { color: 'bg-agent-error' }
+      return { color: 'bg-agent-error' };
     case 'question_asked':
     case 'question_answered':
-      return { color: 'bg-agent-waiting' }
+      return { color: 'bg-agent-waiting' };
     case 'artifact_created':
     case 'artifact_updated':
-      return { color: 'bg-agent-success' }
+      return { color: 'bg-agent-success' };
     case 'artifact_deleted':
     case 'started_over':
-      return { color: 'bg-agent-error' }
+      return { color: 'bg-agent-error' };
     case 'phase_changed':
-      return { color: 'bg-phase-construction' }
+      return { color: 'bg-phase-construction' };
     default:
-      return { color: 'bg-muted-foreground' }
+      return { color: 'bg-muted-foreground' };
   }
 }

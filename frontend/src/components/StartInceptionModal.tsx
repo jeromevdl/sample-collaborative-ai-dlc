@@ -14,7 +14,17 @@ interface Props {
   onClose: () => void;
 }
 
-export function StartInceptionModal({ projectId, projectName, gitRepo, userId, userName, collaborators, executionArn, onStart, onClose }: Props) {
+export function StartInceptionModal({
+  projectId,
+  projectName,
+  gitRepo,
+  userId,
+  userName,
+  collaborators,
+  executionArn,
+  onStart,
+  onClose,
+}: Props) {
   const {
     description,
     status,
@@ -30,7 +40,7 @@ export function StartInceptionModal({ projectId, projectName, gitRepo, userId, u
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || status === 'running') return;
-    
+
     setStatus('running', userName);
     try {
       await onStart(description.trim());
@@ -55,18 +65,25 @@ export function StartInceptionModal({ projectId, projectName, gitRepo, userId, u
             {(collaborators.length > 0 || remoteUsersList.length > 0) && (
               <div className="flex -space-x-1 mr-2">
                 {remoteUsersList.map((u, i) => (
-                  <div key={i} className="w-6 h-6 rounded-full text-white text-xs flex items-center justify-center border-2 border-white" style={{ backgroundColor: u.color }} title={u.name}>
+                  <div
+                    key={i}
+                    className="w-6 h-6 rounded-full text-white text-xs flex items-center justify-center border-2 border-white"
+                    style={{ backgroundColor: u.color }}
+                    title={u.name}
+                  >
                     {u.name.charAt(0)}
                   </div>
                 ))}
               </div>
             )}
-            <span className={`px-2 py-1 text-xs rounded ${synced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+            <span
+              className={`px-2 py-1 text-xs rounded ${synced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+            >
               {synced ? '● Live' : '○ Connecting...'}
             </span>
           </div>
         </div>
-        
+
         <p className="text-sm text-gray-600 mb-4">
           Collaborate with your team on the project description. Everyone can edit in real-time.
         </p>
@@ -93,7 +110,9 @@ export function StartInceptionModal({ projectId, projectName, gitRepo, userId, u
         {isStale && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
             <span>Previous agent run ended. Ready to start again.</span>
-            <button onClick={reset} className="text-sm underline hover:no-underline">Reset</button>
+            <button onClick={reset} className="text-sm underline hover:no-underline">
+              Reset
+            </button>
           </div>
         )}
 
@@ -102,18 +121,24 @@ export function StartInceptionModal({ projectId, projectName, gitRepo, userId, u
             Project Description
             <span className="text-xs text-gray-400 ml-2">(collaborative)</span>
           </label>
-          
+
           {/* Remote cursor indicators */}
-          {remoteUsersList.filter(u => u.cursor).length > 0 && (
+          {remoteUsersList.filter((u) => u.cursor).length > 0 && (
             <div className="flex gap-2 mb-1 text-xs">
-              {remoteUsersList.filter(u => u.cursor).map((u, i) => (
-                <span key={i} className="px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: u.color }}>
-                  {u.name} editing
-                </span>
-              ))}
+              {remoteUsersList
+                .filter((u) => u.cursor)
+                .map((u, i) => (
+                  <span
+                    key={i}
+                    className="px-1.5 py-0.5 rounded text-white"
+                    style={{ backgroundColor: u.color }}
+                  >
+                    {u.name} editing
+                  </span>
+                ))}
             </div>
           )}
-          
+
           <CollaborativeTextarea
             value={description}
             onChange={(val, cursor) => setDescription(val, cursor)}

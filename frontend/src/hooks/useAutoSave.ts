@@ -37,8 +37,12 @@ export function useAutoSave<T = Record<string, string>>(
   const mountedRef = useRef(true);
 
   // Keep refs fresh without re-running effects
-  useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
-  useEffect(() => { getDataRef.current = getData; }, [getData]);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+  useEffect(() => {
+    getDataRef.current = getData;
+  }, [getData]);
 
   // Core save function — deduplicates by comparing serialized snapshots
   const doSave = useCallback(async () => {

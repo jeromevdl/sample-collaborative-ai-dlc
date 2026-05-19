@@ -41,13 +41,13 @@ export function useSprintEvents(sprintId: string, onEvent: (event: SprintEvent) 
       'agent.completed',
     ];
 
-    const unsubs = events.map(eventType =>
+    const unsubs = events.map((eventType) =>
       realtimeService.on(eventType, (data: SprintEvent) => {
         // Some agent events don't carry a sprintId — always fire for those
         if (!data.sprintId || data.sprintId === sprintId) onEvent(data);
       }),
     );
 
-    return () => unsubs.forEach(unsub => unsub());
+    return () => unsubs.forEach((unsub) => unsub());
   }, [sprintId, onEvent]);
 }

@@ -19,11 +19,11 @@ Navigate to your organization and choose **New Project**. Enter a name and slug.
 
 ### Project roles
 
-| Role | Can do |
-|------|--------|
-| **Admin** | Manage project members, settings, and repos |
+| Role       | Can do                                             |
+| ---------- | -------------------------------------------------- |
+| **Admin**  | Manage project members, settings, and repos        |
 | **Editor** | Create and edit specs, run inception, start agents |
-| **Viewer** | Read-only access to specs and tasks |
+| **Viewer** | Read-only access to specs and tasks                |
 
 ### Permission resolution
 

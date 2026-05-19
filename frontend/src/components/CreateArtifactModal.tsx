@@ -9,7 +9,13 @@ interface Props {
   onSuccess: () => void;
 }
 
-const ARTIFACT_TYPES: ArtifactType[] = ['Requirement', 'UserStory', 'Task', 'CodeChange', 'ReviewReport'];
+const ARTIFACT_TYPES: ArtifactType[] = [
+  'Requirement',
+  'UserStory',
+  'Task',
+  'CodeChange',
+  'ReviewReport',
+];
 
 export function CreateArtifactModal({ projectId, onClose, onSuccess }: Props) {
   const [type, setType] = useState<ArtifactType>('Requirement');
@@ -38,7 +44,7 @@ export function CreateArtifactModal({ projectId, onClose, onSuccess }: Props) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <h2 className="text-xl font-semibold mb-4">Create Artifact</h2>
-        
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
             {error}
@@ -53,8 +59,10 @@ export function CreateArtifactModal({ projectId, onClose, onSuccess }: Props) {
               onChange={(e) => setType(e.target.value as ArtifactType)}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
-              {ARTIFACT_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
+              {ARTIFACT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
               ))}
             </select>
           </div>

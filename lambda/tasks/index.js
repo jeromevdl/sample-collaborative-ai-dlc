@@ -43,8 +43,13 @@ exports.handler = async (event) => {
           if (!r.value) return res(404, { error: 'Task not found' });
           return res(200, mapTask(r.value));
         }
-        const list = await g.V().has('Sprint', 'id', sprintId)
-          .out('CONTAINS').hasLabel('Task').valueMap().toList();
+        const list = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
+          .valueMap()
+          .toList();
         return res(200, list.map(mapTask));
       }
 
@@ -53,7 +58,10 @@ exports.handler = async (event) => {
         const id = randomUUID();
         const dependencies = data.dependencies || [];
 
-        await g.V().has('Sprint', 'id', sprintId).as('s')
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .as('s')
           .addV('Task')
           .property('id', id)
           .property('title', data.title)
@@ -62,68 +70,125 @@ exports.handler = async (event) => {
           .property('sprint_id', sprintId)
           .property('dependencies', JSON.stringify(dependencies))
           .as('t')
-          .addE('CONTAINS').from_('s').to('t')
+          .addE('CONTAINS')
+          .from_('s')
+          .to('t')
           .next();
 
         // BREAKS_INTO from Requirement and/or UserStory
         if (data.requirementId) {
-          await g.V().has('Requirement', 'id', data.requirementId).as('r')
-            .V().has('Task', 'id', id).as('t')
-            .addE('BREAKS_INTO').from_('r').to('t')
+          await g
+            .V()
+            .has('Requirement', 'id', data.requirementId)
+            .as('r')
+            .V()
+            .has('Task', 'id', id)
+            .as('t')
+            .addE('BREAKS_INTO')
+            .from_('r')
+            .to('t')
             .next();
         }
         if (data.userStoryId) {
-          await g.V().has('UserStory', 'id', data.userStoryId).as('us')
-            .V().has('Task', 'id', id).as('t')
-            .addE('BREAKS_INTO').from_('us').to('t')
+          await g
+            .V()
+            .has('UserStory', 'id', data.userStoryId)
+            .as('us')
+            .V()
+            .has('Task', 'id', id)
+            .as('t')
+            .addE('BREAKS_INTO')
+            .from_('us')
+            .to('t')
             .next();
         }
 
         // DEPENDS_ON edges for task dependencies
         for (const depId of dependencies) {
-          await g.V().has('Task', 'id', id).as('t')
-            .V().has('Task', 'id', depId).as('dep')
-            .addE('DEPENDS_ON').from_('t').to('dep')
+          await g
+            .V()
+            .has('Task', 'id', id)
+            .as('t')
+            .V()
+            .has('Task', 'id', depId)
+            .as('dep')
+            .addE('DEPENDS_ON')
+            .from_('t')
+            .to('dep')
             .next();
         }
 
-        return res(201, { id, title: data.title, description: data.description || '', status: data.status || 'todo', sprintId, dependencies });
+        return res(201, {
+          id,
+          title: data.title,
+          description: data.description || '',
+          status: data.status || 'todo',
+          sprintId,
+          dependencies,
+        });
       }
 
       case 'PUT': {
         const data = JSON.parse(body);
-        if (data.title) await g.V().has('Task', 'id', taskId).property(cardinality.single, 'title', data.title).next();
-        if (data.description !== undefined) await g.V().has('Task', 'id', taskId).property(cardinality.single, 'description', data.description).next();
+        if (data.title)
+          await g
+            .V()
+            .has('Task', 'id', taskId)
+            .property(cardinality.single, 'title', data.title)
+            .next();
+        if (data.description !== undefined)
+          await g
+            .V()
+            .has('Task', 'id', taskId)
+            .property(cardinality.single, 'description', data.description)
+            .next();
         if (data.status) {
-          await g.V().has('Task', 'id', taskId).property(cardinality.single, 'status', data.status).next();
-          
+          await g
+            .V()
+            .has('Task', 'id', taskId)
+            .property(cardinality.single, 'status', data.status)
+            .next();
+
           // When resetting a task back to "todo", clear execution metadata so it can be re-dispatched cleanly.
           // This handles the case where a task was marked "done" or "failed" but the work was lost (e.g. push failed).
           if (data.status === 'todo') {
-            await g.V().has('Task', 'id', taskId)
+            await g
+              .V()
+              .has('Task', 'id', taskId)
               .property(cardinality.single, 'task_execution_id', '')
               .property(cardinality.single, 'task_execution_arn', '')
               .property(cardinality.single, 'task_execution_status', 'reset')
               .next();
           }
         }
-        
+
         // Update dependencies if provided
         if (data.dependencies !== undefined) {
-          await g.V().has('Task', 'id', taskId).property(cardinality.single, 'dependencies', JSON.stringify(data.dependencies)).next();
-          
+          await g
+            .V()
+            .has('Task', 'id', taskId)
+            .property(cardinality.single, 'dependencies', JSON.stringify(data.dependencies))
+            .next();
+
           // Remove old DEPENDS_ON edges
           await g.V().has('Task', 'id', taskId).outE('DEPENDS_ON').drop().next();
-          
+
           // Add new DEPENDS_ON edges
           for (const depId of data.dependencies) {
-            await g.V().has('Task', 'id', taskId).as('t')
-              .V().has('Task', 'id', depId).as('dep')
-              .addE('DEPENDS_ON').from_('t').to('dep')
+            await g
+              .V()
+              .has('Task', 'id', taskId)
+              .as('t')
+              .V()
+              .has('Task', 'id', depId)
+              .as('dep')
+              .addE('DEPENDS_ON')
+              .from_('t')
+              .to('dep')
               .next();
           }
         }
-        
+
         const updated = await g.V().has('Task', 'id', taskId).valueMap().next();
         return res(200, mapTask(updated.value));
       }
@@ -140,6 +205,9 @@ exports.handler = async (event) => {
     console.error('Error:', err);
     return res(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

@@ -6,7 +6,7 @@ const getVerifier = () => {
     verifier = CognitoJwtVerifier.create({
       userPoolId: process.env.COGNITO_USER_POOL_ID,
       tokenUse: 'id',
-      clientId: process.env.COGNITO_CLIENT_ID
+      clientId: process.env.COGNITO_CLIENT_ID,
     });
   }
   return verifier;
@@ -25,7 +25,7 @@ export const handler = async (event) => {
     const payload = await getVerifier().verify(token);
     return generatePolicy(payload.sub, 'Allow', methodArn, {
       userId: payload.sub,
-      userName: payload['cognito:username'] || payload.email || payload.sub
+      userName: payload['cognito:username'] || payload.email || payload.sub,
     });
   } catch (err) {
     console.error('Token verification failed:', err.message);
@@ -37,7 +37,7 @@ const generatePolicy = (principalId, effect, resource, context = {}) => ({
   principalId,
   policyDocument: {
     Version: '2012-10-17',
-    Statement: [{ Action: 'execute-api:Invoke', Effect: effect, Resource: resource }]
+    Statement: [{ Action: 'execute-api:Invoke', Effect: effect, Resource: resource }],
   },
-  context
+  context,
 });

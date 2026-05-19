@@ -28,7 +28,13 @@ function App() {
             <Route path="/github/callback" element={<GitHubCallback />} />
 
             {/* Protected routes with AppShell layout */}
-            <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/observability" element={<ObservabilityPage />} />

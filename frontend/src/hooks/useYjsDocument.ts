@@ -103,7 +103,11 @@ export function useYjsDocument(documentId: string | null, userName?: string, use
               setSynced(true);
             }
           } else if (messageType === 1) {
-            awarenessProtocol.applyAwarenessUpdate(awarenessProt, decoding.readVarUint8Array(decoder), ws);
+            awarenessProtocol.applyAwarenessUpdate(
+              awarenessProt,
+              decoding.readVarUint8Array(decoder),
+              ws,
+            );
           }
         } catch (e) {
           console.log('Yjs message error:', e);
@@ -114,7 +118,7 @@ export function useYjsDocument(documentId: string | null, userName?: string, use
         console.log('Yjs WebSocket closed:', event.code, event.reason);
         setSynced(false);
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        
+
         // Reconnect with exponential backoff
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
@@ -139,13 +143,24 @@ export function useYjsDocument(documentId: string | null, userName?: string, use
       }
     };
 
-    const awarenessHandler = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
+    const awarenessHandler = ({
+      added,
+      updated,
+      removed,
+    }: {
+      added: number[];
+      updated: number[];
+      removed: number[];
+    }) => {
       const ws = wsRef.current;
       const changed = added.concat(updated, removed);
       if (ws && ws.readyState === WebSocket.OPEN) {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, 1);
-        encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(awarenessProt, changed));
+        encoding.writeVarUint8Array(
+          encoder,
+          awarenessProtocol.encodeAwarenessUpdate(awarenessProt, changed),
+        );
         ws.send(encoding.toUint8Array(encoder));
       }
       const users = new Map<number, AwarenessUser>();
@@ -173,9 +188,12 @@ export function useYjsDocument(documentId: string | null, userName?: string, use
     };
   }, [documentId, doc, userName, userColor]);
 
-  const setCursor = useCallback((index: number, length: number = 0) => {
-    awareness?.setLocalStateField('cursor', { index, length });
-  }, [awareness]);
+  const setCursor = useCallback(
+    (index: number, length: number = 0) => {
+      awareness?.setLocalStateField('cursor', { index, length });
+    },
+    [awareness],
+  );
 
   return { doc, synced, awareness, remoteUsers, setCursor };
 }

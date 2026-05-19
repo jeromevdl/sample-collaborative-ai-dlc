@@ -26,8 +26,12 @@ export interface Sprint {
 
 export const sprintsService = {
   list: (projectId: string) => api.get<Sprint[]>(`/projects/${projectId}/sprints`),
-  get: (projectId: string, sprintId: string) => api.get<Sprint>(`/projects/${projectId}/sprints/${sprintId}`),
-  create: (projectId: string, input: { name: string; description?: string }) => api.post<Sprint>(`/projects/${projectId}/sprints`, input),
-  update: (projectId: string, sprintId: string, input: Partial<Sprint>) => api.put<Sprint>(`/projects/${projectId}/sprints/${sprintId}`, input),
-  delete: (projectId: string, sprintId: string) => api.delete(`/projects/${projectId}/sprints/${sprintId}`),
+  get: (projectId: string, sprintId: string) =>
+    api.get<Sprint>(`/projects/${projectId}/sprints/${sprintId}`),
+  create: (projectId: string, input: { name: string; description?: string }) =>
+    api.post<Sprint>(`/projects/${projectId}/sprints`, input),
+  update: (projectId: string, sprintId: string, input: Partial<Sprint>) =>
+    api.put<Sprint>(`/projects/${projectId}/sprints/${sprintId}`, input),
+  delete: (projectId: string, sprintId: string) =>
+    api.delete(`/projects/${projectId}/sprints/${sprintId}`),
 };

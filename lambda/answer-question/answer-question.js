@@ -34,36 +34,47 @@ async function withNeptune(fn) {
 exports.handler = async (event) => {
   const { questionId, structuredAnswer, answeredBy } = JSON.parse(event.body || event);
 
-  const question = await ddb.send(new GetCommand({
-    TableName: process.env.QUESTIONS_TABLE,
-    Key: { questionId }
-  }));
+  const question = await ddb.send(
+    new GetCommand({
+      TableName: process.env.QUESTIONS_TABLE,
+      Key: { questionId },
+    }),
+  );
 
   if (!question.Item || question.Item.status !== 'pending') {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Question not found or already answered' }) };
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Question not found or already answered' }),
+    };
   }
 
-  const structuredAnswerJson = typeof structuredAnswer === 'string' ? structuredAnswer : JSON.stringify(structuredAnswer);
+  const structuredAnswerJson =
+    typeof structuredAnswer === 'string' ? structuredAnswer : JSON.stringify(structuredAnswer);
 
-  await ddb.send(new UpdateCommand({
-    TableName: process.env.QUESTIONS_TABLE,
-    Key: { questionId },
-    UpdateExpression: 'SET #status = :status, structuredAnswer = :structuredAnswer, answeredBy = :answeredBy, answeredAt = :answeredAt',
-    ExpressionAttributeNames: { '#status': 'status' },
-    ExpressionAttributeValues: {
-      ':status': 'answered',
-      ':structuredAnswer': structuredAnswerJson,
-      ':answeredBy': answeredBy,
-      ':answeredAt': Date.now()
-    }
-  }));
+  await ddb.send(
+    new UpdateCommand({
+      TableName: process.env.QUESTIONS_TABLE,
+      Key: { questionId },
+      UpdateExpression:
+        'SET #status = :status, structuredAnswer = :structuredAnswer, answeredBy = :answeredBy, answeredAt = :answeredAt',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: {
+        ':status': 'answered',
+        ':structuredAnswer': structuredAnswerJson,
+        ':answeredBy': answeredBy,
+        ':answeredAt': Date.now(),
+      },
+    }),
+  );
 
   // Update Sprint status back to running
   if (question.Item.sprintId) {
     try {
       await withNeptune(async (g) => {
         const { cardinality } = gremlin.process;
-        await g.V().has('Sprint', 'id', question.Item.sprintId)
+        await g
+          .V()
+          .has('Sprint', 'id', question.Item.sprintId)
           .property(cardinality.single, 'current_agent_status', 'running')
           .next();
       });
@@ -73,10 +84,12 @@ exports.handler = async (event) => {
   }
 
   if (question.Item.taskToken) {
-    await sfn.send(new SendTaskSuccessCommand({
-      taskToken: question.Item.taskToken,
-      output: JSON.stringify({ questionId, structuredAnswer: structuredAnswerJson })
-    }));
+    await sfn.send(
+      new SendTaskSuccessCommand({
+        taskToken: question.Item.taskToken,
+        output: JSON.stringify({ questionId, structuredAnswer: structuredAnswerJson }),
+      }),
+    );
   }
 
   return { statusCode: 200, body: JSON.stringify({ success: true }) };

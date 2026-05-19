@@ -1,5 +1,13 @@
 import { Amplify } from 'aws-amplify';
-import { signIn, signOut, getCurrentUser, fetchAuthSession, fetchUserAttributes, confirmSignIn, updateUserAttributes } from 'aws-amplify/auth';
+import {
+  signIn,
+  signOut,
+  getCurrentUser,
+  fetchAuthSession,
+  fetchUserAttributes,
+  confirmSignIn,
+  updateUserAttributes,
+} from 'aws-amplify/auth';
 
 // Configure Amplify
 Amplify.configure({
@@ -7,8 +15,8 @@ Amplify.configure({
     Cognito: {
       userPoolId: import.meta.env.VITE_AWS_USER_POOL_ID,
       userPoolClientId: import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID,
-    }
-  }
+    },
+  },
 });
 
 export interface User {
@@ -38,22 +46,24 @@ export const authService = {
       } catch {
         // Ignore - user might not be signed in
       }
-      
+
       const result = await signIn({ username, password });
-      
+
       if (result.isSignedIn) {
         return { user: await this.getCurrentUser() };
       }
-      
+
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         return { nextStep: 'NEW_PASSWORD_REQUIRED' };
       }
-      
-      if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_SMS_CODE' || 
-          result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') {
+
+      if (
+        result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_SMS_CODE' ||
+        result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE'
+      ) {
         return { nextStep: 'MFA_REQUIRED' };
       }
-      
+
       throw new Error('Sign in failed');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -125,7 +135,7 @@ export const authService = {
         return {
           accessToken: session.tokens.accessToken.toString(),
           idToken: session.tokens.idToken?.toString() || '',
-          refreshToken: (session.tokens as any).refreshToken?.toString() || ''
+          refreshToken: (session.tokens as any).refreshToken?.toString() || '',
         };
       }
       return null;
@@ -142,5 +152,5 @@ export const authService = {
     } catch {
       return false;
     }
-  }
+  },
 };

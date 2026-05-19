@@ -9,11 +9,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, GitBranch, Trash2, Zap, Calendar } from 'lucide-react';
 const PHASE_VARIANT: Record<string, 'inception' | 'construction' | 'review'> = {
@@ -49,7 +60,9 @@ export default function Project() {
     }
   }, [projectId]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +70,7 @@ export default function Project() {
     setCreating(true);
     try {
       const sprint = await sprintsService.create(projectId, { name: newName, description: '' });
-      setSprints(prev => [...prev, sprint]);
+      setSprints((prev) => [...prev, sprint]);
       setShowCreate(false);
       setNewName('');
     } finally {
@@ -69,7 +82,7 @@ export default function Project() {
     if (!projectId || !confirmDelete) return;
     try {
       await sprintsService.delete(projectId, confirmDelete);
-      setSprints(prev => prev.filter(s => s.id !== confirmDelete));
+      setSprints((prev) => prev.filter((s) => s.id !== confirmDelete));
     } catch (error) {
       console.error('Failed to delete sprint:', error);
     } finally {
@@ -130,7 +143,7 @@ export default function Project() {
         {/* Sprint list */}
         {loading ? (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <Card key={i}>
                 <CardContent className="p-4">
                   <Skeleton className="h-5 w-2/3 mb-2" />
@@ -147,7 +160,9 @@ export default function Project() {
                 <Zap className="h-6 w-6 text-muted-foreground" />
               </div>
               <h3 className="font-semibold mb-1">No sprints yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">Create a sprint to start your development lifecycle</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create a sprint to start your development lifecycle
+              </p>
               <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
                 Create First Sprint
@@ -156,7 +171,7 @@ export default function Project() {
           </Card>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {sprints.map(sprint => (
+            {sprints.map((sprint) => (
               <Card
                 key={sprint.id}
                 className="group cursor-pointer transition-all hover:shadow-md hover:border-foreground/20"
@@ -167,7 +182,10 @@ export default function Project() {
                     <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">
                       {sprint.name}
                     </h3>
-                    <Badge variant={PHASE_VARIANT[sprint.phase] || 'secondary'} className="text-[10px] shrink-0">
+                    <Badge
+                      variant={PHASE_VARIANT[sprint.phase] || 'secondary'}
+                      className="text-[10px] shrink-0"
+                    >
                       {sprint.phase}
                     </Badge>
                   </div>
@@ -180,7 +198,9 @@ export default function Project() {
                     </span>
                     <div className="flex items-center gap-1">
                       {sprint.prUrl && (
-                        <Badge variant="outline" className="text-[9px] h-4">PR</Badge>
+                        <Badge variant="outline" className="text-[9px] h-4">
+                          PR
+                        </Badge>
                       )}
                       {sprint.currentAgentStatus === 'running' && (
                         <span className="relative flex h-2 w-2">
@@ -192,7 +212,10 @@ export default function Project() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(sprint.id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete(sprint.id);
+                        }}
                       >
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
@@ -212,7 +235,8 @@ export default function Project() {
             <DialogHeader>
               <DialogTitle>Create Sprint</DialogTitle>
               <DialogDescription>
-                Create a new sprint to start a development iteration. You'll define the inception prompt after creation.
+                Create a new sprint to start a development iteration. You'll define the inception
+                prompt after creation.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
@@ -220,7 +244,7 @@ export default function Project() {
               <Input
                 id="sprint-name"
                 value={newName}
-                onChange={e => setNewName(e.target.value)}
+                onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g., Sprint 1 - User Authentication"
                 className="mt-1.5"
                 required
@@ -228,7 +252,12 @@ export default function Project() {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={creating}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCreate(false)}
+                disabled={creating}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={creating || !newName.trim()}>

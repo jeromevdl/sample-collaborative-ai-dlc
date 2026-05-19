@@ -5,8 +5,8 @@ The Inception phase is where you define what to build. An AI agent helps break d
 ## How it works
 
 1. You create a sprint and write a description in free-form text:
-    - For a **greenfield project** (from scratch): describe the new system, its goals, constraints, and scope
-    - For a **brownfield project** (existing codebase): describe the feature, issue, or change you want to make
+   - For a **greenfield project** (from scratch): describe the new system, its goals, constraints, and scope
+   - For a **brownfield project** (existing codebase): describe the feature, issue, or change you want to make
 2. You launch the Inception Agent
 3. The agent analyzes the description and asks clarifying questions to remove ambiguity
 4. You answer the questions (structured multiple-choice or free text)

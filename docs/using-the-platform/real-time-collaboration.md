@@ -23,10 +23,10 @@ The chat history is also shared across users. When the LLM assistant responds, a
 
 Your access level determines what you can do in a collaborative session:
 
-| Role | Can edit | Can chat | Can comment |
-|------|----------|----------|-------------|
-| Admin | Yes | Yes | Yes |
-| Editor | Yes | Yes | Yes |
-| Viewer | No (read-only) | No | Yes |
+| Role   | Can edit       | Can chat | Can comment |
+| ------ | -------------- | -------- | ----------- |
+| Admin  | Yes            | Yes      | Yes         |
+| Editor | Yes            | Yes      | Yes         |
+| Viewer | No (read-only) | No       | Yes         |
 
 Read-only access is enforced server-side on the Yjs sync protocol. Viewers receive document updates but their edit attempts are rejected.

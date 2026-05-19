@@ -7,13 +7,15 @@ export const handler = async (event) => {
 
   // If executionId + agentType provided, fetch specific output
   if (executionId && agentType) {
-    const result = await ddb.send(new GetItemCommand({
-      TableName: process.env.AGENT_OUTPUTS_TABLE,
-      Key: {
-        executionId: { S: executionId },
-        agentType: { S: agentType },
-      },
-    }));
+    const result = await ddb.send(
+      new GetItemCommand({
+        TableName: process.env.AGENT_OUTPUTS_TABLE,
+        Key: {
+          executionId: { S: executionId },
+          agentType: { S: agentType },
+        },
+      }),
+    );
 
     if (!result.Item) {
       return { tasks: [], outputText: '' };

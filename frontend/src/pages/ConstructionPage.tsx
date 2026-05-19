@@ -16,9 +16,19 @@ import { Button } from '@/components/ui/button';
 import { PrCheckoutCommand } from '@/components/PrCheckoutCommand';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { AgentStatusBadge } from '@/components/domain/AgentStatusBadge';
@@ -30,8 +40,20 @@ import { GitHubFileBrowser } from '@/components/GitHubFileBrowser';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  Hammer, Loader2, ExternalLink, RefreshCw,
-  ListChecks, Code2, MessageCircleQuestion, GitBranch, Eye, RotateCcw, Wrench, ArrowRight, Folder, X
+  Hammer,
+  Loader2,
+  ExternalLink,
+  RefreshCw,
+  ListChecks,
+  Code2,
+  MessageCircleQuestion,
+  GitBranch,
+  Eye,
+  RotateCcw,
+  Wrench,
+  ArrowRight,
+  Folder,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StructuredAnswer } from '@/services/questions';
@@ -42,7 +64,9 @@ export default function ConstructionPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [showBranchSelector, setShowBranchSelector] = useState(false);
-  const [branchSelectorMode, setBranchSelectorMode] = useState<'construction' | 'create-pr'>('construction');
+  const [branchSelectorMode, setBranchSelectorMode] = useState<'construction' | 'create-pr'>(
+    'construction',
+  );
   const [showGitHub, setShowGitHub] = useState(false);
   const [startingConstruction, setStartingConstruction] = useState(false);
   const [executionArn, setExecutionArn] = useState<string | null>(null);
@@ -50,60 +74,107 @@ export default function ConstructionPage() {
   const [showRerunModal, setShowRerunModal] = useState(false);
   const [changeRequest, setChangeRequest] = useState('');
 
-  const currentUser = { id: user?.username || '', name: user?.displayName || user?.email || '', color: '#f59e0b' };
+  const currentUser = {
+    id: user?.username || '',
+    name: user?.displayName || user?.email || '',
+    color: '#f59e0b',
+  };
   const userName = user?.displayName || user?.email || '';
   const { setActivity } = usePresence(sprintId, currentUser);
 
-  const agentStatus = useAgentStatus({ executionArn, executionId, projectId, sprintId, sprintAgentStatus: sprint?.currentAgentStatus });
-  const constructionStatus = useConstructionStatus({ projectId, sprintId, executionArn, executionId });
-  useSprintEvents(sprintId, useCallback(() => { reload(); }, [reload]));
+  const agentStatus = useAgentStatus({
+    executionArn,
+    executionId,
+    projectId,
+    sprintId,
+    sprintAgentStatus: sprint?.currentAgentStatus,
+  });
+  const constructionStatus = useConstructionStatus({
+    projectId,
+    sprintId,
+    executionArn,
+    executionId,
+  });
+  useSprintEvents(
+    sprintId,
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   // Load project
   useEffect(() => {
-    if (projectId) projectsService.get(projectId).then(setProject).catch(() => {});
+    if (projectId)
+      projectsService
+        .get(projectId)
+        .then(setProject)
+        .catch(() => {});
   }, [projectId]);
 
   // Restore execution (only when sprint is in CONSTRUCTION phase)
   useEffect(() => {
     if (!projectId || !sprintId || sprint?.phase !== 'CONSTRUCTION') return;
-    agentsService.getCurrentExecution(projectId, sprintId).then(exec => {
-      if (exec?.executionArn) { setExecutionArn(exec.executionArn); setExecutionId(exec.executionId || null); }
-    }).catch(() => {});
+    agentsService
+      .getCurrentExecution(projectId, sprintId)
+      .then((exec) => {
+        if (exec?.executionArn) {
+          setExecutionArn(exec.executionArn);
+          setExecutionId(exec.executionId || null);
+        }
+      })
+      .catch(() => {});
   }, [projectId, sprintId, sprint?.phase]);
 
   // Reload on agent artifacts
-  useEffect(() => { if (agentStatus.artifactsUpdated > 0) reload(); }, [agentStatus.artifactsUpdated, reload]);
+  useEffect(() => {
+    if (agentStatus.artifactsUpdated > 0) reload();
+  }, [agentStatus.artifactsUpdated, reload]);
 
   // PR created event
   useEffect(() => {
-    const unsub = realtimeService.on('pr.created', () => { reload(); });
-    return () => { unsub?.(); };
+    const unsub = realtimeService.on('pr.created', () => {
+      reload();
+    });
+    return () => {
+      unsub?.();
+    };
   }, [reload]);
 
-  const allTasksDone = tasks.length > 0 && tasks.every(t => t.status === 'done' || t.status === 'failed');
-  const constructionComplete = allTasksDone && (!agentStatus.status?.status || agentStatus.status.status !== 'RUNNING');
-  
+  const allTasksDone =
+    tasks.length > 0 && tasks.every((t) => t.status === 'done' || t.status === 'failed');
+  const constructionComplete =
+    allTasksDone && (!agentStatus.status?.status || agentStatus.status.status !== 'RUNNING');
+
   // Reload when new questions from the agent arrive
   useEffect(() => {
     if (agentStatus.questions.length > 0) {
       reload();
     }
   }, [agentStatus.questions.length, reload]);
-  
-  const pendingQuestions = questions.filter(q => !q.structuredAnswer).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const pendingQuestions = questions
+    .filter((q) => !q.structuredAnswer)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // Branch is stored on the sprint after first kick-off — skip BranchSelector on re-runs
   const storedBranch = sprint?.branch || null;
   const storedBaseBranch = sprint?.baseBranch || 'main';
 
-  const handleStartConstruction = async (branch: string, baseBranch: string, additionalContext?: string) => {
+  const handleStartConstruction = async (
+    branch: string,
+    baseBranch: string,
+    additionalContext?: string,
+  ) => {
     setStartingConstruction(true);
     setShowBranchSelector(false);
     try {
       // Persist branch on sprint so subsequent runs skip the BranchSelector
       await sprintsService.update(projectId, sprintId, { branch, baseBranch });
       const result = await agentsService.startWorkflow(projectId, {
-        phase: 'construction-orchestrator', sprintId, branch, baseBranch,
+        phase: 'construction-orchestrator',
+        sprintId,
+        branch,
+        baseBranch,
         changeRequest: additionalContext || '',
         event: { event: 'start' },
       });
@@ -112,10 +183,15 @@ export default function ConstructionPage() {
       const title = additionalContext
         ? `Construction re-run: ${additionalContext.slice(0, 60)}`
         : 'Construction agent launched';
-      timelineEventsService.create(sprintId, { type: 'agent_started', title, detail: `Branch: ${branch}`, userName }).catch(() => {});
+      timelineEventsService
+        .create(sprintId, { type: 'agent_started', title, detail: `Branch: ${branch}`, userName })
+        .catch(() => {});
       await reload();
-    } catch (err) { console.error('Failed to start construction:', err); }
-    finally { setStartingConstruction(false); }
+    } catch (err) {
+      console.error('Failed to start construction:', err);
+    } finally {
+      setStartingConstruction(false);
+    }
   };
 
   const handleKickOffConstruction = () => {
@@ -140,14 +216,28 @@ export default function ConstructionPage() {
     try {
       // Re-kick the orchestrator — it will see all tasks done and call trigger_pr_creation
       const result = await agentsService.startWorkflow(projectId, {
-        phase: 'construction-orchestrator', sprintId, branch, baseBranch, event: { event: 'start' },
+        phase: 'construction-orchestrator',
+        sprintId,
+        branch,
+        baseBranch,
+        event: { event: 'start' },
       });
       setExecutionArn(result.executionArn);
       setExecutionId(result.executionId || null);
-      timelineEventsService.create(sprintId, { type: 'agent_started', title: 'PR creation triggered', detail: `Branch: ${branch}`, userName }).catch(() => {});
+      timelineEventsService
+        .create(sprintId, {
+          type: 'agent_started',
+          title: 'PR creation triggered',
+          detail: `Branch: ${branch}`,
+          userName,
+        })
+        .catch(() => {});
       await reload();
-    } catch (err) { console.error('Failed to trigger PR creation:', err); }
-    finally { setStartingConstruction(false); }
+    } catch (err) {
+      console.error('Failed to trigger PR creation:', err);
+    } finally {
+      setStartingConstruction(false);
+    }
   };
 
   const handleKickOffCreatePr = () => {
@@ -162,18 +252,30 @@ export default function ConstructionPage() {
   const handleAnswerQuestion = async (questionId: string, answer: StructuredAnswer) => {
     try {
       await questionsService.update(sprintId, questionId, { structuredAnswer: answer });
-      realtimeService.send('broadcastToDocument', { documentId: `sprint:${sprintId}`, action: 'question.answered', data: { questionId, answer } });
-      timelineEventsService.create(sprintId, { type: 'question_answered', title: 'Answered agent question', userName }).catch(() => {});
+      realtimeService.send('broadcastToDocument', {
+        documentId: `sprint:${sprintId}`,
+        action: 'question.answered',
+        data: { questionId, answer },
+      });
+      timelineEventsService
+        .create(sprintId, { type: 'question_answered', title: 'Answered agent question', userName })
+        .catch(() => {});
       await reload();
-    } catch (err) { console.error('Failed to answer:', err); }
+    } catch (err) {
+      console.error('Failed to answer:', err);
+    }
   };
 
   const handleDismissQuestion = async (questionId: string) => {
-    const dismissed: StructuredAnswer = { answers: [{ selectedOptions: [], freeText: '(dismissed — agent no longer running)' }] };
+    const dismissed: StructuredAnswer = {
+      answers: [{ selectedOptions: [], freeText: '(dismissed — agent no longer running)' }],
+    };
     try {
       await questionsService.update(sprintId, questionId, { structuredAnswer: dismissed });
       await reload();
-    } catch (err) { console.error('Failed to dismiss question:', err); }
+    } catch (err) {
+      console.error('Failed to dismiss question:', err);
+    }
   };
 
   const [approvingPhase, setApprovingPhase] = useState(false);
@@ -182,37 +284,60 @@ export default function ConstructionPage() {
     setApprovingPhase(true);
     try {
       await sprintsService.update(projectId, sprintId, { phase: 'REVIEW' });
-      realtimeService.send('broadcastToDocument', { documentId: `sprint:${sprintId}`, action: 'sprint.phaseChanged', data: { phase: 'REVIEW', sprintId } });
-      timelineEventsService.create(sprintId, { type: 'phase_changed', title: 'Moved to Review phase', userName }).catch(() => {});
+      realtimeService.send('broadcastToDocument', {
+        documentId: `sprint:${sprintId}`,
+        action: 'sprint.phaseChanged',
+        data: { phase: 'REVIEW', sprintId },
+      });
+      timelineEventsService
+        .create(sprintId, { type: 'phase_changed', title: 'Moved to Review phase', userName })
+        .catch(() => {});
       await reload();
-    } catch (err) { console.error('Failed to approve phase:', err); }
-    finally { setApprovingPhase(false); }
+    } catch (err) {
+      console.error('Failed to approve phase:', err);
+    } finally {
+      setApprovingPhase(false);
+    }
   };
 
   const [resettingTaskId, setResettingTaskId] = useState<string | null>(null);
 
   const handleResetTask = async (taskId: string, taskTitle: string) => {
-    if (!confirm(`Reset "${taskTitle}" back to To Do? This will allow it to be re-dispatched on the next construction run.`)) return;
+    if (
+      !confirm(
+        `Reset "${taskTitle}" back to To Do? This will allow it to be re-dispatched on the next construction run.`,
+      )
+    )
+      return;
     setResettingTaskId(taskId);
     try {
       await tasksService.update(sprintId, taskId, { status: 'todo' });
-      timelineEventsService.create(sprintId, { type: 'task_reset', title: `Reset task: ${taskTitle}`, detail: 'Task reset to todo for re-dispatch', userName }).catch(() => {});
+      timelineEventsService
+        .create(sprintId, {
+          type: 'task_reset',
+          title: `Reset task: ${taskTitle}`,
+          detail: 'Task reset to todo for re-dispatch',
+          userName,
+        })
+        .catch(() => {});
       await reload();
-    } catch (err) { console.error('Failed to reset task:', err); }
-    finally { setResettingTaskId(null); }
+    } catch (err) {
+      console.error('Failed to reset task:', err);
+    } finally {
+      setResettingTaskId(null);
+    }
   };
 
   // Group tasks by status
   const tasksByStatus = {
-    todo: tasks.filter(t => t.status === 'todo'),
-    in_progress: tasks.filter(t => t.status === 'in_progress'),
-    done: tasks.filter(t => t.status === 'done'),
-    failed: tasks.filter(t => t.status === 'failed'),
+    todo: tasks.filter((t) => t.status === 'todo'),
+    in_progress: tasks.filter((t) => t.status === 'in_progress'),
+    done: tasks.filter((t) => t.status === 'done'),
+    failed: tasks.filter((t) => t.status === 'failed'),
   };
 
   return (
     <div className="flex flex-col h-full">
-
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
           <div>
@@ -221,32 +346,52 @@ export default function ConstructionPage() {
               Construction Phase -- Build and implement
               {storedBranch && (
                 <span className="ml-2 inline-flex items-center gap-1 text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
-                  <GitBranch className="h-3 w-3" />{storedBranch}
+                  <GitBranch className="h-3 w-3" />
+                  {storedBranch}
                 </span>
               )}
             </p>
           </div>
 
           {/* Pending questions */}
-          {pendingQuestions.map(pq => (
+          {pendingQuestions.map((pq) => (
             <Card key={pq.id} className="border-agent-waiting bg-agent-waiting/5">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageCircleQuestion className="h-4 w-4 text-agent-waiting" />
                     <CardTitle className="text-sm">Agent Question</CardTitle>
-                    <Badge variant="outline" className="text-[10px] bg-agent-waiting/10 border-agent-waiting/30">Needs your input</Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-agent-waiting/10 border-agent-waiting/30"
+                    >
+                      Needs your input
+                    </Badge>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleDismissQuestion(pq.id)} title="Dismiss question">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDismissQuestion(pq.id)}
+                    title="Dismiss question"
+                  >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <QuestionEditor question={pq} sprintId={sprintId} userName={user?.displayName || user?.email || ''}
+                <QuestionEditor
+                  question={pq}
+                  sprintId={sprintId}
+                  userName={user?.displayName || user?.email || ''}
                   onAnswer={(answer) => handleAnswerQuestion(pq.id, answer)}
-                  onAutoSave={async (draft) => { questionsService.update(sprintId, pq.id, { draftAnswer: draft }).catch(() => {}); }}
-                  onFocus={() => setActivity('question', pq.id)} onBlur={() => setActivity('idle')}
+                  onAutoSave={async (draft) => {
+                    questionsService
+                      .update(sprintId, pq.id, { draftAnswer: draft })
+                      .catch(() => {});
+                  }}
+                  onFocus={() => setActivity('question', pq.id)}
+                  onBlur={() => setActivity('idle')}
                 />
               </CardContent>
             </Card>
@@ -260,16 +405,31 @@ export default function ConstructionPage() {
                   <GitBranch className="h-5 w-5 text-agent-success" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Pull Request Created</p>
-                    <a href={sprint.prUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-agent-success hover:underline">
+                    <a
+                      href={sprint.prUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-agent-success hover:underline"
+                    >
                       PR #{sprint.prNumber} -- View on GitHub
                     </a>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(sprint.prUrl!, '_blank')}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => window.open(sprint.prUrl!, '_blank')}
+                  >
                     <ExternalLink className="h-3 w-3" /> View PR
                   </Button>
                 </div>
                 {sprint.prNumber && (
-                  <PrCheckoutCommand prNumber={sprint.prNumber} branch={sprint.branch} baseBranch={sprint.baseBranch} gitRepo={project?.gitRepo} />
+                  <PrCheckoutCommand
+                    prNumber={sprint.prNumber}
+                    branch={sprint.branch}
+                    baseBranch={sprint.baseBranch}
+                    gitRepo={project?.gitRepo}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -279,31 +439,55 @@ export default function ConstructionPage() {
           <div className="flex items-center gap-3 flex-wrap">
             {!constructionComplete ? (
               // In-progress: show primary kick-off button
-              <Button onClick={handleKickOffConstruction}
-                disabled={tasks.length === 0 || startingConstruction || agentStatus.status?.status === 'RUNNING'}
+              <Button
+                onClick={handleKickOffConstruction}
+                disabled={
+                  tasks.length === 0 ||
+                  startingConstruction ||
+                  agentStatus.status?.status === 'RUNNING'
+                }
                 className="gap-2"
               >
-                {startingConstruction ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hammer className="h-4 w-4" />}
-                {startingConstruction ? 'Starting...' : storedBranch ? 'Re-run Construction' : 'Kick-Off Construction'}
+                {startingConstruction ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Hammer className="h-4 w-4" />
+                )}
+                {startingConstruction
+                  ? 'Starting...'
+                  : storedBranch
+                    ? 'Re-run Construction'
+                    : 'Kick-Off Construction'}
               </Button>
             ) : (
               // Complete: show re-run as outline button so it doesn't dominate
-              <Button variant="outline" onClick={handleKickOffConstruction}
+              <Button
+                variant="outline"
+                onClick={handleKickOffConstruction}
                 disabled={startingConstruction || agentStatus.status?.status === 'RUNNING'}
                 className="gap-2"
               >
-                {startingConstruction ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {startingConstruction ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
                 {startingConstruction ? 'Starting...' : 'Re-run Construction'}
               </Button>
             )}
 
             {/* Create PR button — only when no PR yet and construction is complete */}
             {constructionComplete && !sprint?.prUrl && (
-              <Button onClick={handleKickOffCreatePr}
+              <Button
+                onClick={handleKickOffCreatePr}
                 disabled={startingConstruction || agentStatus.status?.status === 'RUNNING'}
                 className="gap-2"
               >
-                {startingConstruction ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4" />}
+                {startingConstruction ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <GitBranch className="h-4 w-4" />
+                )}
                 {startingConstruction ? 'Creating PR...' : 'Create PR'}
               </Button>
             )}
@@ -311,14 +495,25 @@ export default function ConstructionPage() {
             {/* Move to Review button — when construction complete, PR exists, and still in CONSTRUCTION phase */}
             {constructionComplete && sprint?.prUrl && sprint?.phase === 'CONSTRUCTION' && (
               <Button onClick={handleApprovePhase} disabled={approvingPhase} className="gap-2">
-                {approvingPhase ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                {approvingPhase ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-4 w-4" />
+                )}
                 {approvingPhase ? 'Approving...' : 'Approve & Move to Review'}
               </Button>
             )}
 
-            {agentStatus.status?.status === 'RUNNING' && <AgentStatusBadge status="running" agentType="construction" />}
+            {agentStatus.status?.status === 'RUNNING' && (
+              <AgentStatusBadge status="running" agentType="construction" />
+            )}
 
-            <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => setShowGitHub(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 ml-auto"
+              onClick={() => setShowGitHub(true)}
+            >
               <Eye className="h-3.5 w-3.5" /> View Repo Files
             </Button>
           </div>
@@ -327,7 +522,9 @@ export default function ConstructionPage() {
           {constructionComplete && !sprint?.prUrl && agentStatus.status?.status !== 'RUNNING' && (
             <Card className="border-amber-500/50 bg-amber-500/5">
               <CardContent className="p-3 text-sm text-amber-600 dark:text-amber-400">
-                Construction is complete but no Pull Request was created. Click <strong>Create PR</strong> to have the orchestrator create one now, or advance to Review and link a PR manually from there.
+                Construction is complete but no Pull Request was created. Click{' '}
+                <strong>Create PR</strong> to have the orchestrator create one now, or advance to
+                Review and link a PR manually from there.
               </CardContent>
             </Card>
           )}
@@ -337,15 +534,22 @@ export default function ConstructionPage() {
             <div className="flex items-center gap-2">
               <ListChecks className="h-4 w-4" />
               <h2 className="text-sm font-semibold">Tasks</h2>
-              <Badge variant="secondary" className="text-[10px]">{tasks.length}</Badge>
+              <Badge variant="secondary" className="text-[10px]">
+                {tasks.length}
+              </Badge>
               {allTasksDone && tasks.length > 0 && (
-                <Badge className="text-[10px] bg-agent-success/15 text-agent-success border-agent-success/30" variant="outline">All done</Badge>
+                <Badge
+                  className="text-[10px] bg-agent-success/15 text-agent-success border-agent-success/30"
+                  variant="outline"
+                >
+                  All done
+                </Badge>
               )}
             </div>
 
             {/* Kanban columns */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(['todo', 'in_progress', 'done'] as const).map(status => {
+              {(['todo', 'in_progress', 'done'] as const).map((status) => {
                 const statusTasks = tasksByStatus[status] || [];
                 const labels: Record<string, { label: string; color: string }> = {
                   todo: { label: 'To Do', color: 'text-muted-foreground' },
@@ -359,32 +563,60 @@ export default function ConstructionPage() {
                   <div key={status}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className={cn('text-xs font-medium', cfg.color)}>{cfg.label}</span>
-                      <Badge variant="outline" className="h-4 px-1 text-[9px]">{statusTasks.length}</Badge>
+                      <Badge variant="outline" className="h-4 px-1 text-[9px]">
+                        {statusTasks.length}
+                      </Badge>
                     </div>
                     <div className="space-y-2">
-                      {statusTasks.map(task => {
+                      {statusTasks.map((task) => {
                         const stream = constructionStatus.taskStreams[task.id];
                         return (
-                          <Card key={task.id} className={cn('transition-all', status === 'in_progress' && 'border-phase-inception/30')}>
+                          <Card
+                            key={task.id}
+                            className={cn(
+                              'transition-all',
+                              status === 'in_progress' && 'border-phase-inception/30',
+                            )}
+                          >
                             <CardContent className="p-3">
                               <div className="flex items-start gap-2">
-                                <AgentStatusBadge compact status={
-                                  task.status === 'done' ? 'completed'
-                                    : task.status === 'failed' ? 'failed'
-                                    : stream?.activeToolCall ? 'running'
-                                    : task.status === 'in_progress' ? 'running' : 'idle'
-                                } />
+                                <AgentStatusBadge
+                                  compact
+                                  status={
+                                    task.status === 'done'
+                                      ? 'completed'
+                                      : task.status === 'failed'
+                                        ? 'failed'
+                                        : stream?.activeToolCall
+                                          ? 'running'
+                                          : task.status === 'in_progress'
+                                            ? 'running'
+                                            : 'idle'
+                                  }
+                                />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium leading-tight">{task.title}</p>
-                                  {task.description && <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{task.description}</p>}
+                                  {task.description && (
+                                    <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                                      {task.description}
+                                    </p>
+                                  )}
                                 </div>
                                 {task.status === 'done' && (
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0"
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 shrink-0"
                                     title="Reset to To Do"
                                     disabled={resettingTaskId === task.id}
                                     onClick={() => handleResetTask(task.id, task.title)}
                                   >
-                                    <RotateCcw className={cn('h-3 w-3', resettingTaskId === task.id && 'animate-spin')} />
+                                    <RotateCcw
+                                      className={cn(
+                                        'h-3 w-3',
+                                        resettingTaskId === task.id && 'animate-spin',
+                                      )}
+                                    />
                                   </Button>
                                 )}
                               </div>
@@ -395,23 +627,35 @@ export default function ConstructionPage() {
                                     <div className="flex items-center gap-1.5 text-[10px] text-yellow-400">
                                       <Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" />
                                       <Wrench className="h-2.5 w-2.5 shrink-0" />
-                                      <span className="font-mono truncate">{stream.activeToolCall}</span>
+                                      <span className="font-mono truncate">
+                                        {stream.activeToolCall}
+                                      </span>
                                     </div>
                                   )}
                                   {/* Tool call summary */}
                                   {stream.toolCalls && stream.toolCalls.length > 0 && (
                                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                       <Wrench className="h-2.5 w-2.5 shrink-0" />
-                                      <span>{stream.toolCalls.filter(t => t.status === 'completed').length}/{stream.toolCalls.length} tools</span>
+                                      <span>
+                                        {
+                                          stream.toolCalls.filter((t) => t.status === 'completed')
+                                            .length
+                                        }
+                                        /{stream.toolCalls.length} tools
+                                      </span>
                                     </div>
                                   )}
                                   {/* Markdown-rendered streaming text */}
                                   <div className="rounded bg-zinc-950 p-2 max-h-[120px] overflow-y-auto">
                                     <div className="prose prose-invert prose-xs max-w-none [&_p]:text-[10px] [&_p]:leading-relaxed [&_li]:text-[10px] [&_h1]:text-xs [&_h2]:text-xs [&_h3]:text-[10px] [&_pre]:text-[9px] [&_code]:text-[9px]">
                                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {stream.text.length > 1000 ? stream.text.slice(-1000).replace(/^[^\n]*\n/, '') : stream.text}
+                                        {stream.text.length > 1000
+                                          ? stream.text.slice(-1000).replace(/^[^\n]*\n/, '')
+                                          : stream.text}
                                       </ReactMarkdown>
-                                      {stream.activeToolCall && <span className="inline-block w-1 h-2.5 bg-zinc-500 animate-pulse ml-0.5" />}
+                                      {stream.activeToolCall && (
+                                        <span className="inline-block w-1 h-2.5 bg-zinc-500 animate-pulse ml-0.5" />
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -420,7 +664,9 @@ export default function ConstructionPage() {
                           </Card>
                         );
                       })}
-                      {statusTasks.length === 0 && <p className="text-[11px] text-muted-foreground py-2">No tasks</p>}
+                      {statusTasks.length === 0 && (
+                        <p className="text-[11px] text-muted-foreground py-2">No tasks</p>
+                      )}
                     </div>
                   </div>
                 );
@@ -430,19 +676,39 @@ export default function ConstructionPage() {
             {/* Failed tasks */}
             {tasksByStatus.failed.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-agent-error">Failed ({tasksByStatus.failed.length})</span>
+                <span className="text-xs font-medium text-agent-error">
+                  Failed ({tasksByStatus.failed.length})
+                </span>
                 <div className="space-y-2 mt-2">
-                  {tasksByStatus.failed.map(task => (
+                  {tasksByStatus.failed.map((task) => (
                     <div key={task.id} className="flex items-start gap-2">
                       <div className="flex-1">
-                        <ArtifactCard id={task.id} type="task" title={task.title} status="failed"
-                          fields={[{ key: 'description', label: 'Description', value: task.description, multiline: true }]} readOnly />
+                        <ArtifactCard
+                          id={task.id}
+                          type="task"
+                          title={task.title}
+                          status="failed"
+                          fields={[
+                            {
+                              key: 'description',
+                              label: 'Description',
+                              value: task.description,
+                              multiline: true,
+                            },
+                          ]}
+                          readOnly
+                        />
                       </div>
-                      <Button variant="outline" size="sm" className="shrink-0 gap-1.5 mt-1 text-[11px]"
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1.5 mt-1 text-[11px]"
                         disabled={resettingTaskId === task.id}
                         onClick={() => handleResetTask(task.id, task.title)}
                       >
-                        <RotateCcw className={cn('h-3 w-3', resettingTaskId === task.id && 'animate-spin')} />
+                        <RotateCcw
+                          className={cn('h-3 w-3', resettingTaskId === task.id && 'animate-spin')}
+                        />
                         Reset
                       </Button>
                     </div>
@@ -460,7 +726,9 @@ export default function ConstructionPage() {
                   <div className="flex items-center gap-2">
                     <Code2 className="h-4 w-4 text-red-500" />
                     <span className="text-sm font-medium">Code Files</span>
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{codeFiles.length}</Badge>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                      {codeFiles.length}
+                    </Badge>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -475,24 +743,34 @@ export default function ConstructionPage() {
                       }
                       return (
                         <Accordion type="multiple" className="space-y-1">
-                          {Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([folder, files]) => (
-                            <AccordionItem key={folder} value={folder} className="border rounded-md">
-                              <AccordionTrigger className="py-2 px-3 hover:no-underline text-xs">
-                                <div className="flex items-center gap-1.5 font-mono text-muted-foreground">
-                                  <Folder className="h-3.5 w-3.5 shrink-0" />
-                                  {folder}
-                                  <Badge variant="outline" className="h-4 px-1 text-[9px] ml-1">{files.length}</Badge>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="px-3 pb-2">
-                                <div className="space-y-1.5">
-                                  {files.sort((a, b) => a.filePath.localeCompare(b.filePath)).map(file => (
-                                    <CodeFileViewer key={file.id} codeFile={file} />
-                                  ))}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          ))}
+                          {Array.from(grouped.entries())
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([folder, files]) => (
+                              <AccordionItem
+                                key={folder}
+                                value={folder}
+                                className="border rounded-md"
+                              >
+                                <AccordionTrigger className="py-2 px-3 hover:no-underline text-xs">
+                                  <div className="flex items-center gap-1.5 font-mono text-muted-foreground">
+                                    <Folder className="h-3.5 w-3.5 shrink-0" />
+                                    {folder}
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px] ml-1">
+                                      {files.length}
+                                    </Badge>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-3 pb-2">
+                                  <div className="space-y-1.5">
+                                    {files
+                                      .sort((a, b) => a.filePath.localeCompare(b.filePath))
+                                      .map((file) => (
+                                        <CodeFileViewer key={file.id} codeFile={file} />
+                                      ))}
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
                         </Accordion>
                       );
                     })()}
@@ -523,27 +801,43 @@ export default function ConstructionPage() {
             <div>
               <p className="text-xs font-medium mb-1">
                 {constructionComplete ? 'What do you want to build or fix?' : 'Additional context'}
-                {!constructionComplete && <span className="text-muted-foreground font-normal"> (optional)</span>}
+                {!constructionComplete && (
+                  <span className="text-muted-foreground font-normal"> (optional)</span>
+                )}
               </p>
               <Textarea
-                placeholder={constructionComplete
-                  ? 'e.g., Add input validation to all forms, fix the 404 error on the profile page, add a dark mode toggle...'
-                  : 'e.g., Focus on the failing tasks, use PostgreSQL instead of SQLite...'}
+                placeholder={
+                  constructionComplete
+                    ? 'e.g., Add input validation to all forms, fix the 404 error on the profile page, add a dark mode toggle...'
+                    : 'e.g., Focus on the failing tasks, use PostgreSQL instead of SQLite...'
+                }
                 value={changeRequest}
-                onChange={e => setChangeRequest(e.target.value)}
+                onChange={(e) => setChangeRequest(e.target.value)}
                 rows={4}
                 autoFocus
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowRerunModal(false); setChangeRequest(''); }}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRerunModal(false);
+                setChangeRequest('');
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleConfirmRerun}
               disabled={startingConstruction || (constructionComplete && !changeRequest.trim())}
               className="gap-2"
             >
-              {startingConstruction ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {startingConstruction ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               Launch Agent
             </Button>
           </DialogFooter>
@@ -554,31 +848,36 @@ export default function ConstructionPage() {
       {showBranchSelector && project && (
         <BranchSelector
           gitRepo={project.gitRepo}
-          onSelect={(branch, baseBranch) => branchSelectorMode === 'create-pr'
-            ? handleCreatePr(branch, baseBranch)
-            : handleStartConstruction(branch, baseBranch)
+          onSelect={(branch, baseBranch) =>
+            branchSelectorMode === 'create-pr'
+              ? handleCreatePr(branch, baseBranch)
+              : handleStartConstruction(branch, baseBranch)
           }
           onCancel={() => setShowBranchSelector(false)}
         />
       )}
 
       {/* GitHub file browser */}
-      {showGitHub && project && (() => {
-        const [owner, repo] = project.gitRepo.split('/');
-        return (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8">
-            <Card className="w-full max-w-5xl max-h-[80vh] overflow-hidden">
-              <CardHeader className="py-2 px-4 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm">Repository Files</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowGitHub(false)}>Close</Button>
-              </CardHeader>
-              <CardContent className="p-0">
-                <GitHubFileBrowser owner={owner} repo={repo} />
-              </CardContent>
-            </Card>
-          </div>
-        );
-      })()}
+      {showGitHub &&
+        project &&
+        (() => {
+          const [owner, repo] = project.gitRepo.split('/');
+          return (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8">
+              <Card className="w-full max-w-5xl max-h-[80vh] overflow-hidden">
+                <CardHeader className="py-2 px-4 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm">Repository Files</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowGitHub(false)}>
+                    Close
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <GitHubFileBrowser owner={owner} repo={repo} />
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
     </div>
   );
 }

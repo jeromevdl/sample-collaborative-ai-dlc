@@ -1,7 +1,9 @@
 # Units Generation - Detailed Steps
 
 ## Overview
+
 This stage decomposes the system into manageable units of work through two integrated parts:
+
 - **Part 1 - Planning**: Ask questions via `ask_question`, analyze answers, get approval
 - **Part 2 - Generation**: Execute approved plan to create Task nodes in the graph
 
@@ -10,6 +12,7 @@ This stage decomposes the system into manageable units of work through two integ
 **Terminology**: Use "Service" for independently deployable components, "Module" for logical groupings within a service, "Unit of Work" for planning context.
 
 ## Prerequisites
+
 - Workspace Detection must be complete
 - Requirements Analysis recommended
 - Application Design phase REQUIRED
@@ -29,6 +32,7 @@ This stage decomposes the system into manageable units of work through two integ
 ## Step 2: Ask Planning Questions via `ask_question`
 
 Call `ask_question` with batched questions covering relevant areas:
+
 - **Story Grouping** - Only if multiple stories and grouping is unclear
 - **Dependencies** - Only if multiple units and integration approach is ambiguous
 - **Team Alignment** - Only if team structure or ownership is unclear
@@ -43,6 +47,7 @@ Review all answers for ambiguities. If ANY are detected, call `ask_question` aga
 ## Step 4: Request Plan Approval
 
 Call `ask_question` with:
+
 ```
 "Unit of work planning is complete. Based on the design and your answers, I plan to decompose into:
 - [N] units: [list unit names and brief descriptions]
@@ -99,6 +104,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ## Step 7: Request Approval
 
 Call `ask_question` with:
+
 ```
 "Units Generation Complete
 
@@ -116,12 +122,14 @@ Wait for explicit approval. If changes requested, update Task nodes and re-reque
 ## Critical Rules
 
 ### Planning Phase Rules
+
 - Generate ONLY context-relevant questions
 - Analyze all answers for ambiguities before proceeding
 - Resolve ALL ambiguities with follow-up `ask_question` calls
 - Get explicit user approval before generation
 
 ### Generation Phase Rules
+
 - **GRAPH IS SOURCE OF TRUTH**: All units stored as Task nodes with proper edges
 - **EVERY UserStory MUST HAVE AT LEAST ONE Task**: The construction per-unit loop iterates over Task nodes. If a UserStory has no Task, its work will never be executed.
 - **USE APPROVED APPROACH**: Follow the decomposition methodology from Planning

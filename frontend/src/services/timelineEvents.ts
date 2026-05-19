@@ -34,8 +34,7 @@ export interface CreateTimelineEventInput {
 }
 
 export const timelineEventsService = {
-  list: (sprintId: string) =>
-    api.get<TimelineEvent[]>(`/sprints/${sprintId}/timeline-events`),
+  list: (sprintId: string) => api.get<TimelineEvent[]>(`/sprints/${sprintId}/timeline-events`),
   create: (sprintId: string, input: CreateTimelineEventInput) =>
     api.post<TimelineEvent>(`/sprints/${sprintId}/timeline-events`, input),
 };

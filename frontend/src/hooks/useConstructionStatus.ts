@@ -46,12 +46,21 @@ class SeqDeduplicator {
   }
 }
 
-export function useConstructionStatus({ projectId, sprintId, executionArn, executionId }: UseConstructionStatusOptions) {
+export function useConstructionStatus({
+  projectId,
+  sprintId,
+  executionArn,
+  executionId,
+}: UseConstructionStatusOptions) {
   const [orchestratorStatus, setOrchestratorStatus] = useState<string | null>(null);
   const [taskStatuses, setTaskStatuses] = useState<TaskAgentStatus[]>([]);
   const [questions, setQuestions] = useState<AgentQuestion[]>([]);
   const [taskStreams, setTaskStreams] = useState<Record<string, TaskStream>>({});
-  const [orchestratorStream, setOrchestratorStream] = useState<TaskStream>({ text: '', activeToolCall: null, toolCalls: [] });
+  const [orchestratorStream, setOrchestratorStream] = useState<TaskStream>({
+    text: '',
+    activeToolCall: null,
+    toolCalls: [],
+  });
   const streamBuffers = useRef<Record<string, string>>({});
   // Separate deduplicators per event type
   const chunkDedup = useRef(new SeqDeduplicator());
@@ -98,11 +107,16 @@ export function useConstructionStatus({ projectId, sprintId, executionArn, execu
         const buf = (streamBuffers.current[taskId] || '') + (data.text || '');
         streamBuffers.current[taskId] = buf;
         if (taskId === 'orchestrator' || !data.agentTaskId) {
-          setOrchestratorStream(prev => ({ ...prev, text: buf }));
+          setOrchestratorStream((prev) => ({ ...prev, text: buf }));
         } else {
-          setTaskStreams(prev => ({
+          setTaskStreams((prev) => ({
             ...prev,
-            [taskId]: { ...prev[taskId], text: buf, activeToolCall: prev[taskId]?.activeToolCall || null, toolCalls: prev[taskId]?.toolCalls || [] },
+            [taskId]: {
+              ...prev[taskId],
+              text: buf,
+              activeToolCall: prev[taskId]?.activeToolCall || null,
+              toolCalls: prev[taskId]?.toolCalls || [],
+            },
           }));
         }
       }),
@@ -117,17 +131,22 @@ export function useConstructionStatus({ projectId, sprintId, executionArn, execu
           if (isNewTool) {
             const counter = (toolCallCounters.current[taskId] || 0) + 1;
             toolCallCounters.current[taskId] = counter;
-            return [...prev, {
-              id: data.toolCallId || `tool-${taskId}-${counter}`,
-              name: toolName,
-              status: 'pending',
-              startedAt: Date.now(),
-            }];
+            return [
+              ...prev,
+              {
+                id: data.toolCallId || `tool-${taskId}-${counter}`,
+                name: toolName,
+                status: 'pending',
+                startedAt: Date.now(),
+              },
+            ];
           }
           // Mark latest matching pending tool as completed
-          const idx = [...prev].reverse().findIndex(
-            t => t.name === toolName && (t.status === 'pending' || t.status === 'running')
-          );
+          const idx = [...prev]
+            .reverse()
+            .findIndex(
+              (t) => t.name === toolName && (t.status === 'pending' || t.status === 'running'),
+            );
           if (idx === -1) return prev;
           const realIdx = prev.length - 1 - idx;
           const updated = [...prev];
@@ -140,16 +159,28 @@ export function useConstructionStatus({ projectId, sprintId, executionArn, execu
         };
 
         if (taskId === 'orchestrator' || !data.agentTaskId) {
-          if (isNewTool && streamBuffers.current[taskId] && !streamBuffers.current[taskId].endsWith('\n\n')) {
+          if (
+            isNewTool &&
+            streamBuffers.current[taskId] &&
+            !streamBuffers.current[taskId].endsWith('\n\n')
+          ) {
             streamBuffers.current[taskId] += '\n\n';
-            setOrchestratorStream(prev => ({ ...prev, text: streamBuffers.current[taskId] }));
+            setOrchestratorStream((prev) => ({ ...prev, text: streamBuffers.current[taskId] }));
           }
-          setOrchestratorStream(prev => ({ ...prev, activeToolCall: toolCall, toolCalls: updateToolCalls(prev.toolCalls) }));
+          setOrchestratorStream((prev) => ({
+            ...prev,
+            activeToolCall: toolCall,
+            toolCalls: updateToolCalls(prev.toolCalls),
+          }));
         } else {
-          if (isNewTool && streamBuffers.current[taskId] && !streamBuffers.current[taskId].endsWith('\n\n')) {
+          if (
+            isNewTool &&
+            streamBuffers.current[taskId] &&
+            !streamBuffers.current[taskId].endsWith('\n\n')
+          ) {
             streamBuffers.current[taskId] += '\n\n';
           }
-          setTaskStreams(prev => ({
+          setTaskStreams((prev) => ({
             ...prev,
             [taskId]: {
               text: prev[taskId]?.text || '',
@@ -164,15 +195,23 @@ export function useConstructionStatus({ projectId, sprintId, executionArn, execu
         if (!data.toolCallId) return;
         const taskId = data.agentTaskId || 'orchestrator';
         const updateTool = (prev: ToolCallEvent[]): ToolCallEvent[] =>
-          prev.map(t => t.id === data.toolCallId ? { ...t, status: data.status === 'error' ? 'failed' : 'running' } : t);
+          prev.map((t) =>
+            t.id === data.toolCallId
+              ? { ...t, status: data.status === 'error' ? 'failed' : 'running' }
+              : t,
+          );
 
         if (taskId === 'orchestrator' || !data.agentTaskId) {
-          setOrchestratorStream(prev => ({ ...prev, toolCalls: updateTool(prev.toolCalls) }));
+          setOrchestratorStream((prev) => ({ ...prev, toolCalls: updateTool(prev.toolCalls) }));
         } else {
-          setTaskStreams(prev => prev[taskId] ? {
-            ...prev,
-            [taskId]: { ...prev[taskId], toolCalls: updateTool(prev[taskId].toolCalls) },
-          } : prev);
+          setTaskStreams((prev) =>
+            prev[taskId]
+              ? {
+                  ...prev,
+                  [taskId]: { ...prev[taskId], toolCalls: updateTool(prev[taskId].toolCalls) },
+                }
+              : prev,
+          );
         }
       }),
       realtimeService.on('agent.completed', () => {
@@ -187,17 +226,21 @@ export function useConstructionStatus({ projectId, sprintId, executionArn, execu
         refreshTasks();
       }),
       realtimeService.on('agent.question', (data) => {
-        setQuestions(prev => [...prev, data]);
+        setQuestions((prev) => [...prev, data]);
       }),
     ];
-    return () => unsubs.forEach(u => u());
+    return () => unsubs.forEach((u) => u());
   }, [refreshTasks, refreshOrchestrator]);
 
   const answerQuestion = async (questionId: string, structuredAnswer: StructuredAnswer) => {
     const key = executionId || executionArn;
     if (!key) return;
     await agentsService.answerQuestion(key, questionId, structuredAnswer);
-    setQuestions(prev => prev.map(q => q.questionId === questionId ? { ...q, status: 'answered' as const, structuredAnswer } : q));
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.questionId === questionId ? { ...q, status: 'answered' as const, structuredAnswer } : q,
+      ),
+    );
   };
 
   return {

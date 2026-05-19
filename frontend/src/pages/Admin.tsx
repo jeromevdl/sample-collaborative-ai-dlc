@@ -1,5 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { agentsService, type PoolWorker, type PoolStatus, type AgentSettings } from '@/services/agents';
+import {
+  agentsService,
+  type PoolWorker,
+  type PoolStatus,
+  type AgentSettings,
+} from '@/services/agents';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,21 +13,34 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import {
-  RefreshCw, Flame, Recycle, Skull,
-  Server, Activity, Clock, AlertTriangle,
-  CircleDot, Loader2, CheckCircle2, XCircle, Settings,
+  RefreshCw,
+  Flame,
+  Recycle,
+  Skull,
+  Server,
+  Activity,
+  Clock,
+  AlertTriangle,
+  CircleDot,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Settings,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<string, {
-  label: string;
-  className: string;
-  dotClassName: string;
-  rowClassName: string;
-}> = {
+const STATUS_CONFIG: Record<
+  string,
+  {
+    label: string;
+    className: string;
+    dotClassName: string;
+    rowClassName: string;
+  }
+> = {
   idle: {
     label: 'Idle',
     className: 'bg-agent-success/15 text-agent-success border-agent-success/30',
@@ -57,9 +75,9 @@ const STATUS_CONFIG: Record<string, {
 
 // Per-CLI badge styles shown next to the job type in the worker table
 const CLI_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
-  kiro:     { label: 'kiro',      className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  claude:   { label: 'claude',    className: 'bg-violet-100 text-violet-700 border-violet-200' },
-  opencode: { label: 'opencode',  className: 'bg-teal-100 text-teal-700 border-teal-200' },
+  kiro: { label: 'kiro', className: 'bg-amber-100 text-amber-700 border-amber-200' },
+  claude: { label: 'claude', className: 'bg-violet-100 text-violet-700 border-violet-200' },
+  opencode: { label: 'opencode', className: 'bg-teal-100 text-teal-700 border-teal-200' },
 };
 
 function timeAgo(ts?: number) {
@@ -107,12 +125,13 @@ export default function Admin() {
   }, [refresh]);
 
   useEffect(() => {
-    agentsService.getSettings()
-      .then(s => {
+    agentsService
+      .getSettings()
+      .then((s) => {
         setSettings(s);
         setMcpServers(s.mcpServers);
       })
-      .catch(e => console.error('Failed to load settings:', e))
+      .catch((e) => console.error('Failed to load settings:', e))
       .finally(() => setSettingsLoading(false));
   }, []);
 
@@ -165,9 +184,9 @@ export default function Admin() {
 
   const workers = pool?.workers || [];
   const currentVersion = pool?.currentVersion || '\u2014';
-  const idle = workers.filter(w => w.status === 'idle');
-  const busy = workers.filter(w => w.status === 'busy' || w.status === 'assigned');
-  const stale = workers.filter(w => w.version !== pool?.currentVersion);
+  const idle = workers.filter((w) => w.status === 'idle');
+  const busy = workers.filter((w) => w.status === 'busy' || w.status === 'assigned');
+  const stale = workers.filter((w) => w.version !== pool?.currentVersion);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -237,7 +256,7 @@ export default function Admin() {
                 min={1}
                 max={10}
                 value={warmCount}
-                onChange={e => setWarmCount(Number(e.target.value))}
+                onChange={(e) => setWarmCount(Number(e.target.value))}
                 className="w-16 h-8 text-sm"
               />
               <Button
@@ -331,16 +350,14 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {workers.map(w => (
+                  {workers.map((w) => (
                     <WorkerRow
                       key={w.workerId}
                       worker={w}
                       currentVersion={pool?.currentVersion || ''}
                       acting={acting}
                       onKill={() =>
-                        act(`kill-${w.workerId}`, () =>
-                          agentsService.killWorker(w.workerId),
-                        )
+                        act(`kill-${w.workerId}`, () => agentsService.killWorker(w.workerId))
                       }
                     />
                   ))}
@@ -358,7 +375,8 @@ export default function Admin() {
               Agent Settings
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Stored in AWS SSM Parameter Store. Changes take effect on the next agent container startup.
+              Stored in AWS SSM Parameter Store. Changes take effect on the next agent container
+              startup.
             </p>
           </CardHeader>
           <CardContent className="px-5 pb-5 space-y-5">
@@ -387,14 +405,22 @@ export default function Admin() {
                   </label>
                   <Input
                     type="password"
-                    placeholder={settings?.bedrockBearerTokenSet ? 'Enter new token to rotate, or leave blank' : 'Enter AWS_BEARER_TOKEN_BEDROCK value'}
+                    placeholder={
+                      settings?.bedrockBearerTokenSet
+                        ? 'Enter new token to rotate, or leave blank'
+                        : 'Enter AWS_BEARER_TOKEN_BEDROCK value'
+                    }
                     value={bearerToken}
-                    onChange={e => setBearerToken(e.target.value)}
+                    onChange={(e) => setBearerToken(e.target.value)}
                     className="font-mono text-sm h-9"
                     autoComplete="off"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Optional. When set, agents use this as <code className="bg-muted px-1 rounded text-[10px]">AWS_BEARER_TOKEN_BEDROCK</code> instead of the ECS task IAM role. Clear by saving an empty value.
+                    Optional. When set, agents use this as{' '}
+                    <code className="bg-muted px-1 rounded text-[10px]">
+                      AWS_BEARER_TOKEN_BEDROCK
+                    </code>{' '}
+                    instead of the ECS task IAM role. Clear by saving an empty value.
                   </p>
                 </div>
 
@@ -414,25 +440,28 @@ export default function Admin() {
                   </label>
                   <Input
                     type="password"
-                    placeholder={settings?.kiroApiKeySet ? 'Enter new key to rotate, or leave blank' : 'Enter KIRO_API_KEY value'}
+                    placeholder={
+                      settings?.kiroApiKeySet
+                        ? 'Enter new key to rotate, or leave blank'
+                        : 'Enter KIRO_API_KEY value'
+                    }
                     value={kiroApiKey}
-                    onChange={e => setKiroApiKey(e.target.value)}
+                    onChange={(e) => setKiroApiKey(e.target.value)}
                     className="font-mono text-sm h-9"
                     autoComplete="off"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Required for Kiro CLI. Obtain from your Kiro account settings. Clear by saving an empty value.
+                    Required for Kiro CLI. Obtain from your Kiro account settings. Clear by saving
+                    an empty value.
                   </p>
                 </div>
 
                 {/* Extra MCP Servers */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground">
-                    Extra MCP Servers
-                  </label>
+                  <label className="text-xs font-medium text-foreground">Extra MCP Servers</label>
                   <Textarea
                     value={mcpServers}
-                    onChange={e => {
+                    onChange={(e) => {
                       setMcpServers(e.target.value);
                       setMcpError('');
                     }}
@@ -448,8 +477,11 @@ export default function Admin() {
                     </p>
                   ) : (
                     <p className="text-[11px] text-muted-foreground">
-                      JSON array of MCP server definitions injected into every agent session. Example:
-                      {' '}<code className="bg-muted px-1 rounded text-[10px]">{'[{"name":"my-tool","command":"npx","args":["-y","my-mcp-server"]}]'}</code>
+                      JSON array of MCP server definitions injected into every agent session.
+                      Example:{' '}
+                      <code className="bg-muted px-1 rounded text-[10px]">
+                        {'[{"name":"my-tool","command":"npx","args":["-y","my-mcp-server"]}]'}
+                      </code>
                     </p>
                   )}
                 </div>
@@ -462,9 +494,7 @@ export default function Admin() {
                     disabled={settingsSaving}
                     className="gap-1.5"
                   >
-                    {settingsSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : null}
+                    {settingsSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                     {settingsSaving ? 'Saving\u2026' : 'Save Settings'}
                   </Button>
                   {settingsSaveResult === 'saved' && (
@@ -556,11 +586,17 @@ function WorkerRow({
     >
       {/* Worker ID */}
       <td className="px-4 py-2.5">
-        <span className="font-mono text-xs truncate block max-w-[180px]" title={w.taskArn || w.workerId}>
+        <span
+          className="font-mono text-xs truncate block max-w-[180px]"
+          title={w.taskArn || w.workerId}
+        >
           {w.workerId}
         </span>
         {w.taskArn && (
-          <span className="text-[10px] text-muted-foreground/60 font-mono block truncate max-w-[180px]" title={w.taskArn}>
+          <span
+            className="text-[10px] text-muted-foreground/60 font-mono block truncate max-w-[180px]"
+            title={w.taskArn}
+          >
             ECS: {w.taskArn.split('/').pop()}
           </span>
         )}
@@ -576,11 +612,16 @@ function WorkerRow({
 
       {/* Version */}
       <td className="px-4 py-2.5">
-        <span className={cn('text-xs font-mono', isStale ? 'text-agent-error' : 'text-agent-success')}>
+        <span
+          className={cn('text-xs font-mono', isStale ? 'text-agent-error' : 'text-agent-success')}
+        >
           {w.version}
         </span>
         {isStale && (
-          <Badge variant="outline" className="ml-1.5 text-[9px] h-4 px-1 border-agent-error/30 text-agent-error bg-agent-error/10">
+          <Badge
+            variant="outline"
+            className="ml-1.5 text-[9px] h-4 px-1 border-agent-error/30 text-agent-error bg-agent-error/10"
+          >
             stale
           </Badge>
         )}
@@ -591,10 +632,19 @@ function WorkerRow({
         {w.job ? (
           <span className="inline-flex items-center gap-1 font-mono text-[11px]">
             {/* CLI badges — one per available CLI */}
-            {(w.availableClis?.length ? w.availableClis : [w.agentCli || 'kiro']).map(cli => {
-              const cliBadge = CLI_BADGE_CONFIG[cli] || { label: cli, className: 'bg-gray-100 text-gray-600 border-gray-200' };
+            {(w.availableClis?.length ? w.availableClis : [w.agentCli || 'kiro']).map((cli) => {
+              const cliBadge = CLI_BADGE_CONFIG[cli] || {
+                label: cli,
+                className: 'bg-gray-100 text-gray-600 border-gray-200',
+              };
               return (
-                <span key={cli} className={cn('text-[9px] px-1.5 py-0.5 rounded border font-sans font-medium', cliBadge.className)}>
+                <span
+                  key={cli}
+                  className={cn(
+                    'text-[9px] px-1.5 py-0.5 rounded border font-sans font-medium',
+                    cliBadge.className,
+                  )}
+                >
                   {cliBadge.label}
                 </span>
               );
@@ -606,10 +656,19 @@ function WorkerRow({
         ) : (
           <span className="inline-flex items-center gap-1 flex-wrap">
             {/* Show available CLIs */}
-            {(w.availableClis || []).map(cli => {
-              const cliBadge = CLI_BADGE_CONFIG[cli] || { label: cli, className: 'bg-gray-100 text-gray-600 border-gray-200' };
+            {(w.availableClis || []).map((cli) => {
+              const cliBadge = CLI_BADGE_CONFIG[cli] || {
+                label: cli,
+                className: 'bg-gray-100 text-gray-600 border-gray-200',
+              };
               return (
-                <span key={cli} className={cn('text-[9px] px-1.5 py-0.5 rounded border font-sans font-medium', cliBadge.className)}>
+                <span
+                  key={cli}
+                  className={cn(
+                    'text-[9px] px-1.5 py-0.5 rounded border font-sans font-medium',
+                    cliBadge.className,
+                  )}
+                >
                   {cliBadge.label}
                 </span>
               );
@@ -617,7 +676,9 @@ function WorkerRow({
             {/* Show CLIs that failed to authenticate on this worker, with
                 the error message on hover so admins can see the real cause. */}
             {Object.entries(w.cliAuthErrors || {}).map(([cli, errMsg]) => {
-              const cliBadge = CLI_BADGE_CONFIG[cli as keyof typeof CLI_BADGE_CONFIG] || { label: cli };
+              const cliBadge = CLI_BADGE_CONFIG[cli as keyof typeof CLI_BADGE_CONFIG] || {
+                label: cli,
+              };
               return (
                 <span
                   key={`err-${cli}`}
@@ -636,9 +697,7 @@ function WorkerRow({
       </td>
 
       {/* Heartbeat */}
-      <td className="px-4 py-2.5 text-xs text-muted-foreground">
-        {timeAgo(w.lastHeartbeat)}
-      </td>
+      <td className="px-4 py-2.5 text-xs text-muted-foreground">{timeAgo(w.lastHeartbeat)}</td>
 
       {/* Actions */}
       <td className="px-4 py-2.5 text-right">

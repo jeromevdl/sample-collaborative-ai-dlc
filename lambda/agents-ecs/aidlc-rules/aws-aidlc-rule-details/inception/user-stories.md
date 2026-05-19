@@ -1,9 +1,11 @@
 # User Stories - Detailed Steps
 
 ## Purpose
+
 **Convert requirements into user-centered stories with acceptance criteria**
 
 User Stories focus on:
+
 - Translating business requirements into user-centered narratives
 - Defining clear acceptance criteria for each story
 - Creating user personas that represent different stakeholder types
@@ -11,6 +13,7 @@ User Stories focus on:
 - Providing testable specifications for implementation
 
 ## Prerequisites
+
 - Workspace Detection must be complete
 - Requirements Analysis recommended (can reference requirements if available)
 - Workflow Planning must indicate User Stories stage should execute
@@ -20,6 +23,7 @@ User Stories focus on:
 **WHEN TO EXECUTE USER STORIES**: Use this enhanced assessment before proceeding:
 
 ### High Priority Execution (ALWAYS Execute)
+
 - **New User Features**: Any new functionality users will directly interact with
 - **User Experience Changes**: Modifications to existing user workflows or interfaces
 - **Multi-Persona Systems**: Applications serving different types of users
@@ -28,6 +32,7 @@ User Stories focus on:
 - **Cross-Team Projects**: Work requiring shared understanding across multiple teams
 
 ### Medium Priority Execution (Assess Complexity)
+
 - **Backend User Impact**: Internal changes that indirectly affect user experience
 - **Performance Improvements**: Enhancements with user-visible benefits
 - **Integration Work**: Connecting systems that affect user workflows
@@ -35,12 +40,14 @@ User Stories focus on:
 - **Security Enhancements**: Changes affecting user authentication or permissions
 
 ### Skip Only For Simple Cases
+
 - **Pure Refactoring**: Internal code improvements with zero user impact
 - **Isolated Bug Fixes**: Simple, well-defined fixes with clear scope
 - **Infrastructure Only**: Changes with no user-facing effects
 - **Developer Tooling**: Build processes, CI/CD, or development environment changes
 
 ### Default Decision Rule
+
 **When in doubt, include user stories AND ask clarifying questions.**
 
 ---
@@ -64,6 +71,7 @@ Perform assessment using the criteria above. If justified, proceed.
 **CRITICAL**: Default to asking questions when there is ANY ambiguity or missing detail.
 
 Call `ask_question` with batched questions covering relevant areas:
+
 - **User Personas** - user types, roles, characteristics, motivations
 - **Story Granularity** - level of detail, story size, breakdown approach
 - **Breakdown Approach** - organization method, prioritization, grouping
@@ -74,6 +82,7 @@ Call `ask_question` with batched questions covering relevant areas:
 ## Step 4: Analyze Answers (MANDATORY)
 
 Before proceeding, carefully review all answers for:
+
 - **Vague or ambiguous responses**: "mix of", "somewhere between", "not sure", "depends"
 - **Undefined criteria or terms**: References without clear definitions
 - **Contradictory answers**: Responses that conflict with each other
@@ -82,6 +91,7 @@ Before proceeding, carefully review all answers for:
 ## Step 5: Follow-up Questions (if needed)
 
 If Step 4 reveals ANY ambiguous answers, call `ask_question` again with targeted follow-ups:
+
 ```
 Call `ask_question` with:
 "I need clarification on some of your responses:
@@ -95,6 +105,7 @@ DO NOT proceed to approval until ALL ambiguities are resolved.
 ## Step 6: Request Plan Approval
 
 Call `ask_question` with:
+
 ```
 "User story planning is complete. Based on your answers, I plan to:
 - Create [approach] user stories organized by [method]
@@ -142,6 +153,7 @@ add_edge(
 ```
 
 Ensure stories follow INVEST criteria:
+
 - **I**ndependent, **N**egotiable, **V**aluable, **E**stimable, **S**mall, **T**estable
 
 ## Step 8: Update Sprint State
@@ -155,6 +167,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ## Step 9: Request Approval
 
 Call `ask_question` with:
+
 ```
 "User Stories Complete
 
@@ -174,12 +187,14 @@ Wait for explicit approval. If changes requested, update story nodes and re-requ
 # CRITICAL RULES
 
 ## Planning Phase Rules
+
 - **CONTEXT-APPROPRIATE QUESTIONS**: Only ask questions relevant to this specific context
 - **MANDATORY ANSWER ANALYSIS**: Always analyze answers for ambiguities before proceeding
 - **NO PROCEEDING WITH AMBIGUITY**: Must resolve all vague answers before generation
 - **EXPLICIT APPROVAL REQUIRED**: User must approve plan before generation starts
 
 ## Generation Phase Rules
+
 - **USE APPROVED METHODOLOGY**: Follow the story approach from Planning
 - **VERIFY COMPLETION**: Ensure all story artifacts are complete before proceeding
 - **GRAPH IS SOURCE OF TRUTH**: All stories stored as UserStory nodes with proper edges

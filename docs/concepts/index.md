@@ -57,7 +57,7 @@ The platform is not locked into any single technology. We integrate what works b
 - **Agent tooling:** Integrates with Claude Code, OpenCode, Kiro, and other adopted tools rather than replacing them.
 - **Source control:** GitHub today, with GitLab and other providers on the roadmap.
 
-The important thing is the *concept* at each layer — structured data, traceability, collaboration, observability — not the specific implementation. Tools evolve fast; these principles don't.
+The important thing is the _concept_ at each layer — structured data, traceability, collaboration, observability — not the specific implementation. Tools evolve fast; these principles don't.
 
 ## The lifecycle
 
@@ -71,11 +71,11 @@ graph LR
 
 Each phase has a clear purpose:
 
-| Phase | Purpose | Output |
-|-------|---------|--------|
-| **Inception** | Define what to build, remove ambiguity | Requirements, user stories, and tasks |
-| **Construction** | Build it | Code changes in a branch |
-| **Review** | Evaluate the result | Approval or feedback for another iteration |
+| Phase            | Purpose                                | Output                                     |
+| ---------------- | -------------------------------------- | ------------------------------------------ |
+| **Inception**    | Define what to build, remove ambiguity | Requirements, user stories, and tasks      |
+| **Construction** | Build it                               | Code changes in a branch                   |
+| **Review**       | Evaluate the result                    | Approval or feedback for another iteration |
 
 A sprint moves through these phases sequentially. The Review phase can send work back to Construction with structured feedback, creating an iterative improvement loop until the result meets expectations.
 
@@ -97,11 +97,11 @@ You start a sprint by writing a description, then launch the Inception Agent to 
 
 ## Current status
 
-| Phase | Status |
-|-------|--------|
-| Inception | Working |
+| Phase        | Status  |
+| ------------ | ------- |
+| Inception    | Working |
 | Construction | Working |
-| Review | Working |
+| Review       | Working |
 
 Read about each phase in detail:
 

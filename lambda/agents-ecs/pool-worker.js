@@ -27,7 +27,13 @@ const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const {
+  DynamoDBDocumentClient,
+  GetCommand,
+  UpdateCommand,
+  PutCommand,
+  DeleteCommand,
+} = require('@aws-sdk/lib-dynamodb');
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
@@ -69,21 +75,32 @@ const HEARTBEAT_INTERVAL = 30000;
 
 // Mark this worker as idle, advertising which CLIs it has authenticated.
 async function setIdle() {
-  await ddb.send(new UpdateCommand({
-    TableName: env.poolTable,
-    Key: { workerId: env.workerId },
-    UpdateExpression: 'SET #s = :s, lastHeartbeat = :t, version = :v, availableClis = :clis, cliAuthErrors = :errs REMOVE job',
-    ExpressionAttributeNames: { '#s': 'status' },
-    ExpressionAttributeValues: { ':s': 'idle', ':t': Date.now(), ':v': env.version, ':clis': _availableClis, ':errs': _cliAuthErrors },
-  }));
+  await ddb.send(
+    new UpdateCommand({
+      TableName: env.poolTable,
+      Key: { workerId: env.workerId },
+      UpdateExpression:
+        'SET #s = :s, lastHeartbeat = :t, version = :v, availableClis = :clis, cliAuthErrors = :errs REMOVE job',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':s': 'idle',
+        ':t': Date.now(),
+        ':v': env.version,
+        ':clis': _availableClis,
+        ':errs': _cliAuthErrors,
+      },
+    }),
+  );
 }
 
 // Poll for assigned job, or check if we've been drained
 async function pollForJob() {
-  const result = await ddb.send(new GetCommand({
-    TableName: env.poolTable,
-    Key: { workerId: env.workerId },
-  }));
+  const result = await ddb.send(
+    new GetCommand({
+      TableName: env.poolTable,
+      Key: { workerId: env.workerId },
+    }),
+  );
   const item = result.Item;
   if (!item) return { action: 'exit' };
   if (item.status === 'draining') return { action: 'exit' };
@@ -93,10 +110,20 @@ async function pollForJob() {
 
 async function saveStatus(executionId, agentType, projectId, status) {
   if (!env.agentOutputsTable) return;
-  await ddb.send(new PutCommand({
-    TableName: env.agentOutputsTable,
-    Item: { executionId, agentType, projectId, status, expiresAt: Math.floor(Date.now() / 1000) + 86400 },
-  })).catch(e => console.error('Failed to save status:', e.message));
+  await ddb
+    .send(
+      new PutCommand({
+        TableName: env.agentOutputsTable,
+        Item: {
+          executionId,
+          agentType,
+          projectId,
+          status,
+          expiresAt: Math.floor(Date.now() / 1000) + 86400,
+        },
+      }),
+    )
+    .catch((e) => console.error('Failed to save status:', e.message));
 }
 
 // Update the AgentRun node in Neptune on job completion/failure.
@@ -113,7 +140,9 @@ async function updateAgentRunStatus(job, status) {
     const g = gremlin.process.AnonymousTraversalSource.traversal().withRemote(conn);
     const { cardinality } = gremlin.process;
     try {
-      await g.V().has('AgentRun', 'execution_id', job.executionId)
+      await g
+        .V()
+        .has('AgentRun', 'execution_id', job.executionId)
         .property(cardinality.single, 'status', status)
         .property(cardinality.single, 'completed_at', new Date().toISOString())
         .next();
@@ -144,25 +173,32 @@ function fetchSteeringFiles(phase, agentCli) {
   const effectivePhase = phase.startsWith('review') ? 'review' : phase;
 
   // Core workflow
-  try { fs.copyFileSync(`${RULES_DIR}/aws-aidlc-rules/core-workflow.md`, `${dest}/core-workflow.md`); }
-  catch { console.error('[pool-worker] Missing core-workflow.md'); }
+  try {
+    fs.copyFileSync(`${RULES_DIR}/aws-aidlc-rules/core-workflow.md`, `${dest}/core-workflow.md`);
+  } catch {
+    console.error('[pool-worker] Missing core-workflow.md');
+  }
 
   // Common rules
   const commonDir = `${RULES_DIR}/aws-aidlc-rule-details/common`;
   try {
-    for (const f of fs.readdirSync(commonDir).filter(f => f.endsWith('.md'))) {
+    for (const f of fs.readdirSync(commonDir).filter((f) => f.endsWith('.md'))) {
       fs.copyFileSync(path.join(commonDir, f), `${dest}/common-${f}`);
     }
-  } catch { console.error('[pool-worker] Could not copy common rules'); }
+  } catch {
+    console.error('[pool-worker] Could not copy common rules');
+  }
 
   // Phase-specific rules
   const phaseDir = effectivePhase === 'review' ? 'operations' : effectivePhase;
   const phasePath = `${RULES_DIR}/aws-aidlc-rule-details/${phaseDir}`;
   try {
-    for (const f of fs.readdirSync(phasePath).filter(f => f.endsWith('.md'))) {
+    for (const f of fs.readdirSync(phasePath).filter((f) => f.endsWith('.md'))) {
       fs.copyFileSync(path.join(phasePath, f), `${dest}/${phaseDir}-${f}`);
     }
-  } catch { console.error(`[pool-worker] Could not copy phase rules for ${phaseDir}`); }
+  } catch {
+    console.error(`[pool-worker] Could not copy phase rules for ${phaseDir}`);
+  }
 
   // ---------------------------------------------------------------------------
   // Driver-specific steering paths
@@ -175,11 +211,12 @@ function fetchSteeringFiles(phase, agentCli) {
       if (entry.type === 'concat-dir') {
         // Concatenate all .md files from src dir into a single dest file
         execSync(`mkdir -p "${path.dirname(entry.dest)}"`, { stdio: 'ignore' });
-        const files = fs.readdirSync(entry.src)
-          .filter(f => f.endsWith('.md'))
+        const files = fs
+          .readdirSync(entry.src)
+          .filter((f) => f.endsWith('.md'))
           .sort();
         const combined = files
-          .map(f => fs.readFileSync(path.join(entry.src, f), 'utf8'))
+          .map((f) => fs.readFileSync(path.join(entry.src, f), 'utf8'))
           .join('\n\n---\n\n');
         fs.writeFileSync(entry.dest, combined, 'utf8');
         console.log(`[pool-worker] Wrote ${files.length} steering files to ${entry.dest}`);
@@ -188,13 +225,16 @@ function fetchSteeringFiles(phase, agentCli) {
         fs.copyFileSync(entry.src, entry.dest);
       } else if (entry.type === 'dir') {
         execSync(`mkdir -p "${entry.dest}"`, { stdio: 'ignore' });
-        const files = fs.readdirSync(entry.src).filter(f => f.endsWith('.md'));
+        const files = fs.readdirSync(entry.src).filter((f) => f.endsWith('.md'));
         for (const f of files) {
           fs.copyFileSync(path.join(entry.src, f), path.join(entry.dest, f));
         }
       }
     } catch (err) {
-      console.error(`[pool-worker] Failed to write additional steering path "${entry.dest}":`, err.message);
+      console.error(
+        `[pool-worker] Failed to write additional steering path "${entry.dest}":`,
+        err.message,
+      );
     }
   }
 }
@@ -207,28 +247,43 @@ function setupWorkspace(job) {
   if (job.gitRepo) {
     try {
       const auth = job.gitToken ? `x-access-token:${job.gitToken}@` : '';
-      
+
       // Try to clone - may fail if repo is empty
       try {
-        execSync(`git clone "https://${auth}github.com/${job.gitRepo}.git" /workspace`, { stdio: 'inherit' });
+        execSync(`git clone "https://${auth}github.com/${job.gitRepo}.git" /workspace`, {
+          stdio: 'inherit',
+        });
       } catch {
         // If clone fails (empty repo), initialize new repo
         console.log('[pool-worker] Clone failed (likely empty repo), initializing...');
         execSync(`git init /workspace`, { stdio: 'inherit' });
-        execSync(`cd /workspace && git remote add origin "https://${auth}github.com/${job.gitRepo}.git"`, { stdio: 'inherit' });
+        execSync(
+          `cd /workspace && git remote add origin "https://${auth}github.com/${job.gitRepo}.git"`,
+          { stdio: 'inherit' },
+        );
       }
 
       // Configure git
       execSync(`cd /workspace && git config user.email "ai-dlc@example.com"`, { stdio: 'inherit' });
       execSync(`cd /workspace && git config user.name "AI-DLC Agent"`, { stdio: 'inherit' });
-      
+
       // For construction (sub-agents + orchestrator) and review phases, checkout/create the working branch
-      const needsBranch = ['construction', 'construction-orchestrator', 'review-blind', 'review-full', 'review-modify', 'bugfix'].includes(job.agentType);
+      const needsBranch = [
+        'construction',
+        'construction-orchestrator',
+        'review-blind',
+        'review-full',
+        'review-modify',
+        'bugfix',
+      ].includes(job.agentType);
       if (needsBranch && job.branch) {
         try {
           // Check if we have any commits
-          const hasCommits = execSync(`cd /workspace && git rev-parse HEAD 2>/dev/null || echo "no"`, { encoding: 'utf8' }).trim() !== 'no';
-          
+          const hasCommits =
+            execSync(`cd /workspace && git rev-parse HEAD 2>/dev/null || echo "no"`, {
+              encoding: 'utf8',
+            }).trim() !== 'no';
+
           if (!hasCommits) {
             // Empty repo - create initial commit on the repo's default branch (typically main)
             const defaultBranch = 'main';
@@ -237,47 +292,69 @@ function setupWorkspace(job) {
             execSync(`cd /workspace && git add README.md`, { stdio: 'inherit' });
             execSync(`cd /workspace && git commit -m "Initial commit"`, { stdio: 'inherit' });
             try {
-              execSync(`cd /workspace && git push -u origin ${defaultBranch}`, { stdio: 'inherit' });
+              execSync(`cd /workspace && git push -u origin ${defaultBranch}`, {
+                stdio: 'inherit',
+              });
             } catch (pushErr) {
-              console.error(`[pool-worker] Failed to push initial commit to ${defaultBranch}: ${pushErr.message}`);
+              console.error(
+                `[pool-worker] Failed to push initial commit to ${defaultBranch}: ${pushErr.message}`,
+              );
             }
           }
-          
+
           // Determine which base to branch from.
           // For construction sub-agents, baseBranch is the sprint branch.
           // We need to verify it exists on the remote; if not, fall back to main.
           const desiredBase = job.baseBranch || 'main';
-          const baseExistsOnRemote = execSync(`cd /workspace && git ls-remote --heads origin ${desiredBase}`, { encoding: 'utf8' }).trim();
+          const baseExistsOnRemote = execSync(
+            `cd /workspace && git ls-remote --heads origin ${desiredBase}`,
+            { encoding: 'utf8' },
+          ).trim();
           const effectiveBase = baseExistsOnRemote ? desiredBase : 'main';
           if (!baseExistsOnRemote && desiredBase !== 'main') {
-            console.log(`[pool-worker] Base branch "${desiredBase}" not found on remote, falling back to "main"`);
+            console.log(
+              `[pool-worker] Base branch "${desiredBase}" not found on remote, falling back to "main"`,
+            );
           }
 
           // Now create/checkout working branch
-          const branchExists = execSync(`cd /workspace && git ls-remote --heads origin ${job.branch}`, { encoding: 'utf8' }).trim();
-          
+          const branchExists = execSync(
+            `cd /workspace && git ls-remote --heads origin ${job.branch}`,
+            { encoding: 'utf8' },
+          ).trim();
+
           if (branchExists) {
             // Branch exists on remote — fetch and check it out
             execSync(`cd /workspace && git fetch origin ${job.branch}`, { stdio: 'inherit' });
             execSync(`cd /workspace && git checkout ${job.branch}`, { stdio: 'inherit' });
           } else {
             // Branch does not exist on remote — create it from the effective base
-            console.log(`[pool-worker] Creating new branch ${job.branch} from origin/${effectiveBase}`);
+            console.log(
+              `[pool-worker] Creating new branch ${job.branch} from origin/${effectiveBase}`,
+            );
             execSync(`cd /workspace && git fetch origin ${effectiveBase}`, { stdio: 'inherit' });
-            execSync(`cd /workspace && git checkout -b ${job.branch} origin/${effectiveBase}`, { stdio: 'inherit' });
+            execSync(`cd /workspace && git checkout -b ${job.branch} origin/${effectiveBase}`, {
+              stdio: 'inherit',
+            });
           }
-          
+
           // Verify we're on the right branch
-          const currentBranch = execSync('cd /workspace && git branch --show-current', { encoding: 'utf8' }).trim();
+          const currentBranch = execSync('cd /workspace && git branch --show-current', {
+            encoding: 'utf8',
+          }).trim();
           console.log(`[pool-worker] Workspace ready on branch: ${currentBranch}`);
           if (currentBranch !== job.branch) {
-            console.error(`[pool-worker] WARNING: Expected branch ${job.branch} but on ${currentBranch}`);
+            console.error(
+              `[pool-worker] WARNING: Expected branch ${job.branch} but on ${currentBranch}`,
+            );
           }
         } catch (err) {
           console.error(`[pool-worker] Git branch setup failed for ${job.branch}: ${err.message}`);
         }
       }
-    } catch (gitErr) { console.error('[pool-worker] Git setup failed:', gitErr.message); }
+    } catch (gitErr) {
+      console.error('[pool-worker] Git setup failed:', gitErr.message);
+    }
   }
 
   const phase = (job.agentType || 'inception').toLowerCase();
@@ -303,9 +380,11 @@ function buildPrompt(job) {
   if (phase === 'review-modify') return buildReviewModifyPrompt(job);
   if (phase === 'bugfix') return buildBugfixPrompt(job);
   // Default prompt for other phases
-  return `You are an AI-DLC agent running the "${phase}" phase. Read the steering files in .kiro/steering/ for your workflow rules.\n\n`
-    + (job.description ? `PROJECT DESCRIPTION:\n${job.description}\n\n` : '')
-    + `Begin the ${phase} phase. Use the graph MCP tools to read and write all artifacts to Neptune. Do NOT create or modify markdown files as output.`;
+  return (
+    `You are an AI-DLC agent running the "${phase}" phase. Read the steering files in .kiro/steering/ for your workflow rules.\n\n` +
+    (job.description ? `PROJECT DESCRIPTION:\n${job.description}\n\n` : '') +
+    `Begin the ${phase} phase. Use the graph MCP tools to read and write all artifacts to Neptune. Do NOT create or modify markdown files as output.`
+  );
 }
 
 function buildInceptionPrompt(job) {
@@ -481,7 +560,9 @@ function buildConstructionOrchestratorPrompt(job) {
   const isRerun = (job.runNumber || 1) > 1 && job.changeRequest;
   const changeRequestBlock = isRerun
     ? `\n## RE-RUN INSTRUCTIONS (from the team)\n\n${job.changeRequest}\n\nThis is a re-run of the construction phase. All previous tasks are already done. Your job is to CREATE NEW TASKS for the work described above, then dispatch sub-agents to implement them.\n`
-    : (job.changeRequest ? `\n## ADDITIONAL CONTEXT FROM TEAM\n\n${job.changeRequest}\n\nConsider this context when dispatching sub-agents.\n` : '');
+    : job.changeRequest
+      ? `\n## ADDITIONAL CONTEXT FROM TEAM\n\n${job.changeRequest}\n\nConsider this context when dispatching sub-agents.\n`
+      : '';
   return `You are the Construction Orchestrator for the AI-DLC platform.
 
 ## IDENTITY
@@ -546,7 +627,9 @@ When all tasks done → YOU trigger PR creation → System pushes final state
       - **Verify the merge**: Run \`git log --oneline -5\` to confirm the merge commit is present.
       - If the task branch does NOT exist on remote, log a warning and continue.
 
-${isRerun ? `4. **RE-RUN: CREATE NEW TASKS from the RE-RUN INSTRUCTIONS above.**
+${
+  isRerun
+    ? `4. **RE-RUN: CREATE NEW TASKS from the RE-RUN INSTRUCTIONS above.**
    Since this is a re-run with new work requested, you must create Task nodes for the requested work BEFORE dispatching:
    a. Use \`get_sprint_graph\` to understand the existing codebase context and task history.
    b. Break the re-run instructions into concrete Task nodes. Each task should be focused and implementable.
@@ -559,7 +642,9 @@ ${isRerun ? `4. **RE-RUN: CREATE NEW TASKS from the RE-RUN INSTRUCTIONS above.**
         If no UserStory fits, link to the most relevant Requirement instead.
    d. After creating all tasks, proceed to step 5 to dispatch them.
 
-5.` : `4.`} Call \`get_unblocked_tasks\` to find tasks ready for implementation.
+5.`
+    : `4.`
+} Call \`get_unblocked_tasks\` to find tasks ready for implementation.
    NOTE: This tool automatically excludes tasks that already have a running agent (task_execution_status="RUNNING").
 
 ${isRerun ? '6.' : '5.'} **LAUNCH AGENTS IN PARALLEL**: For ALL unblocked tasks, call \`launch_construction_agent\` simultaneously:
@@ -893,7 +978,10 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
   const auth = job.gitToken ? `x-access-token:${job.gitToken}@` : '';
   if (auth) {
     try {
-      execSync(`cd /workspace && git remote set-url origin "https://${auth}github.com/${job.gitRepo}.git"`, { stdio: 'inherit' });
+      execSync(
+        `cd /workspace && git remote set-url origin "https://${auth}github.com/${job.gitRepo}.git"`,
+        { stdio: 'inherit' },
+      );
     } catch (urlErr) {
       console.error(`[pool-worker] Failed to set remote URL: ${urlErr.message}`);
       return false;
@@ -902,9 +990,14 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
 
   // Check if the branch has any commits at all
   try {
-    execSync('cd /workspace && git log -1 --format=%H', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    execSync('cd /workspace && git log -1 --format=%H', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
   } catch {
-    console.log(`[pool-worker] Branch ${branch} has no commits — nothing to push. This is normal for orchestrator first-run.`);
+    console.log(
+      `[pool-worker] Branch ${branch} has no commits — nothing to push. This is normal for orchestrator first-run.`,
+    );
     return false;
   }
 
@@ -912,8 +1005,13 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
   try {
     const status = execSync('cd /workspace && git status --porcelain', { encoding: 'utf8' }).trim();
     if (status) {
-      console.log(`[pool-worker] WARNING: Agent left uncommitted changes. Auto-committing to prevent data loss:\n${status}`);
-      execSync('cd /workspace && git add -A && git commit -m "auto-commit: uncommitted changes from agent"', { stdio: 'inherit' });
+      console.log(
+        `[pool-worker] WARNING: Agent left uncommitted changes. Auto-committing to prevent data loss:\n${status}`,
+      );
+      execSync(
+        'cd /workspace && git add -A && git commit -m "auto-commit: uncommitted changes from agent"',
+        { stdio: 'inherit' },
+      );
     }
   } catch (commitErr) {
     console.error(`[pool-worker] Auto-commit failed: ${commitErr.message}`);
@@ -927,7 +1025,10 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
 
   // Log actual current branch for debugging — if this differs from the expected branch,
   // the agent or setupWorkspace failed to check out the correct branch.
-  const currentBranch = execSync('cd /workspace && git branch --show-current 2>/dev/null || echo "detached"', { encoding: 'utf8' }).trim();
+  const currentBranch = execSync(
+    'cd /workspace && git branch --show-current 2>/dev/null || echo "detached"',
+    { encoding: 'utf8' },
+  ).trim();
   console.log(`[pool-worker] Current local branch: ${currentBranch} (expected: ${branch})`);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -939,22 +1040,32 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
 
       // Verify the push landed by checking remote HEAD matches local HEAD
       try {
-        const remoteHead = execSync(`cd /workspace && git ls-remote origin ${branch}`, { encoding: 'utf8' }).trim().split(/\s/)[0];
+        const remoteHead = execSync(`cd /workspace && git ls-remote origin ${branch}`, {
+          encoding: 'utf8',
+        })
+          .trim()
+          .split(/\s/)[0];
         if (remoteHead === localHead) {
           console.log(`[pool-worker] Push verified: remote HEAD matches local HEAD (${localHead})`);
           return true;
         } else {
-          console.error(`[pool-worker] Push verification mismatch: local=${localHead} remote=${remoteHead}`);
+          console.error(
+            `[pool-worker] Push verification mismatch: local=${localHead} remote=${remoteHead}`,
+          );
           // Push went through but heads differ — could be a race. Still count as success
           // since our commits are on the remote (remote may have advanced further).
           return true;
         }
       } catch (verifyErr) {
-        console.error(`[pool-worker] Push verification failed: ${verifyErr.message}. Trusting push exit code.`);
+        console.error(
+          `[pool-worker] Push verification failed: ${verifyErr.message}. Trusting push exit code.`,
+        );
         return true;
       }
     } catch (pushErr) {
-      console.error(`[pool-worker] Push attempt ${attempt}/${maxRetries} failed for ${branch}: ${pushErr.message}`);
+      console.error(
+        `[pool-worker] Push attempt ${attempt}/${maxRetries} failed for ${branch}: ${pushErr.message}`,
+      );
       if (attempt < maxRetries) {
         const backoffMs = attempt * 2000;
         console.log(`[pool-worker] Retrying push in ${backoffMs}ms...`);
@@ -963,7 +1074,9 @@ function pushBranchWithRetry(job, branch, maxRetries = 3) {
     }
   }
 
-  console.error(`[pool-worker] CRITICAL: Push failed after ${maxRetries} attempts for ${branch}. Work may be lost.`);
+  console.error(
+    `[pool-worker] CRITICAL: Push failed after ${maxRetries} attempts for ${branch}. Work may be lost.`,
+  );
   return false;
 }
 
@@ -1001,11 +1114,21 @@ function runAcpSession(job) {
       // For construction and review-modify phases, push changes to remote.
       // CRITICAL: Wrapped in try/catch so no git error can crash the pool-worker process.
       // An uncaught exception here would kill the ECS task, wasting the worker permanently.
-      if ((phase === 'construction' || phase === 'construction-orchestrator' || phase === 'review-modify' || phase === 'bugfix') && code === 0 && job.gitRepo && job.branch) {
+      if (
+        (phase === 'construction' ||
+          phase === 'construction-orchestrator' ||
+          phase === 'review-modify' ||
+          phase === 'bugfix') &&
+        code === 0 &&
+        job.gitRepo &&
+        job.branch
+      ) {
         try {
           pushSucceeded = pushBranchWithRetry(job, job.branch);
         } catch (pushErr) {
-          console.error(`[pool-worker] FATAL-PREVENTED: pushBranchWithRetry threw unexpectedly: ${pushErr.message}`);
+          console.error(
+            `[pool-worker] FATAL-PREVENTED: pushBranchWithRetry threw unexpectedly: ${pushErr.message}`,
+          );
           console.error(pushErr.stack);
           pushSucceeded = false;
         }
@@ -1013,7 +1136,10 @@ function runAcpSession(job) {
 
       resolve({ exitCode: code || 0, pushSucceeded });
     });
-    child.on('error', (err) => { console.error('ACP child error:', err); resolve({ exitCode: 1, pushSucceeded: false }); });
+    child.on('error', (err) => {
+      console.error('ACP child error:', err);
+      resolve({ exitCode: 1, pushSucceeded: false });
+    });
   });
 }
 
@@ -1034,7 +1160,7 @@ async function main() {
       _availableClis.push(cli);
       console.log(`[pool-worker] CLI "${cli}" authenticated and available`);
     } catch (err) {
-      const msg = (err && err.message) ? err.message : String(err);
+      const msg = err && err.message ? err.message : String(err);
       _cliAuthErrors[cli] = msg;
       console.warn(`[pool-worker] CLI "${cli}" not available: ${msg}`);
     }
@@ -1045,25 +1171,39 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`[pool-worker] Worker ${env.workerId} ready. Available CLIs: [${_availableClis.join(', ')}]`);
+  console.log(
+    `[pool-worker] Worker ${env.workerId} ready. Available CLIs: [${_availableClis.join(', ')}]`,
+  );
 
   // If the dispatcher pre-assigned a job to this worker (cold-start path where
   // findIdleWorkers returned 0), the DDB row already has status='assigned' and
   // a baked-in job. Honour that instead of overwriting it with setIdle, which
   // would erase the job and leave the dispatcher with no worker for it.
-  const existing = await ddb.send(new GetCommand({
-    TableName: env.poolTable,
-    Key: { workerId: env.workerId },
-  }));
-  if (existing.Item?.status === 'assigned' && existing.Item.job) {
-    console.log(`[pool-worker] Found pre-assigned job on startup: ${existing.Item.job.executionId} — advertising clis without clearing job`);
-    // Advertise availableClis/version but preserve assigned status + job.
-    await ddb.send(new UpdateCommand({
+  const existing = await ddb.send(
+    new GetCommand({
       TableName: env.poolTable,
       Key: { workerId: env.workerId },
-      UpdateExpression: 'SET lastHeartbeat = :t, version = :v, availableClis = :clis, cliAuthErrors = :errs',
-      ExpressionAttributeValues: { ':t': Date.now(), ':v': env.version, ':clis': _availableClis, ':errs': _cliAuthErrors },
-    }));
+    }),
+  );
+  if (existing.Item?.status === 'assigned' && existing.Item.job) {
+    console.log(
+      `[pool-worker] Found pre-assigned job on startup: ${existing.Item.job.executionId} — advertising clis without clearing job`,
+    );
+    // Advertise availableClis/version but preserve assigned status + job.
+    await ddb.send(
+      new UpdateCommand({
+        TableName: env.poolTable,
+        Key: { workerId: env.workerId },
+        UpdateExpression:
+          'SET lastHeartbeat = :t, version = :v, availableClis = :clis, cliAuthErrors = :errs',
+        ExpressionAttributeValues: {
+          ':t': Date.now(),
+          ':v': env.version,
+          ':clis': _availableClis,
+          ':errs': _cliAuthErrors,
+        },
+      }),
+    );
   } else {
     // Register as idle — advertises availableClis to the job dispatcher.
     await setIdle();
@@ -1072,12 +1212,14 @@ async function main() {
   // Heartbeat loop
   setInterval(async () => {
     try {
-      await ddb.send(new UpdateCommand({
-        TableName: env.poolTable,
-        Key: { workerId: env.workerId },
-        UpdateExpression: 'SET lastHeartbeat = :t',
-        ExpressionAttributeValues: { ':t': Date.now() },
-      }));
+      await ddb.send(
+        new UpdateCommand({
+          TableName: env.poolTable,
+          Key: { workerId: env.workerId },
+          UpdateExpression: 'SET lastHeartbeat = :t',
+          ExpressionAttributeValues: { ':t': Date.now() },
+        }),
+      );
     } catch {}
   }, HEARTBEAT_INTERVAL);
 
@@ -1095,7 +1237,9 @@ async function main() {
       if (poll.action === 'job') {
         const job = poll.job;
         const jobCli = job.agentCli;
-        console.log(`[pool-worker] Got job: ${job.executionId} for project ${job.projectId} (cli=${jobCli})`);
+        console.log(
+          `[pool-worker] Got job: ${job.executionId} for project ${job.projectId} (cli=${jobCli})`,
+        );
 
         setupWorkspace(job);
         const { exitCode, pushSucceeded } = await runAcpSession(job);
@@ -1110,37 +1254,54 @@ async function main() {
         // finished so it can either merge the branch (push succeeded) or recover the task
         // (push failed). Without this, the entire pipeline hangs waiting for a re-trigger
         // that never comes.
-        if ((job.agentType || '').toLowerCase() === 'construction' && job.taskId && process.env.AGENTS_LAMBDA_NAME) {
+        if (
+          (job.agentType || '').toLowerCase() === 'construction' &&
+          job.taskId &&
+          process.env.AGENTS_LAMBDA_NAME
+        ) {
           const triggerStatus = pushSucceeded ? status : 'push_failed';
-          console.log(`[pool-worker] Construction task ${job.taskId} finished (pushSucceeded=${pushSucceeded}), triggering orchestrator with status=${triggerStatus}`);
+          console.log(
+            `[pool-worker] Construction task ${job.taskId} finished (pushSucceeded=${pushSucceeded}), triggering orchestrator with status=${triggerStatus}`,
+          );
           try {
             // Extract sprint branch from task branch (e.g. "ai-dlc/sprint-1--task-auth" -> "ai-dlc/sprint-1")
             const sprintBranch = (job.branch || '').replace(/--task-[^/]+$/, '');
-            await lambda.send(new InvokeCommand({
-              FunctionName: process.env.AGENTS_LAMBDA_NAME,
-              InvocationType: 'Event', // async — don't wait
-              Payload: Buffer.from(JSON.stringify({
-                httpMethod: 'POST',
-                path: `/projects/${job.projectId}/agents`,
-                pathParameters: { projectId: job.projectId },
-                body: JSON.stringify({
-                  phase: 'construction-orchestrator',
-                  sprintId: job.sprintId,
-                  branch: sprintBranch,
-                  baseBranch: job.baseBranch || 'main',
-                  gitToken: job.gitToken || '',
-                  event: { event: 'task_completed', taskId: job.taskId, status: triggerStatus, pushSucceeded },
-                }),
-                requestContext: { authorizer: { claims: { sub: 'system' } } },
-              })),
-            }));
+            await lambda.send(
+              new InvokeCommand({
+                FunctionName: process.env.AGENTS_LAMBDA_NAME,
+                InvocationType: 'Event', // async — don't wait
+                Payload: Buffer.from(
+                  JSON.stringify({
+                    httpMethod: 'POST',
+                    path: `/projects/${job.projectId}/agents`,
+                    pathParameters: { projectId: job.projectId },
+                    body: JSON.stringify({
+                      phase: 'construction-orchestrator',
+                      sprintId: job.sprintId,
+                      branch: sprintBranch,
+                      baseBranch: job.baseBranch || 'main',
+                      gitToken: job.gitToken || '',
+                      event: {
+                        event: 'task_completed',
+                        taskId: job.taskId,
+                        status: triggerStatus,
+                        pushSucceeded,
+                      },
+                    }),
+                    requestContext: { authorizer: { claims: { sub: 'system' } } },
+                  }),
+                ),
+              }),
+            );
           } catch (err) {
             console.error('[pool-worker] Failed to trigger orchestrator:', err.message);
           }
         }
 
         // Check if we were drained while busy — if so, exit instead of going idle
-        const check = await ddb.send(new GetCommand({ TableName: env.poolTable, Key: { workerId: env.workerId } }));
+        const check = await ddb.send(
+          new GetCommand({ TableName: env.poolTable, Key: { workerId: env.workerId } }),
+        );
         if (!check.Item || check.Item.status === 'draining') {
           console.log('[pool-worker] Drained while busy, exiting');
           await cleanup();
@@ -1152,7 +1313,7 @@ async function main() {
     } catch (err) {
       console.error('[pool-worker] Poll error:', err.message);
     }
-    await new Promise(r => setTimeout(r, POLL_INTERVAL));
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
   }
 
   process.exit(0);
@@ -1160,11 +1321,13 @@ async function main() {
 
 async function cleanup() {
   try {
-    await ddb.send(new DeleteCommand({ TableName: env.poolTable, Key: { workerId: env.workerId } }));
+    await ddb.send(
+      new DeleteCommand({ TableName: env.poolTable, Key: { workerId: env.workerId } }),
+    );
   } catch {}
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('[pool-worker] Fatal:', err);
   process.exit(1);
 });

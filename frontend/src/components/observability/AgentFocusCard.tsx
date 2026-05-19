@@ -1,6 +1,18 @@
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, MessageCircleQuestion, Wrench, GitBranch, AlertTriangle, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  MessageCircleQuestion,
+  Wrench,
+  GitBranch,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Clock,
+} from 'lucide-react';
 import { buildFocusSentence } from '@/lib/observability/buildFocusSentence';
 import type { SprintProgress, VelocityMetrics } from '@/hooks/useObservability';
 import type { Sprint } from '@/services/sprints';
@@ -19,10 +31,26 @@ interface Props {
 }
 
 const STATUS_CONFIG: Record<string, { icon: typeof Loader2; className: string; label: string }> = {
-  running:   { icon: Loader2,               className: 'bg-agent-running/15 text-agent-running border-agent-running/30',   label: 'Running'   },
-  waiting:   { icon: MessageCircleQuestion, className: 'bg-agent-waiting/15 text-agent-waiting border-agent-waiting/30',   label: 'Waiting'   },
-  completed: { icon: CheckCircle2,          className: 'bg-agent-success/15 text-agent-success border-agent-success/30',   label: 'Completed' },
-  failed:    { icon: XCircle,               className: 'bg-agent-error/15 text-agent-error border-agent-error/30',         label: 'Failed'    },
+  running: {
+    icon: Loader2,
+    className: 'bg-agent-running/15 text-agent-running border-agent-running/30',
+    label: 'Running',
+  },
+  waiting: {
+    icon: MessageCircleQuestion,
+    className: 'bg-agent-waiting/15 text-agent-waiting border-agent-waiting/30',
+    label: 'Waiting',
+  },
+  completed: {
+    icon: CheckCircle2,
+    className: 'bg-agent-success/15 text-agent-success border-agent-success/30',
+    label: 'Completed',
+  },
+  failed: {
+    icon: XCircle,
+    className: 'bg-agent-error/15 text-agent-error border-agent-error/30',
+    label: 'Failed',
+  },
 };
 
 function timeAgo(ts: number): string {
@@ -33,24 +61,50 @@ function timeAgo(ts: number): string {
   return `${Math.floor(s / 3600)}h ago`;
 }
 
-export function AgentFocusCard({ agentType, agentStatus, lastTool, branch, prUrl, prNumber, pendingQuestions = 0, progress, sprint, velocity }: Props) {
+export function AgentFocusCard({
+  agentType,
+  agentStatus,
+  lastTool,
+  branch,
+  prUrl,
+  prNumber,
+  pendingQuestions = 0,
+  progress,
+  sprint,
+  velocity,
+}: Props) {
   const cfg = agentStatus ? STATUS_CONFIG[agentStatus] : null;
-  const focus = agentStatus === 'running' ? buildFocusSentence(agentType, sprint, progress, lastTool) : null;
+  const focus =
+    agentStatus === 'running' ? buildFocusSentence(agentType, sprint, progress, lastTool) : null;
 
-  const TrendIcon = velocity?.trend === 'improving' ? TrendingUp : velocity?.trend === 'declining' ? TrendingDown : Minus;
-  const trendColor = velocity?.trend === 'improving' ? 'text-green-600' : velocity?.trend === 'declining' ? 'text-red-500' : 'text-muted-foreground';
+  const TrendIcon =
+    velocity?.trend === 'improving'
+      ? TrendingUp
+      : velocity?.trend === 'declining'
+        ? TrendingDown
+        : Minus;
+  const trendColor =
+    velocity?.trend === 'improving'
+      ? 'text-green-600'
+      : velocity?.trend === 'declining'
+        ? 'text-red-500'
+        : 'text-muted-foreground';
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {pendingQuestions > 0 && (
-        <Badge variant="outline" className="gap-1 text-[10px] h-5 font-bold shrink-0 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 border-yellow-400 animate-pulse">
+        <Badge
+          variant="outline"
+          className="gap-1 text-[10px] h-5 font-bold shrink-0 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 border-yellow-400 animate-pulse"
+        >
           <AlertTriangle className="h-3 w-3" />
           {pendingQuestions} question{pendingQuestions > 1 ? 's' : ''} blocking
         </Badge>
       )}
       {branch && (
         <span className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
-          <GitBranch className="h-3 w-3" />{branch}
+          <GitBranch className="h-3 w-3" />
+          {branch}
         </span>
       )}
       {/* Single focus sentence — always shown when running */}
@@ -71,22 +125,34 @@ export function AgentFocusCard({ agentType, agentStatus, lastTool, branch, prUrl
         <span className={cn('flex items-center gap-1 text-[10px]', trendColor)}>
           <TrendIcon className="h-3 w-3" />
           {velocity.tasksPerHour} tasks/hr
-          {velocity.trendPct !== 0 && <span>({velocity.trendPct > 0 ? '+' : ''}{velocity.trendPct}%)</span>}
+          {velocity.trendPct !== 0 && (
+            <span>
+              ({velocity.trendPct > 0 ? '+' : ''}
+              {velocity.trendPct}%)
+            </span>
+          )}
         </span>
       ) : agentStatus === 'running' && (progress?.taskCount ?? 0) > 0 ? (
         <span className="text-[10px] text-muted-foreground/40 italic">estimating velocity...</span>
       ) : null}
       {cfg && (
-        <Badge variant="outline" className={cn('gap-1 text-[10px] h-5 font-medium shrink-0', cfg.className)}>
+        <Badge
+          variant="outline"
+          className={cn('gap-1 text-[10px] h-5 font-medium shrink-0', cfg.className)}
+        >
           <cfg.icon className={cn('h-3 w-3', agentStatus === 'running' && 'animate-spin')} />
           {agentType && <span className="capitalize">{agentType.replace(/[_-]/g, ' ')}</span>}
           {cfg.label}
         </Badge>
       )}
       {prUrl && (
-        <a href={prUrl} target="_blank" rel="noopener noreferrer"
+        <a
+          href={prUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-[11px] text-primary hover:underline"
-          onClick={e => e.stopPropagation()}>
+          onClick={(e) => e.stopPropagation()}
+        >
           PR #{prNumber}
         </a>
       )}

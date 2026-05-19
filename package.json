@@ -9,7 +9,9 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "devDependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.1040.0",
@@ -18,6 +20,7 @@
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-vitest": "^7.0.1",
     "esbuild": "^0.28.0",
+    "oxfmt": "^0.51.0",
     "oxlint": "^1.64.0",
     "vitest": "^4.1.6"
   }

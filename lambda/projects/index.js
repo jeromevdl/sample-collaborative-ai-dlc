@@ -21,19 +21,26 @@ const getConnection = async () => {
   const host = process.env.NEPTUNE_ENDPOINT;
   const port = '8182';
   const region = process.env.AWS_REGION || 'us-east-1';
-  
+
   const credentials = await fromNodeProviderChain()();
   credentials.region = region;
-  
+
   const connInfo = getUrlAndHeaders(host, port, credentials, '/gremlin', 'wss');
-  
+
   return new DriverRemoteConnection(connInfo.url, { headers: connInfo.headers });
 };
 
 exports.handler = async (event) => {
   const response = buildResponse(event);
-  console.log('Request:', JSON.stringify({ httpMethod: event.httpMethod, path: event.path, pathParameters: event.pathParameters }));
-  
+  console.log(
+    'Request:',
+    JSON.stringify({
+      httpMethod: event.httpMethod,
+      path: event.path,
+      pathParameters: event.pathParameters,
+    }),
+  );
+
   // Handle OPTIONS for CORS
   if (event.httpMethod === 'OPTIONS') {
     return response(200, {});
@@ -43,7 +50,7 @@ exports.handler = async (event) => {
   try {
     conn = await getConnection();
     const g = traversal().withRemote(conn);
-    
+
     const { httpMethod, pathParameters, body } = event;
     const projectId = pathParameters?.projectId;
     const userId = event.requestContext?.authorizer?.claims?.sub;
@@ -54,19 +61,24 @@ exports.handler = async (event) => {
         if (projectId) {
           // Single project lookup - verify user is a member and return their role
           if (!userId) return response(401, { error: 'Unauthorized' });
-          
-          const memberEdges = await g.V().has('Project', 'id', projectId)
-            .outE('HAS_MEMBER').as('e')
-            .inV().has('User', 'id', userId)
-            .select('e').by(__.valueMap())
+
+          const memberEdges = await g
+            .V()
+            .has('Project', 'id', projectId)
+            .outE('HAS_MEMBER')
+            .as('e')
+            .inV()
+            .has('User', 'id', userId)
+            .select('e')
+            .by(__.valueMap())
             .toList();
           if (memberEdges.length === 0) return response(403, { error: 'Access denied' });
-          
+
           const userRole = getVal(memberEdges[0], 'role') || 'member';
-          
+
           const result = await g.V().has('Project', 'id', projectId).valueMap().next();
           if (!result.value) return response(404, { error: 'Project not found' });
-          
+
           const v = result.value;
           const project = {
             id: getVal(v, 'id') || projectId,
@@ -75,22 +87,27 @@ exports.handler = async (event) => {
             gitRepo: getVal(v, 'git_repo'),
             agentCli: getVal(v, 'agent_cli') || 'kiro',
             createdAt: getVal(v, 'created_at') || new Date().toISOString(),
-            userRole
+            userRole,
           };
           return response(200, project);
         }
-        
+
         // List projects - only return projects where the current user is a member
         if (!userId) return response(401, { error: 'Unauthorized' });
-        
-        const results = await g.V().has('User', 'id', userId)
-          .inE('HAS_MEMBER').as('e')
-          .outV().hasLabel('Project').as('p')
+
+        const results = await g
+          .V()
+          .has('User', 'id', userId)
+          .inE('HAS_MEMBER')
+          .as('e')
+          .outV()
+          .hasLabel('Project')
+          .as('p')
           .select('e', 'p')
           .by(__.valueMap())
           .by(__.valueMap())
           .toList();
-        const projects = results.map(item => {
+        const projects = results.map((item) => {
           // item is a Map with keys 'e' (edge) and 'p' (project vertex)
           const e = item instanceof Map ? item.get('e') : item.e;
           const v = item instanceof Map ? item.get('p') : item.p;
@@ -101,20 +118,21 @@ exports.handler = async (event) => {
             gitRepo: getVal(v, 'git_repo'),
             agentCli: getVal(v, 'agent_cli') || 'kiro',
             createdAt: getVal(v, 'created_at') || new Date().toISOString(),
-            userRole: getVal(e, 'role') || 'member'
+            userRole: getVal(e, 'role') || 'member',
           };
         });
         return response(200, projects);
 
       case 'POST': {
         if (!userId) return response(401, { error: 'Unauthorized' });
-        
+
         const data = JSON.parse(body);
         const id = randomUUID();
         const createdAt = new Date().toISOString();
-        
+
         // Create the project vertex with creator tracking
-        await g.addV('Project')
+        await g
+          .addV('Project')
           .property('id', id)
           .property('name', data.name)
           .property('git_provider', data.gitProvider || 'github')
@@ -123,48 +141,53 @@ exports.handler = async (event) => {
           .property('created_by', userId)
           .property('created_at', createdAt)
           .next();
-        
+
         // Ensure the User vertex exists
         const userExists = await g.V().has('User', 'id', userId).hasNext();
         if (!userExists) {
-          await g.addV('User')
-            .property('id', userId)
-            .property('email', userEmail)
-            .next();
+          await g.addV('User').property('id', userId).property('email', userEmail).next();
         }
-        
+
         // Add the creator as project owner
-        await g.V().has('Project', 'id', id)
-          .addE('HAS_MEMBER').property('role', 'owner')
+        await g
+          .V()
+          .has('Project', 'id', id)
+          .addE('HAS_MEMBER')
+          .property('role', 'owner')
           .to(__.V().has('User', 'id', userId))
           .next();
-          
-          return response(201, {
+
+        return response(201, {
           id,
           name: data.name,
           gitProvider: data.gitProvider || 'github',
           gitRepo: data.gitRepo || '',
           agentCli: data.agentCli || 'kiro',
-          createdAt
+          createdAt,
         });
       }
 
       case 'PUT': {
         if (!userId) return response(401, { error: 'Unauthorized' });
-        
+
         // Owners and admins can update project settings
-        const updateEdges = await g.V().has('Project', 'id', projectId)
-          .outE('HAS_MEMBER').as('e')
-          .inV().has('User', 'id', userId)
-          .select('e').by(__.valueMap())
+        const updateEdges = await g
+          .V()
+          .has('Project', 'id', projectId)
+          .outE('HAS_MEMBER')
+          .as('e')
+          .inV()
+          .has('User', 'id', userId)
+          .select('e')
+          .by(__.valueMap())
           .toList();
         if (updateEdges.length === 0) return response(403, { error: 'Access denied' });
-        
+
         const updaterRole = getVal(updateEdges[0], 'role') || 'member';
         if (updaterRole !== 'owner' && updaterRole !== 'admin') {
           return response(403, { error: 'Only project owners and admins can update settings' });
         }
-        
+
         const data = JSON.parse(body);
         let vertex;
         if (data.name) {
@@ -182,7 +205,9 @@ exports.handler = async (event) => {
         if (data.agentCli) {
           const validClis = ['kiro', 'claude', 'opencode'];
           if (!validClis.includes(data.agentCli)) {
-            return response(400, { error: `Invalid agentCli value. Must be one of: ${validClis.join(', ')}` });
+            return response(400, {
+              error: `Invalid agentCli value. Must be one of: ${validClis.join(', ')}`,
+            });
           }
           vertex = g.V().has('Project', 'id', projectId);
           await vertex.property(cardinality.single, 'agent_cli', data.agentCli).next();
@@ -192,13 +217,18 @@ exports.handler = async (event) => {
 
       case 'DELETE':
         if (!userId) return response(401, { error: 'Unauthorized' });
-        
+
         // Only owners can delete projects
-        const canDelete = await g.V().has('Project', 'id', projectId)
-          .outE('HAS_MEMBER').has('role', 'owner').inV().has('User', 'id', userId)
+        const canDelete = await g
+          .V()
+          .has('Project', 'id', projectId)
+          .outE('HAS_MEMBER')
+          .has('role', 'owner')
+          .inV()
+          .has('User', 'id', userId)
           .hasNext();
         if (!canDelete) return response(403, { error: 'Only project owners can delete projects' });
-        
+
         await g.V().has('Project', 'id', projectId).drop().next();
         return response(204, {});
 
@@ -207,10 +237,10 @@ exports.handler = async (event) => {
     }
   } catch (err) {
     console.error('Error:', err);
-    return response(500, { 
+    return response(500, {
       error: 'Internal server error',
       message: err.message,
-      neptune: process.env.NEPTUNE_ENDPOINT
+      neptune: process.env.NEPTUNE_ENDPOINT,
     });
   } finally {
     if (conn) {

@@ -43,10 +43,12 @@ async function authenticate(env) {
   if (ssmPath && _cachedKiroApiKey === null) {
     try {
       const ssm = new SSMClient({ region: env.AWS_REGION || 'us-east-1' });
-      const result = await ssm.send(new GetParameterCommand({ Name: ssmPath, WithDecryption: true }));
+      const result = await ssm.send(
+        new GetParameterCommand({ Name: ssmPath, WithDecryption: true }),
+      );
       const value = result.Parameter?.Value || '';
       // 'placeholder' is the sentinel stored by Terraform when no key is set
-      _cachedKiroApiKey = (value && value !== 'placeholder') ? value : '';
+      _cachedKiroApiKey = value && value !== 'placeholder' ? value : '';
       if (_cachedKiroApiKey) {
         console.log('[driver:kiro] KIRO_API_KEY loaded from SSM');
       } else {
@@ -69,7 +71,10 @@ async function authenticate(env) {
       env: { ...process.env, KIRO_API_KEY: _cachedKiroApiKey },
     });
   } catch (err) {
-    throw new Error('kiro-cli whoami failed — the configured KIRO_API_KEY is invalid or expired. ' + (err.message || ''));
+    throw new Error(
+      'kiro-cli whoami failed — the configured KIRO_API_KEY is invalid or expired. ' +
+        (err.message || ''),
+    );
   }
 
   console.log('[driver:kiro] Authenticated via API key');
@@ -88,7 +93,9 @@ function configureSettings(env) {
   if (env.KIRO_MODEL) {
     console.log(`[driver:kiro] Setting model: ${env.KIRO_MODEL}`);
     try {
-      execSync(`kiro-cli settings chat.defaultModel "${env.KIRO_MODEL}" --global`, { stdio: 'inherit' });
+      execSync(`kiro-cli settings chat.defaultModel "${env.KIRO_MODEL}" --global`, {
+        stdio: 'inherit',
+      });
     } catch (err) {
       console.error('[driver:kiro] Failed to set model:', err.message);
     }

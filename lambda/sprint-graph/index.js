@@ -26,35 +26,41 @@ exports.handler = async (event) => {
     const { sprintId } = event.pathParameters || {};
 
     // Get all vertices contained in this sprint (CONTAINS + HAS_REVIEW + HAS_PR + HAS_AGENT_RUN)
-    const vertices = await g.V().has('Sprint', 'id', sprintId)
+    const vertices = await g
+      .V()
+      .has('Sprint', 'id', sprintId)
       .union(
         gremlin.process.statics.out('CONTAINS'),
         gremlin.process.statics.out('HAS_REVIEW'),
         gremlin.process.statics.out('HAS_PR'),
-        gremlin.process.statics.out('HAS_AGENT_RUN')
+        gremlin.process.statics.out('HAS_AGENT_RUN'),
       )
       .project('id', 'type', 'label', 'props')
       .by('id')
       .by(T.label)
-      .by(gremlin.process.statics.coalesce(
-        gremlin.process.statics.values('title'),
-        gremlin.process.statics.values('file_path'),
-        gremlin.process.statics.values('agent_type'),
-        gremlin.process.statics.values('status'),
-        gremlin.process.statics.constant('(unnamed)')
-      ))
+      .by(
+        gremlin.process.statics.coalesce(
+          gremlin.process.statics.values('title'),
+          gremlin.process.statics.values('file_path'),
+          gremlin.process.statics.values('agent_type'),
+          gremlin.process.statics.values('status'),
+          gremlin.process.statics.constant('(unnamed)'),
+        ),
+      )
       .by(gremlin.process.statics.valueMap())
       .toList();
 
-    const nodeIds = new Set(vertices.map(v => v.get('id')));
+    const nodeIds = new Set(vertices.map((v) => v.get('id')));
 
     // Get all edges between these vertices
-    const edges = await g.V().has('Sprint', 'id', sprintId)
+    const edges = await g
+      .V()
+      .has('Sprint', 'id', sprintId)
       .union(
         gremlin.process.statics.out('CONTAINS'),
         gremlin.process.statics.out('HAS_REVIEW'),
         gremlin.process.statics.out('HAS_PR'),
-        gremlin.process.statics.out('HAS_AGENT_RUN')
+        gremlin.process.statics.out('HAS_AGENT_RUN'),
       )
       .bothE()
       .where(gremlin.process.statics.otherV().has('id', gremlin.process.P.within(...nodeIds)))
@@ -65,16 +71,25 @@ exports.handler = async (event) => {
       .dedup()
       .toList();
 
-    const nodes = vertices.map(v => {
+    const nodes = vertices.map((v) => {
       const props = v.get('props');
       const data = {};
-      if (props) props.forEach((val, key) => { data[key] = Array.isArray(val) ? val[0] : val; });
+      if (props)
+        props.forEach((val, key) => {
+          data[key] = Array.isArray(val) ? val[0] : val;
+        });
       return { id: v.get('id'), type: v.get('type'), label: v.get('label'), ...data };
     });
 
     const edgeList = edges
-      .filter(e => e.get('label') !== 'CONTAINS' && e.get('label') !== 'HAS_REVIEW' && e.get('label') !== 'HAS_PR' && e.get('label') !== 'HAS_AGENT_RUN')
-      .map(e => ({
+      .filter(
+        (e) =>
+          e.get('label') !== 'CONTAINS' &&
+          e.get('label') !== 'HAS_REVIEW' &&
+          e.get('label') !== 'HAS_PR' &&
+          e.get('label') !== 'HAS_AGENT_RUN',
+      )
+      .map((e) => ({
         source: e.get('source'),
         target: e.get('target'),
         label: e.get('label'),
@@ -85,6 +100,9 @@ exports.handler = async (event) => {
     console.error('Error:', err);
     return res(500, { error: 'Internal server error' });
   } finally {
-    if (conn) try { await conn.close(); } catch {}
+    if (conn)
+      try {
+        await conn.close();
+      } catch {}
   }
 };

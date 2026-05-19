@@ -1,7 +1,7 @@
 name: Bug Report
 description: Report a bug or unexpected behavior
-title: "[Bug]: "
-labels: ["bug"]
+title: '[Bug]: '
+labels: ['bug']
 body:
   - type: markdown
     attributes:
@@ -13,7 +13,7 @@ body:
     attributes:
       label: Description
       description: What happened and what did you expect instead?
-      placeholder: "When I do X, Y happens. I expected Z."
+      placeholder: 'When I do X, Y happens. I expected Z.'
     validations:
       required: true
 

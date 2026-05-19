@@ -21,8 +21,14 @@ export interface VelocityMetrics {
   trendPct: number;
 }
 
-interface ToolHistory { name: string; timestamp: number }
-interface TaskCompletion { taskId: string; completedAt: number }
+interface ToolHistory {
+  name: string;
+  timestamp: number;
+}
+interface TaskCompletion {
+  taskId: string;
+  completedAt: number;
+}
 
 const IDLE_THRESHOLD_MS = 5 * 60 * 1000;
 const STUCK_TOOL_REPEAT = 3; // 3+ consecutive same-tool calls = possible retry loop (AgentTower spec)
@@ -42,11 +48,14 @@ export class L2Intelligence {
     this.toolHistory[sprintId] = history.slice(-10);
 
     const recent = history.slice(-STUCK_TOOL_REPEAT);
-    if (recent.length >= STUCK_TOOL_REPEAT && recent.every(h => h.name === toolName)) {
+    if (recent.length >= STUCK_TOOL_REPEAT && recent.every((h) => h.name === toolName)) {
       return {
-        sprintId, projectName: '', reason: 'repeated_tool',
+        sprintId,
+        projectName: '',
+        reason: 'repeated_tool',
         message: `Repeated "${toolName.replace(/_/g, ' ')}" ${STUCK_TOOL_REPEAT}× — possible retry loop`,
-        durationMs: now - recent[0].timestamp, severity: 'high',
+        durationMs: now - recent[0].timestamp,
+        severity: 'high',
       };
     }
     return null;
@@ -73,7 +82,7 @@ export class L2Intelligence {
   recordTaskCompletion(sprintId: string, taskId: string) {
     const completions = this.taskCompletions[sprintId] ?? [];
     // Deduplicate
-    if (!completions.find(c => c.taskId === taskId)) {
+    if (!completions.find((c) => c.taskId === taskId)) {
       completions.push({ taskId, completedAt: Date.now() });
       this.taskCompletions[sprintId] = completions;
     }
@@ -86,11 +95,11 @@ export class L2Intelligence {
     const windowStart = now - VELOCITY_WINDOW_MS;
     const halfWindow = now - VELOCITY_WINDOW_MS / 2;
 
-    const recent = completions.filter(c => c.completedAt > windowStart);
+    const recent = completions.filter((c) => c.completedAt > windowStart);
     if (recent.length < 1) return null;
 
-    const firstHalf = recent.filter(c => c.completedAt <= halfWindow).length;
-    const secondHalf = recent.filter(c => c.completedAt > halfWindow).length;
+    const firstHalf = recent.filter((c) => c.completedAt <= halfWindow).length;
+    const secondHalf = recent.filter((c) => c.completedAt > halfWindow).length;
     const tasksPerHour = Math.round((recent.length / (VELOCITY_WINDOW_MS / 3_600_000)) * 10) / 10;
 
     let trend: VelocityMetrics['trend'] = 'stable';

@@ -72,7 +72,10 @@ const getDoc = (docName) => {
     const changed = added.concat(updated, removed);
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, 1);
-    encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(awareness, changed));
+    encoding.writeVarUint8Array(
+      encoder,
+      awarenessProtocol.encodeAwarenessUpdate(awareness, changed),
+    );
     const msg = encoding.toUint8Array(encoder);
     conns.forEach((_clientIds, conn) => {
       if (conn.readyState === 1) conn.send(msg);
@@ -88,14 +91,16 @@ const messageHandler = (conn, docData, message) => {
   const messageType = decoding.readVarUint(decoder);
 
   switch (messageType) {
-    case 0: { // sync
+    case 0: {
+      // sync
       const encoder = encoding.createEncoder();
       encoding.writeVarUint(encoder, 0);
       syncProtocol.readSyncMessage(decoder, encoder, doc, conn);
       if (encoding.length(encoder) > 1) conn.send(encoding.toUint8Array(encoder));
       break;
     }
-    case 1: { // awareness
+    case 1: {
+      // awareness
       const update = decoding.readVarUint8Array(decoder);
       awarenessProtocol.applyAwarenessUpdate(awareness, update, conn);
       const connClientIds = docData.conns.get(conn) || new Set();
@@ -114,7 +119,9 @@ const messageHandler = (conn, docData, message) => {
             connClientIds.delete(clientId);
           }
         }
-      } catch { /* best-effort tracking */ }
+      } catch {
+        /* best-effort tracking */
+      }
       docData.conns.set(conn, connClientIds);
       break;
     }
@@ -151,11 +158,13 @@ const rejectUpgrade = (socket, statusCode, reason) => {
   try {
     socket.write(
       `HTTP/1.1 ${statusCode} ${reason}\r\n` +
-      'Connection: close\r\n' +
-      'Content-Length: 0\r\n' +
-      '\r\n',
+        'Connection: close\r\n' +
+        'Content-Length: 0\r\n' +
+        '\r\n',
     );
-  } catch { /* socket may already be dead */ }
+  } catch {
+    /* socket may already be dead */
+  }
   socket.destroy();
 };
 
@@ -223,7 +232,10 @@ wss.on('connection', (conn, req) => {
   if (awarenessStates.length > 0) {
     const awarenessEncoder = encoding.createEncoder();
     encoding.writeVarUint(awarenessEncoder, 1);
-    encoding.writeVarUint8Array(awarenessEncoder, awarenessProtocol.encodeAwarenessUpdate(docData.awareness, awarenessStates));
+    encoding.writeVarUint8Array(
+      awarenessEncoder,
+      awarenessProtocol.encodeAwarenessUpdate(docData.awareness, awarenessStates),
+    );
     conn.send(encoding.toUint8Array(awarenessEncoder));
   }
 
@@ -239,11 +251,7 @@ wss.on('connection', (conn, req) => {
     // Remove awareness states that belong to THIS connection (not the server)
     const clientIds = docData.conns.get(conn) || new Set();
     if (clientIds.size > 0) {
-      awarenessProtocol.removeAwarenessStates(
-        docData.awareness,
-        Array.from(clientIds),
-        null,
-      );
+      awarenessProtocol.removeAwarenessStates(docData.awareness, Array.from(clientIds), null);
     }
     docData.conns.delete(conn);
 

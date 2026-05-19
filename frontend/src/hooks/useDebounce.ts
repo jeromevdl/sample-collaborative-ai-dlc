@@ -1,9 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export function useDebounce<T extends (...args: any[]) => void>(
-  callback: T,
-  delay: number
-): T {
+export function useDebounce<T extends (...args: any[]) => void>(callback: T, delay: number): T {
   const timeoutRef = useRef<number | null>(null);
   const callbackRef = useRef(callback);
   const pendingArgsRef = useRef<any[] | null>(null);

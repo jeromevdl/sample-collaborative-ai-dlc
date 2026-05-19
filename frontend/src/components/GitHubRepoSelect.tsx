@@ -12,9 +12,10 @@ export function GitHubRepoSelect({ value, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    githubService.listRepos()
+    githubService
+      .listRepos()
       .then(setRepos)
-      .catch(e => setError(e.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -25,13 +26,13 @@ export function GitHubRepoSelect({ value, onChange }: Props) {
     <select
       value={value}
       onChange={(e) => {
-        const repo = repos.find(r => r.fullName === e.target.value) || null;
+        const repo = repos.find((r) => r.fullName === e.target.value) || null;
         onChange(repo);
       }}
       className="w-full border rounded px-3 py-2"
     >
       <option value="">Select a repository</option>
-      {repos.map(repo => (
+      {repos.map((repo) => (
         <option key={repo.id} value={repo.fullName}>
           {repo.fullName} {repo.private && '🔒'}
         </option>

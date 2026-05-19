@@ -22,13 +22,24 @@ interface Props {
 }
 
 export function InceptionView({
-  description, setDescription, descSynced,
-  agentStatus, streamingText, activeToolCall, toolCalls, completedOutput,
-  onStartAgent, onCancelAgent, startingAgent,
+  description,
+  setDescription,
+  descSynced,
+  agentStatus,
+  streamingText,
+  activeToolCall,
+  toolCalls,
+  completedOutput,
+  onStartAgent,
+  onCancelAgent,
+  startingAgent,
 }: Props) {
   const isRunning = agentStatus?.status === 'RUNNING';
   const isDone = agentStatus?.status === 'SUCCEEDED';
-  const isFailed = agentStatus?.status === 'FAILED' || agentStatus?.status === 'ABORTED' || agentStatus?.status === 'TIMED_OUT';
+  const isFailed =
+    agentStatus?.status === 'FAILED' ||
+    agentStatus?.status === 'ABORTED' ||
+    agentStatus?.status === 'TIMED_OUT';
   const canLaunch = !agentStatus || isFailed;
 
   return (
@@ -43,7 +54,9 @@ export function InceptionView({
       <div className="bg-white rounded-lg shadow-lg">
         <div className="px-6 py-4 border-b flex justify-between items-center">
           <h3 className="font-semibold text-gray-900">Project Description</h3>
-          <span className={`px-2 py-0.5 text-xs rounded ${descSynced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+          <span
+            className={`px-2 py-0.5 text-xs rounded ${descSynced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+          >
             {descSynced ? '● Saved' : '○ Saving...'}
           </span>
         </div>
@@ -60,16 +73,18 @@ export function InceptionView({
 
       {/* Agent controls */}
       <div className="bg-white rounded-lg shadow-lg p-6">
-        {isFailed && agentStatus && (
-          <AgentStatusPanel status={agentStatus} />
-        )}
+        {isFailed && agentStatus && <AgentStatusPanel status={agentStatus} />}
         {canLaunch && !isDone && (
           <button
             onClick={onStartAgent}
             disabled={!description.trim() || startingAgent}
             className={`w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-lg transition ${isFailed ? 'mt-3' : ''}`}
           >
-            {startingAgent ? 'Starting Agent...' : isFailed ? '🔄 Retry Inception Agent' : '🚀 Launch Inception Agent'}
+            {startingAgent
+              ? 'Starting Agent...'
+              : isFailed
+                ? '🔄 Retry Inception Agent'
+                : '🚀 Launch Inception Agent'}
           </button>
         )}
         {agentStatus && !isFailed && (

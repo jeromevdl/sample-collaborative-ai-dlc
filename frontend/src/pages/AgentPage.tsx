@@ -15,9 +15,7 @@ import { BranchSelector } from '@/components/BranchSelector';
 import QuestionEditor from '@/components/QuestionEditor';
 import { AgentStartErrorBanner } from '@/components/AgentStartErrorBanner';
 import { extractAgentStartError, type AgentStartError } from '@/lib/agentStartError';
-import {
-  Bot, GitBranch, Loader2, ArrowLeft, MessageCircleQuestion, X,
-} from 'lucide-react';
+import { Bot, GitBranch, Loader2, ArrowLeft, MessageCircleQuestion, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { questionsService, type StructuredAnswer } from '@/services/questions';
 
@@ -26,8 +24,14 @@ type PageState = 'prompt' | 'running' | 'completed' | 'failed';
 export default function AgentPage() {
   const { user } = useAuth();
   const {
-    sprint, timelineEvents, questions,
-    projectId, sprintId, reload, reloadTimeline, loading: sprintLoading,
+    sprint,
+    timelineEvents,
+    questions,
+    projectId,
+    sprintId,
+    reload,
+    reloadTimeline,
+    loading: sprintLoading,
   } = useSprint();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -53,11 +57,20 @@ export default function AgentPage() {
     sprintId,
     sprintAgentStatus: sprint?.currentAgentStatus,
   });
-  useSprintEvents(sprintId, useCallback(() => { reload(); }, [reload]));
+  useSprintEvents(
+    sprintId,
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   // Load project for git repo info
   useEffect(() => {
-    if (projectId) projectsService.get(projectId).then(setProject).catch(() => {});
+    if (projectId)
+      projectsService
+        .get(projectId)
+        .then(setProject)
+        .catch(() => {});
   }, [projectId]);
 
   // Track agent completion/failure from streaming status
@@ -73,7 +86,7 @@ export default function AgentPage() {
   }, [agentStatus.artifactsUpdated, reload]);
 
   const pendingQuestions = questions
-    .filter(q => !q.structuredAnswer)
+    .filter((q) => !q.structuredAnswer)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   const handleSelectBranch = (branch: string, baseBranch: string) => {
@@ -99,12 +112,14 @@ export default function AgentPage() {
       setPageState('running');
 
       // Record timeline event
-      timelineEventsService.create(sprintId, {
-        type: 'agent_invoked',
-        title: 'Agent invoked for bug fix',
-        detail: `Branch: ${branch}\n\nInstructions:\n${instructions.trim()}`,
-        userName,
-      }).catch(() => {});
+      timelineEventsService
+        .create(sprintId, {
+          type: 'agent_invoked',
+          title: 'Agent invoked for bug fix',
+          detail: `Branch: ${branch}\n\nInstructions:\n${instructions.trim()}`,
+          userName,
+        })
+        .catch(() => {});
       reloadTimeline().catch(() => {});
     } catch (err) {
       console.error('Failed to start bugfix agent:', err);
@@ -117,22 +132,28 @@ export default function AgentPage() {
   const handleAnswerQuestion = async (questionId: string, answer: StructuredAnswer) => {
     try {
       await agentStatus.answerQuestion(questionId, answer);
-      timelineEventsService.create(sprintId, {
-        type: 'question_answered',
-        title: 'Answered agent question',
-        userName,
-      }).catch(() => {});
+      timelineEventsService
+        .create(sprintId, {
+          type: 'question_answered',
+          title: 'Answered agent question',
+          userName,
+        })
+        .catch(() => {});
     } catch (err) {
       console.error('Failed to answer question:', err);
     }
   };
 
   const handleDismissQuestion = async (questionId: string) => {
-    const dismissed: StructuredAnswer = { answers: [{ selectedOptions: [], freeText: '(dismissed — agent no longer running)' }] };
+    const dismissed: StructuredAnswer = {
+      answers: [{ selectedOptions: [], freeText: '(dismissed — agent no longer running)' }],
+    };
     try {
       await questionsService.update(sprintId, questionId, { structuredAnswer: dismissed });
       await reload();
-    } catch (err) { console.error('Failed to dismiss question:', err); }
+    } catch (err) {
+      console.error('Failed to dismiss question:', err);
+    }
   };
 
   const handleCancel = async () => {
@@ -156,15 +177,22 @@ export default function AgentPage() {
   };
 
   // Map page state to badge status
-  const badgeStatus = pageState === 'running' ? 'running'
-    : pageState === 'completed' ? 'completed'
-    : pageState === 'failed' ? 'failed'
-    : null;
+  const badgeStatus =
+    pageState === 'running'
+      ? 'running'
+      : pageState === 'completed'
+        ? 'completed'
+        : pageState === 'failed'
+          ? 'failed'
+          : null;
 
   // Determine which phase page to link back to
-  const phaseRoute = sprint?.phase === 'CONSTRUCTION' ? '/construction'
-    : sprint?.phase === 'REVIEW' ? '/review'
-    : '';
+  const phaseRoute =
+    sprint?.phase === 'CONSTRUCTION'
+      ? '/construction'
+      : sprint?.phase === 'REVIEW'
+        ? '/review'
+        : '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,16 +210,10 @@ export default function AgentPage() {
               <Bot className="h-6 w-6 text-purple-500" />
               <h1 className="text-2xl font-bold">Invoke Agent</h1>
             </div>
-            {sprint && (
-              <span className="text-sm text-muted-foreground">
-                {sprint.name}
-              </span>
-            )}
+            {sprint && <span className="text-sm text-muted-foreground">{sprint.name}</span>}
           </div>
           <div className="flex items-center gap-2">
-            {badgeStatus && (
-              <AgentStatusBadge status={badgeStatus} agentType="bugfix" />
-            )}
+            {badgeStatus && <AgentStatusBadge status={badgeStatus} agentType="bugfix" />}
             {pageState === 'running' && (
               <Button variant="outline" size="sm" onClick={handleCancel}>
                 Cancel
@@ -203,7 +225,6 @@ export default function AgentPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column: Prompt form + stream */}
           <div className="lg:col-span-2 space-y-6">
-
             {/* Prompt Form -- always visible, but read-only once agent is running */}
             <Card>
               <CardHeader>
@@ -217,9 +238,9 @@ export default function AgentPage() {
               <CardContent className="space-y-4">
                 {pageState === 'prompt' && (
                   <p className="text-sm text-muted-foreground">
-                    Invoke a general-purpose agent on a branch to fix bugs, make adjustments,
-                    or perform other targeted changes. This is outside the AI-DLC lifecycle --
-                    the agent will simply follow your instructions and commit changes.
+                    Invoke a general-purpose agent on a branch to fix bugs, make adjustments, or
+                    perform other targeted changes. This is outside the AI-DLC lifecycle -- the
+                    agent will simply follow your instructions and commit changes.
                   </p>
                 )}
                 <textarea
@@ -228,14 +249,16 @@ export default function AgentPage() {
                   readOnly={pageState !== 'prompt'}
                   placeholder="Describe the bugs to fix or changes to make...&#10;&#10;Example: The login form doesn't validate email format before submission. Fix the validation logic in src/components/LoginForm.tsx to check for valid email format and show an error message."
                   className={`w-full px-3 py-2 text-sm border rounded-md bg-background resize-y focus:outline-none focus:ring-2 focus:ring-ring ${
-                    pageState === 'prompt' ? 'min-h-[160px]' : 'min-h-[80px] opacity-75 cursor-default'
+                    pageState === 'prompt'
+                      ? 'min-h-[160px]'
+                      : 'min-h-[80px] opacity-75 cursor-default'
                   }`}
                 />
                 {pageState === 'prompt' && (
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
-                      The agent will check out the branch, apply fixes, and commit changes.
-                      The system pushes the branch after the agent finishes.
+                      The agent will check out the branch, apply fixes, and commit changes. The
+                      system pushes the branch after the agent finishes.
                     </p>
                     <Button
                       onClick={() => setShowBranchSelector(true)}
@@ -257,7 +280,8 @@ export default function AgentPage() {
                 )}
                 {pageState === 'prompt' && !project?.gitRepo && (
                   <p className="text-sm text-destructive">
-                    This project has no git repository configured. Connect a repo in project settings.
+                    This project has no git repository configured. Connect a repo in project
+                    settings.
                   </p>
                 )}
                 {pageState === 'prompt' && startError && (
@@ -276,9 +300,7 @@ export default function AgentPage() {
             {pageState !== 'prompt' && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    Agent Output
-                  </CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-sm">Agent Output</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <AgentStreamPanel
@@ -308,29 +330,36 @@ export default function AgentPage() {
             )}
 
             {/* Pending Questions */}
-            {pendingQuestions.length > 0 && pendingQuestions.map(pq => (
-              <Card key={pq.id} className="border-yellow-500/50">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-yellow-600">
-                      <MessageCircleQuestion className="h-5 w-5" />
-                      Agent Has a Question
-                    </CardTitle>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleDismissQuestion(pq.id)} title="Dismiss question">
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <QuestionEditor
-                    question={pq}
-                    sprintId={sprintId}
-                    userName={userName}
-                    onAnswer={(answer: StructuredAnswer) => handleAnswerQuestion(pq.id, answer)}
-                  />
-                </CardContent>
-              </Card>
-            ))}
+            {pendingQuestions.length > 0 &&
+              pendingQuestions.map((pq) => (
+                <Card key={pq.id} className="border-yellow-500/50">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-yellow-600">
+                        <MessageCircleQuestion className="h-5 w-5" />
+                        Agent Has a Question
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDismissQuestion(pq.id)}
+                        title="Dismiss question"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <QuestionEditor
+                      question={pq}
+                      sprintId={sprintId}
+                      userName={userName}
+                      onAnswer={(answer: StructuredAnswer) => handleAnswerQuestion(pq.id, answer)}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
           </div>
 
           {/* Right column: Timeline */}
@@ -341,11 +370,12 @@ export default function AgentPage() {
               </CardHeader>
               <CardContent>
                 <TimelinePanel
-                  events={timelineEvents.filter(e =>
-                    e.type === 'agent_invoked' ||
-                    e.type === 'agent_started' ||
-                    e.type === 'agent_completed' ||
-                    e.type === 'agent_failed'
+                  events={timelineEvents.filter(
+                    (e) =>
+                      e.type === 'agent_invoked' ||
+                      e.type === 'agent_started' ||
+                      e.type === 'agent_completed' ||
+                      e.type === 'agent_failed',
                   )}
                   loading={sprintLoading}
                 />

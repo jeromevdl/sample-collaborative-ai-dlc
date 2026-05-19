@@ -13,7 +13,14 @@ interface BranchSelectorProps {
   defaultUseExisting?: boolean;
 }
 
-export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Branch for Construction', submitLabel = 'Start Construction', defaultUseExisting = false }: BranchSelectorProps) {
+export function BranchSelector({
+  gitRepo,
+  onSelect,
+  onCancel,
+  title = 'Select Branch for Construction',
+  submitLabel = 'Start Construction',
+  defaultUseExisting = false,
+}: BranchSelectorProps) {
   const [branches, setBranches] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,14 +35,14 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
 
   const loadBranches = async () => {
     if (!gitRepo) return;
-    
+
     try {
       setLoading(true);
       const [owner, repo] = gitRepo.split('/');
       const data = await githubService.listBranches(owner, repo);
       const branchNames = data.branches || [];
       setBranches(branchNames);
-      
+
       if (branchNames.includes('main')) {
         setSelectedBase('main');
       } else if (branchNames.includes('master')) {
@@ -43,7 +50,7 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
       } else if (branchNames.length > 0) {
         setSelectedBase(branchNames[0]);
       }
-      
+
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load branches');
@@ -54,7 +61,7 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (useExisting) {
       if (!selectedExisting) {
         setError('Please select an existing branch');
@@ -72,13 +79,14 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
     }
   };
 
-  const inputClasses = "w-full px-3 py-2 border border-input rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+  const inputClasses =
+    'w-full px-3 py-2 border border-input rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 border shadow-lg">
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
-        
+
         {error && (
           <div className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded mb-4">
             {error}
@@ -93,7 +101,10 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
             {branches.length === 0 && (
               <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-sm text-blue-600 dark:text-blue-400">
                 <p className="font-medium">Empty Repository Detected</p>
-                <p className="mt-1">The agent will create an initial commit on the base branch before starting construction.</p>
+                <p className="mt-1">
+                  The agent will create an initial commit on the base branch before starting
+                  construction.
+                </p>
               </div>
             )}
 
@@ -108,7 +119,7 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
                 />
                 <span className="text-sm font-medium text-foreground">Create new branch</span>
               </label>
-              
+
               {!useExisting && (
                 <input
                   type="text"
@@ -131,7 +142,7 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
                   />
                   <span className="text-sm font-medium text-foreground">Use existing branch</span>
                 </label>
-                
+
                 {useExisting && (
                   <>
                     <select
@@ -140,8 +151,10 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
                       className={inputClasses}
                     >
                       <option value="">Select a branch...</option>
-                      {branches.map(branch => (
-                        <option key={branch} value={branch}>{branch}</option>
+                      {branches.map((branch) => (
+                        <option key={branch} value={branch}>
+                          {branch}
+                        </option>
                       ))}
                     </select>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -154,30 +167,32 @@ export function BranchSelector({ gitRepo, onSelect, onCancel, title = 'Select Br
 
             {/* Base Branch Selection -- only relevant when creating a new branch */}
             {!useExisting && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Base Branch {branches.length === 0 && '(will be created)'}
-              </label>
-              {branches.length > 0 ? (
-                <select
-                  value={selectedBase}
-                  onChange={(e) => setSelectedBase(e.target.value)}
-                  className={inputClasses}
-                >
-                  {branches.map(branch => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={selectedBase}
-                  onChange={(e) => setSelectedBase(e.target.value)}
-                  placeholder="main"
-                  className={inputClasses}
-                />
-              )}
-            </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Base Branch {branches.length === 0 && '(will be created)'}
+                </label>
+                {branches.length > 0 ? (
+                  <select
+                    value={selectedBase}
+                    onChange={(e) => setSelectedBase(e.target.value)}
+                    className={inputClasses}
+                  >
+                    {branches.map((branch) => (
+                      <option key={branch} value={branch}>
+                        {branch}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={selectedBase}
+                    onChange={(e) => setSelectedBase(e.target.value)}
+                    placeholder="main"
+                    className={inputClasses}
+                  />
+                )}
+              </div>
             )}
 
             <div className="flex justify-end gap-2 mt-6">

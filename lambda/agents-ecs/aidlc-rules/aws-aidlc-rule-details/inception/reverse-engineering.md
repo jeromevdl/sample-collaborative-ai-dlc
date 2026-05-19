@@ -13,6 +13,7 @@
 Before running full reverse engineering, check if carried-forward RE artifacts exist from a previous sprint:
 
 ### 0.1 Query Carried-Forward Artifacts
+
 - Use `list_nodes(label: "GeneralInfo")` and filter for nodes with `carried_from_sprint` property AND `type: "reverse-engineering"`
 - Also check for carried-forward Requirements with `category: "reverse-engineering"`
 
@@ -34,11 +35,13 @@ Has the codebase changed significantly since the last sprint? Options:
 ```
 
 **If user says no significant changes**:
+
 - Perform a quick verification scan: check package.json/build files for new dependencies, scan for new source files
 - If verification confirms no major changes: Update the `carried_from_sprint` artifacts' content if minor updates needed, then skip to Step 3
 - If verification reveals unexpected changes: Inform user and suggest running the full analysis
 
 **If user says some changes**:
+
 - Note the described changes
 - Run targeted reverse engineering on the changed areas only
 - Update the carried-forward GeneralInfo nodes via `update_node` with revised content
@@ -46,42 +49,50 @@ Has the codebase changed significantly since the last sprint? Options:
 - Skip to Step 3
 
 **If user says major changes**:
+
 - Proceed with full reverse engineering (Step 1) using carried-forward artifacts as reference context
 - The agent should compare new findings with carried-forward artifacts to identify what changed
 
 ### 0.3 If No Carried-Forward RE Artifacts Exist
+
 - Proceed with full reverse engineering starting at Step 1
 
 ## Step 1: Multi-Package Discovery
 
 ### 1.1 Scan Workspace
+
 - All packages (not just mentioned ones)
 - Package relationships via config files
 - Package types: Application, CDK/Infrastructure, Models, Clients, Tests
 
 ### 1.2 Understand the Business Context
+
 - The core business that the system is implementing overall
 - The business overview of every package
 - List of Business Transactions that are implemented in the system
 
 ### 1.3 Infrastructure Discovery
+
 - CDK packages (package.json with CDK dependencies)
 - Terraform (.tf files)
 - CloudFormation (.yaml/.json templates)
 - Deployment scripts
 
 ### 1.4 Build System Discovery
+
 - Build systems: Maven, Gradle, npm, etc.
 - Config files for build-system declarations
 - Build dependencies between packages
 
 ### 1.5 Service Architecture Discovery
+
 - Lambda functions (handlers, triggers)
 - Container services (Docker/ECS configs)
 - API definitions (OpenAPI specs, etc.)
 - Data stores (DynamoDB, S3, etc.)
 
 ### 1.6 Code Quality Analysis
+
 - Programming languages and frameworks
 - Test coverage indicators
 - Linting configurations
@@ -160,6 +171,7 @@ add_node(label: "Requirement", id: "re-code-quality", properties: {
 ```
 
 **CRITICAL LINKING RULES**:
+
 - **ALWAYS** use the `edges` parameter when creating GeneralInfo nodes to link them to Requirements
 - After creating GeneralInfo, use `add_edge` to link Questions that influenced them (Question → GeneralInfo via INFLUENCES)
 - Link to **ALL relevant Requirements** that the reverse engineering findings relate to
@@ -179,6 +191,7 @@ add_edge(
   edgeLabel: "INFLUENCES"
 )
 ```
+
 - If findings relate to multiple requirements, include multiple edges in the array
 - After creating all GeneralInfo nodes, if you discover additional relationships, use `add_edge` to connect them
 
@@ -193,6 +206,7 @@ update_node(label: "Sprint", id: env.sprintId, properties: {
 ## Step 4: Present Completion and Request Approval
 
 Call `ask_question` with:
+
 ```
 "Reverse Engineering Complete
 

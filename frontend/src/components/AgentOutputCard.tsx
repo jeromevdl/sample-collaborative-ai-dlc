@@ -22,7 +22,9 @@ export function AgentOutputCard({ output }: Props) {
         <h3 className="font-semibold text-gray-900">Agent Output</h3>
         <svg
           className={`w-5 h-5 text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -33,7 +35,9 @@ export function AgentOutputCard({ output }: Props) {
         </div>
       ) : (
         <div className="px-6 pb-4">
-          <pre className="text-xs text-gray-500 whitespace-pre-wrap line-clamp-3 font-mono">{previewLines}</pre>
+          <pre className="text-xs text-gray-500 whitespace-pre-wrap line-clamp-3 font-mono">
+            {previewLines}
+          </pre>
           <p className="text-xs text-indigo-600 mt-1">Click to expand</p>
         </div>
       )}

@@ -25,7 +25,15 @@ const ACTIVITY_LABELS: Record<string, string> = {
   question: 'answering question',
 };
 
-export function SprintNav({ projectId, sprintId, sprint, users, connectionStatus, user, hasArtifacts }: SprintNavProps) {
+export function SprintNav({
+  projectId,
+  sprintId,
+  sprint,
+  users,
+  connectionStatus,
+  user,
+  hasArtifacts,
+}: SprintNavProps) {
   const navigate = useNavigate();
   const currentPhase = sprint?.phase || 'INCEPTION';
 
@@ -34,8 +42,18 @@ export function SprintNav({ projectId, sprintId, sprint, users, connectionStatus
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(`/project/${projectId}`)} className="text-gray-600 hover:text-gray-900 flex items-center">
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <button
+              onClick={() => navigate(`/project/${projectId}`)}
+              className="text-gray-600 hover:text-gray-900 flex items-center"
+            >
+              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
               Project
             </button>
             <div className="h-6 w-px bg-gray-300" />
@@ -46,34 +64,33 @@ export function SprintNav({ projectId, sprintId, sprint, users, connectionStatus
             {hasArtifacts && (
               <>
                 <div className="flex gap-1 border rounded-lg p-1 bg-gray-50">
-                  {PHASES.map(phase => (
+                  {PHASES.map((phase) => (
                     <div
                       key={phase.id}
                       className={`px-3 py-1.5 text-sm rounded ${
-                        currentPhase === phase.id
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-gray-400'
+                        currentPhase === phase.id ? 'bg-indigo-600 text-white' : 'text-gray-400'
                       }`}
                     >
                       {phase.label}
                     </div>
                   ))}
                 </div>
-                <Link to={`/project/${projectId}/sprint/${sprintId}/graph`} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">
+                <Link
+                  to={`/project/${projectId}/sprint/${sprintId}/graph`}
+                  className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+                >
                   Graph View
                 </Link>
               </>
             )}
             <div className="flex -space-x-2">
               {users.map((u, i) => {
-                const activity = u.activity && u.activity !== 'idle'
-                  ? ACTIVITY_LABELS[u.activity] || u.activity
-                  : '';
+                const activity =
+                  u.activity && u.activity !== 'idle'
+                    ? ACTIVITY_LABELS[u.activity] || u.activity
+                    : '';
                 return (
-                  <div
-                    key={i}
-                    className="relative group"
-                  >
+                  <div key={i} className="relative group">
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium border-2 ${
                         activity ? 'border-green-400' : 'border-white'

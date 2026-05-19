@@ -1,7 +1,20 @@
 // Agents Lambda - handles agent task pool, status, Q&A, and graph queries
-const { ECSClient, RunTaskCommand, DescribeTasksCommand, StopTaskCommand } = require('@aws-sdk/client-ecs');
+const {
+  ECSClient,
+  RunTaskCommand,
+  DescribeTasksCommand,
+  StopTaskCommand,
+} = require('@aws-sdk/client-ecs');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, GetCommand, UpdateCommand, PutCommand, DeleteCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  GetCommand,
+  UpdateCommand,
+  PutCommand,
+  DeleteCommand,
+  ScanCommand,
+} = require('@aws-sdk/lib-dynamodb');
 const { SSMClient, GetParametersCommand, PutParameterCommand } = require('@aws-sdk/client-ssm');
 const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
@@ -22,9 +35,9 @@ const POOL_SIZE = parseInt(process.env.POOL_SIZE || '5', 10);
 const MAX_POOL_WORKERS = parseInt(process.env.MAX_POOL_WORKERS || String(POOL_SIZE * 2), 10);
 const POOL_TASK_DEFINITION_ARN = process.env.AGENT_TASK_DEFINITION_ARN || '';
 const POOL_VERSION = process.env.POOL_VERSION || 'unknown';
-const STALE_STARTING_MS = 5 * 60 * 1000;    // 5 minutes
-const STALE_IDLE_MS = 3 * 60 * 1000;        // 3 minutes
-const STALE_BUSY_MS = 30 * 60 * 1000;       // 30 minutes — sub-agents should not run this long
+const STALE_STARTING_MS = 5 * 60 * 1000; // 5 minutes
+const STALE_IDLE_MS = 3 * 60 * 1000; // 3 minutes
+const STALE_BUSY_MS = 30 * 60 * 1000; // 30 minutes — sub-agents should not run this long
 
 const getConnection = async () => {
   const host = process.env.NEPTUNE_ENDPOINT;
@@ -50,15 +63,17 @@ async function withNeptune(fn) {
 
 async function findIdleWorkers(agentCli) {
   if (!POOL_TABLE) return [];
-  const result = await ddb.send(new QueryCommand({
-    TableName: POOL_TABLE,
-    IndexName: 'StatusIndex',
-    KeyConditionExpression: '#s = :s',
-    FilterExpression: 'version = :v AND contains(availableClis, :cli)',
-    ExpressionAttributeNames: { '#s': 'status' },
-    ExpressionAttributeValues: { ':s': 'idle', ':v': POOL_VERSION, ':cli': agentCli },
-    Limit: 10,
-  }));
+  const result = await ddb.send(
+    new QueryCommand({
+      TableName: POOL_TABLE,
+      IndexName: 'StatusIndex',
+      KeyConditionExpression: '#s = :s',
+      FilterExpression: 'version = :v AND contains(availableClis, :cli)',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: { ':s': 'idle', ':v': POOL_VERSION, ':cli': agentCli },
+      Limit: 10,
+    }),
+  );
   return result.Items || [];
 }
 
@@ -82,7 +97,13 @@ function ssmPathForCli(cliName) {
 }
 
 function humanCliName(cliName) {
-  return cliName === 'kiro' ? 'Kiro' : cliName === 'claude' ? 'Claude' : cliName === 'opencode' ? 'OpenCode' : cliName;
+  return cliName === 'kiro'
+    ? 'Kiro'
+    : cliName === 'claude'
+      ? 'Claude'
+      : cliName === 'opencode'
+        ? 'OpenCode'
+        : cliName;
 }
 
 /**
@@ -95,10 +116,12 @@ async function checkCliConfigured(cliName) {
     return { configured: false, reason: `No SSM path mapped for CLI "${cliName}"` };
   }
   try {
-    const result = await ssm.send(new GetParametersCommand({
-      Names: [ssmPath],
-      WithDecryption: true,
-    }));
+    const result = await ssm.send(
+      new GetParametersCommand({
+        Names: [ssmPath],
+        WithDecryption: true,
+      }),
+    );
     const param = (result.Parameters || [])[0];
     const value = param?.Value || '';
     if (!value || value === 'placeholder') {
@@ -111,7 +134,10 @@ async function checkCliConfigured(cliName) {
     }
     return { configured: true };
   } catch (err) {
-    return { configured: false, reason: `Could not read credential for ${humanCliName(cliName)} from SSM: ${err.message}` };
+    return {
+      configured: false,
+      reason: `Could not read credential for ${humanCliName(cliName)} from SSM: ${err.message}`,
+    };
   }
 }
 
@@ -124,7 +150,7 @@ async function collectWorkerAuthError(cliName) {
   if (!POOL_TABLE) return null;
   try {
     const result = await ddb.send(new ScanCommand({ TableName: POOL_TABLE }));
-    for (const w of (result.Items || [])) {
+    for (const w of result.Items || []) {
       if (w.version !== POOL_VERSION) continue;
       const msg = w.cliAuthErrors?.[cliName];
       if (msg) return msg;
@@ -135,49 +161,67 @@ async function collectWorkerAuthError(cliName) {
   return null;
 }
 
-
 async function assignJobToWorker(workerId, job) {
-  await ddb.send(new UpdateCommand({
-    TableName: POOL_TABLE,
-    Key: { workerId },
-    UpdateExpression: 'SET #s = :assigned, job = :job, lastHeartbeat = :t',
-    ConditionExpression: '#s = :idle',
-    ExpressionAttributeNames: { '#s': 'status' },
-    ExpressionAttributeValues: { ':assigned': 'assigned', ':idle': 'idle', ':job': job, ':t': Date.now() },
-  }));
+  await ddb.send(
+    new UpdateCommand({
+      TableName: POOL_TABLE,
+      Key: { workerId },
+      UpdateExpression: 'SET #s = :assigned, job = :job, lastHeartbeat = :t',
+      ConditionExpression: '#s = :idle',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':assigned': 'assigned',
+        ':idle': 'idle',
+        ':job': job,
+        ':t': Date.now(),
+      },
+    }),
+  );
 }
 
 async function launchPoolWorker(workerId) {
-  const result = await ecs.send(new RunTaskCommand({
-    cluster: process.env.ECS_CLUSTER_ARN,
-    taskDefinition: POOL_TASK_DEFINITION_ARN,
-    launchType: 'FARGATE',
-    enableExecuteCommand: true,
-    networkConfiguration: {
-      awsvpcConfiguration: {
-        subnets: JSON.parse(process.env.PRIVATE_SUBNET_IDS || '[]'),
-        securityGroups: [process.env.AGENT_SECURITY_GROUP_ID],
-        assignPublicIp: 'DISABLED',
+  const result = await ecs.send(
+    new RunTaskCommand({
+      cluster: process.env.ECS_CLUSTER_ARN,
+      taskDefinition: POOL_TASK_DEFINITION_ARN,
+      launchType: 'FARGATE',
+      enableExecuteCommand: true,
+      networkConfiguration: {
+        awsvpcConfiguration: {
+          subnets: JSON.parse(process.env.PRIVATE_SUBNET_IDS || '[]'),
+          securityGroups: [process.env.AGENT_SECURITY_GROUP_ID],
+          assignPublicIp: 'DISABLED',
+        },
       },
-    },
-    overrides: {
-      containerOverrides: [{
-        name: 'agent',
-        environment: [
-          { name: 'WORKER_ID', value: workerId },
-          // CLIs are discovered at runtime by probing installed binaries —
-          // no AGENT_CAPABILITIES override needed.
+      overrides: {
+        containerOverrides: [
+          {
+            name: 'agent',
+            environment: [
+              { name: 'WORKER_ID', value: workerId },
+              // CLIs are discovered at runtime by probing installed binaries —
+              // no AGENT_CAPABILITIES override needed.
+            ],
+          },
         ],
-      }],
-    },
-  }));
+      },
+    }),
+  );
   const task = result.tasks?.[0];
   if (!task) throw new Error('Failed to launch pool worker');
 
-  await ddb.send(new PutCommand({
-    TableName: POOL_TABLE,
-    Item: { workerId, status: 'starting', taskArn: task.taskArn, version: 'starting', lastHeartbeat: Date.now() },
-  }));
+  await ddb.send(
+    new PutCommand({
+      TableName: POOL_TABLE,
+      Item: {
+        workerId,
+        status: 'starting',
+        taskArn: task.taskArn,
+        version: 'starting',
+        lastHeartbeat: Date.now(),
+      },
+    }),
+  );
 
   return task.taskArn;
 }
@@ -186,36 +230,60 @@ async function cleanupStaleWorkers() {
   if (!POOL_TABLE) return;
   const now = Date.now();
   for (const status of ['starting', 'idle', 'busy']) {
-    const threshold = status === 'starting' ? STALE_STARTING_MS : status === 'idle' ? STALE_IDLE_MS : STALE_BUSY_MS;
-    const result = await ddb.send(new QueryCommand({
-      TableName: POOL_TABLE, IndexName: 'StatusIndex',
-      KeyConditionExpression: '#s = :s',
-      ExpressionAttributeNames: { '#s': 'status' },
-      ExpressionAttributeValues: { ':s': status },
-    }));
-    for (const w of (result.Items || [])) {
-      if (w.lastHeartbeat && (now - w.lastHeartbeat) > threshold) {
-        console.log(`Cleaning up stale ${status} worker ${w.workerId} (last heartbeat ${now - w.lastHeartbeat}ms ago)`);
+    const threshold =
+      status === 'starting' ? STALE_STARTING_MS : status === 'idle' ? STALE_IDLE_MS : STALE_BUSY_MS;
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: POOL_TABLE,
+        IndexName: 'StatusIndex',
+        KeyConditionExpression: '#s = :s',
+        ExpressionAttributeNames: { '#s': 'status' },
+        ExpressionAttributeValues: { ':s': status },
+      }),
+    );
+    for (const w of result.Items || []) {
+      if (w.lastHeartbeat && now - w.lastHeartbeat > threshold) {
+        console.log(
+          `Cleaning up stale ${status} worker ${w.workerId} (last heartbeat ${now - w.lastHeartbeat}ms ago)`,
+        );
         // When cleaning up a stale busy worker with a sprint job, mark Sprint and AgentRun as failed
         if (status === 'busy' && w.job?.sprintId) {
           try {
             await withNeptune(async (g) => {
               const completedAt = new Date().toISOString();
-              await g.V().has('Sprint', 'id', w.job.sprintId)
+              await g
+                .V()
+                .has('Sprint', 'id', w.job.sprintId)
                 .property(cardinality.single, 'current_agent_status', 'failed')
                 .property(cardinality.single, 'agent_completed_at', completedAt)
                 .next();
               if (w.job.executionId) {
-                await g.V().hasLabel('AgentRun').has('execution_id', w.job.executionId)
+                await g
+                  .V()
+                  .hasLabel('AgentRun')
+                  .has('execution_id', w.job.executionId)
                   .property(cardinality.single, 'status', 'failed')
                   .property(cardinality.single, 'completed_at', completedAt)
                   .next();
               }
             });
-          } catch (e) { console.error('Failed to update Neptune for stale worker:', e.message); }
+          } catch (e) {
+            console.error('Failed to update Neptune for stale worker:', e.message);
+          }
         }
-        if (w.taskArn) await ecs.send(new StopTaskCommand({ cluster: process.env.ECS_CLUSTER_ARN, task: w.taskArn, reason: `Stale ${status} worker cleanup` })).catch(() => {});
-        await ddb.send(new DeleteCommand({ TableName: POOL_TABLE, Key: { workerId: w.workerId } })).catch(() => {});
+        if (w.taskArn)
+          await ecs
+            .send(
+              new StopTaskCommand({
+                cluster: process.env.ECS_CLUSTER_ARN,
+                task: w.taskArn,
+                reason: `Stale ${status} worker cleanup`,
+              }),
+            )
+            .catch(() => {});
+        await ddb
+          .send(new DeleteCommand({ TableName: POOL_TABLE, Key: { workerId: w.workerId } }))
+          .catch(() => {});
       }
     }
   }
@@ -226,12 +294,16 @@ async function ensurePoolSize() {
   try {
     const poolVersion = POOL_VERSION;
     const queryByStatus = async (status) => {
-      const r = await ddb.send(new QueryCommand({
-        TableName: POOL_TABLE, IndexName: 'StatusIndex',
-        KeyConditionExpression: '#s = :s', FilterExpression: 'version = :v',
-        ExpressionAttributeNames: { '#s': 'status' },
-        ExpressionAttributeValues: { ':s': status, ':v': poolVersion },
-      }));
+      const r = await ddb.send(
+        new QueryCommand({
+          TableName: POOL_TABLE,
+          IndexName: 'StatusIndex',
+          KeyConditionExpression: '#s = :s',
+          FilterExpression: 'version = :v',
+          ExpressionAttributeNames: { '#s': 'status' },
+          ExpressionAttributeValues: { ':s': status, ':v': poolVersion },
+        }),
+      );
       return r.Items || [];
     };
     const idle = await queryByStatus('idle');
@@ -245,11 +317,17 @@ async function ensurePoolSize() {
       const excess = idle.slice(POOL_SIZE);
       for (const w of excess) {
         console.log(`Draining excess idle worker ${w.workerId}`);
-        await ddb.send(new UpdateCommand({
-          TableName: POOL_TABLE, Key: { workerId: w.workerId },
-          UpdateExpression: 'SET #s = :s', ExpressionAttributeNames: { '#s': 'status' },
-          ExpressionAttributeValues: { ':s': 'draining' },
-        })).catch(() => {});
+        await ddb
+          .send(
+            new UpdateCommand({
+              TableName: POOL_TABLE,
+              Key: { workerId: w.workerId },
+              UpdateExpression: 'SET #s = :s',
+              ExpressionAttributeNames: { '#s': 'status' },
+              ExpressionAttributeValues: { ':s': 'draining' },
+            }),
+          )
+          .catch(() => {});
       }
     }
 
@@ -257,11 +335,15 @@ async function ensurePoolSize() {
     for (let i = 0; i < Math.max(0, POOL_SIZE - total); i++) {
       await launchPoolWorker(`worker-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
     }
-  } catch (err) { console.error('ensurePoolSize error:', err.message); }
+  } catch (err) {
+    console.error('ensurePoolSize error:', err.message);
+  }
 }
 
 async function getTaskStatus(taskArn) {
-  const result = await ecs.send(new DescribeTasksCommand({ cluster: process.env.ECS_CLUSTER_ARN, tasks: [taskArn] }));
+  const result = await ecs.send(
+    new DescribeTasksCommand({ cluster: process.env.ECS_CLUSTER_ARN, tasks: [taskArn] }),
+  );
   const task = result.tasks?.[0];
   if (!task) return { status: 'STOPPED', lastStatus: 'UNKNOWN' };
   const lastStatus = task.lastStatus;
@@ -270,7 +352,8 @@ async function getTaskStatus(taskArn) {
   if (['RUNNING', 'PENDING', 'PROVISIONING'].includes(lastStatus)) status = 'RUNNING';
   else if (lastStatus === 'STOPPED') {
     const exitCode = task.containers?.[0]?.exitCode;
-    status = exitCode === 0 ? 'SUCCEEDED' : stoppedReason.includes('imeout') ? 'TIMED_OUT' : 'FAILED';
+    status =
+      exitCode === 0 ? 'SUCCEEDED' : stoppedReason.includes('imeout') ? 'TIMED_OUT' : 'FAILED';
   } else status = 'RUNNING';
   return { status, lastStatus, stoppedReason };
 }
@@ -297,12 +380,14 @@ exports.handler = async (event) => {
       const mcpPath = `${prefix}/mcp-servers`;
       const kiroApiKeyPath = `${prefix}/kiro-api-key`;
       try {
-        const result = await ssm.send(new GetParametersCommand({
-          Names: [bearerPath, mcpPath, kiroApiKeyPath],
-          WithDecryption: true,
-        }));
+        const result = await ssm.send(
+          new GetParametersCommand({
+            Names: [bearerPath, mcpPath, kiroApiKeyPath],
+            WithDecryption: true,
+          }),
+        );
         const byName = {};
-        for (const p of (result.Parameters || [])) byName[p.Name] = p.Value;
+        for (const p of result.Parameters || []) byName[p.Name] = p.Value;
         const bearerToken = byName[bearerPath] || '';
         const kiroApiKey = byName[kiroApiKeyPath] || '';
         const mcpServersRaw = byName[mcpPath] || '[]';
@@ -328,12 +413,14 @@ exports.handler = async (event) => {
         // Empty string clears the token (stored as literal "placeholder" sentinel)
         const value = input.bedrockBearerToken.trim() || 'placeholder';
         try {
-          await ssm.send(new PutParameterCommand({
-            Name: `${prefix}/bedrock-bearer-token`,
-            Value: value,
-            Type: 'SecureString',
-            Overwrite: true,
-          }));
+          await ssm.send(
+            new PutParameterCommand({
+              Name: `${prefix}/bedrock-bearer-token`,
+              Value: value,
+              Type: 'SecureString',
+              Overwrite: true,
+            }),
+          );
         } catch (err) {
           console.error('[settings] Failed to write bearer token:', err.message);
           errors.push('bedrockBearerToken: ' + err.message);
@@ -343,12 +430,14 @@ exports.handler = async (event) => {
       if (typeof input.kiroApiKey === 'string') {
         const value = input.kiroApiKey.trim() || 'placeholder';
         try {
-          await ssm.send(new PutParameterCommand({
-            Name: `${prefix}/kiro-api-key`,
-            Value: value,
-            Type: 'SecureString',
-            Overwrite: true,
-          }));
+          await ssm.send(
+            new PutParameterCommand({
+              Name: `${prefix}/kiro-api-key`,
+              Value: value,
+              Type: 'SecureString',
+              Overwrite: true,
+            }),
+          );
         } catch (err) {
           console.error('[settings] Failed to write Kiro API key:', err.message);
           errors.push('kiroApiKey: ' + err.message);
@@ -363,12 +452,14 @@ exports.handler = async (event) => {
           return response(400, { error: 'mcpServers must be a valid JSON string' });
         }
         try {
-          await ssm.send(new PutParameterCommand({
-            Name: `${prefix}/mcp-servers`,
-            Value: input.mcpServers,
-            Type: 'String',
-            Overwrite: true,
-          }));
+          await ssm.send(
+            new PutParameterCommand({
+              Name: `${prefix}/mcp-servers`,
+              Value: input.mcpServers,
+              Type: 'String',
+              Overwrite: true,
+            }),
+          );
         } catch (err) {
           console.error('[settings] Failed to write MCP servers:', err.message);
           errors.push('mcpServers: ' + err.message);
@@ -389,8 +480,8 @@ exports.handler = async (event) => {
       if (POOL_TABLE) {
         try {
           const result = await ddb.send(new ScanCommand({ TableName: POOL_TABLE }));
-          for (const w of (result.Items || [])) {
-            for (const cli of (w.availableClis || [])) {
+          for (const w of result.Items || []) {
+            for (const cli of w.availableClis || []) {
               cliSet.add(cli);
             }
           }
@@ -403,9 +494,10 @@ exports.handler = async (event) => {
 
     // GET /agents/pool - List all pool workers
     if (httpMethod === 'GET' && path.endsWith('/pool') && !workerId) {
-      if (!POOL_TABLE) return response(200, { workers: [], currentVersion: POOL_VERSION, poolSize: POOL_SIZE });
+      if (!POOL_TABLE)
+        return response(200, { workers: [], currentVersion: POOL_VERSION, poolSize: POOL_SIZE });
       const result = await ddb.send(new ScanCommand({ TableName: POOL_TABLE }));
-      const workers = (result.Items || []).map(w => ({
+      const workers = (result.Items || []).map((w) => ({
         workerId: w.workerId,
         status: w.status,
         version: w.version || 'unknown',
@@ -414,7 +506,13 @@ exports.handler = async (event) => {
         agentCli: w.agentCli || null, // legacy field, kept for compatibility
         taskArn: w.taskArn,
         lastHeartbeat: w.lastHeartbeat,
-        job: w.job ? { executionId: w.job.executionId, projectId: w.job.projectId, agentType: w.job.agentType } : null,
+        job: w.job
+          ? {
+              executionId: w.job.executionId,
+              projectId: w.job.projectId,
+              agentType: w.job.agentType,
+            }
+          : null,
       }));
       return response(200, { workers, currentVersion: POOL_VERSION, poolSize: POOL_SIZE });
     }
@@ -439,22 +537,43 @@ exports.handler = async (event) => {
       const poolVersion = POOL_VERSION;
       let drained = 0;
       for (const status of ['idle', 'busy', 'assigned', 'starting']) {
-        const result = await ddb.send(new QueryCommand({
-          TableName: POOL_TABLE, IndexName: 'StatusIndex',
-          KeyConditionExpression: '#s = :s', FilterExpression: 'version <> :v',
-          ExpressionAttributeNames: { '#s': 'status' },
-          ExpressionAttributeValues: { ':s': status, ':v': poolVersion },
-        }));
-        for (const item of (result.Items || [])) {
+        const result = await ddb.send(
+          new QueryCommand({
+            TableName: POOL_TABLE,
+            IndexName: 'StatusIndex',
+            KeyConditionExpression: '#s = :s',
+            FilterExpression: 'version <> :v',
+            ExpressionAttributeNames: { '#s': 'status' },
+            ExpressionAttributeValues: { ':s': status, ':v': poolVersion },
+          }),
+        );
+        for (const item of result.Items || []) {
           if (status === 'idle' || status === 'starting') {
-            if (item.taskArn) await ecs.send(new StopTaskCommand({ cluster: process.env.ECS_CLUSTER_ARN, task: item.taskArn, reason: 'Pool recycle' })).catch(() => {});
-            await ddb.send(new DeleteCommand({ TableName: POOL_TABLE, Key: { workerId: item.workerId } })).catch(() => {});
+            if (item.taskArn)
+              await ecs
+                .send(
+                  new StopTaskCommand({
+                    cluster: process.env.ECS_CLUSTER_ARN,
+                    task: item.taskArn,
+                    reason: 'Pool recycle',
+                  }),
+                )
+                .catch(() => {});
+            await ddb
+              .send(new DeleteCommand({ TableName: POOL_TABLE, Key: { workerId: item.workerId } }))
+              .catch(() => {});
           } else {
-            await ddb.send(new UpdateCommand({
-              TableName: POOL_TABLE, Key: { workerId: item.workerId },
-              UpdateExpression: 'SET #s = :s', ExpressionAttributeNames: { '#s': 'status' },
-              ExpressionAttributeValues: { ':s': 'draining' },
-            })).catch(() => {});
+            await ddb
+              .send(
+                new UpdateCommand({
+                  TableName: POOL_TABLE,
+                  Key: { workerId: item.workerId },
+                  UpdateExpression: 'SET #s = :s',
+                  ExpressionAttributeNames: { '#s': 'status' },
+                  ExpressionAttributeValues: { ':s': 'draining' },
+                }),
+              )
+              .catch(() => {});
           }
           drained++;
         }
@@ -469,7 +588,15 @@ exports.handler = async (event) => {
       const worker = await ddb.send(new GetCommand({ TableName: POOL_TABLE, Key: { workerId } }));
       if (!worker.Item) return response(404, { error: 'Worker not found' });
       if (worker.Item.taskArn) {
-        await ecs.send(new StopTaskCommand({ cluster: process.env.ECS_CLUSTER_ARN, task: worker.Item.taskArn, reason: 'Killed by admin' })).catch(() => {});
+        await ecs
+          .send(
+            new StopTaskCommand({
+              cluster: process.env.ECS_CLUSTER_ARN,
+              task: worker.Item.taskArn,
+              reason: 'Killed by admin',
+            }),
+          )
+          .catch(() => {});
       }
       await ddb.send(new DeleteCommand({ TableName: POOL_TABLE, Key: { workerId } }));
       return response(200, { killed: true });
@@ -483,7 +610,10 @@ exports.handler = async (event) => {
       const input = JSON.parse(body || '{}');
       const executionId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      let gitRepo = '', description = input.description || '', sprintPhase = '', projectAgentCli = 'kiro';
+      let gitRepo = '',
+        description = input.description || '',
+        sprintPhase = '',
+        projectAgentCli = 'kiro';
       let isMember = false;
       await withNeptune(async (g) => {
         const result = await g.V().has('Project', 'id', projectId).valueMap().next();
@@ -500,15 +630,22 @@ exports.handler = async (event) => {
         }
         // Verify the requesting user is a member of this project
         if (userId) {
-          isMember = await g.V().has('Project', 'id', projectId)
-            .outE('HAS_MEMBER').inV().has('User', 'id', userId)
+          isMember = await g
+            .V()
+            .has('Project', 'id', projectId)
+            .outE('HAS_MEMBER')
+            .inV()
+            .has('User', 'id', userId)
             .hasNext();
         }
       });
 
       // Allow system/orchestrator re-triggers to bypass membership check
       if (!isMember && userId !== 'system' && userId !== 'orchestrator') {
-        return response(403, { error: 'Access denied', message: 'You are not a member of this project' });
+        return response(403, {
+          error: 'Access denied',
+          message: 'You are not a member of this project',
+        });
       }
 
       // Pre-flight: verify the project's selected CLI has credentials configured.
@@ -538,14 +675,18 @@ exports.handler = async (event) => {
       let gitToken = '';
       if (userId && process.env.GIT_CONNECTIONS_TABLE) {
         try {
-          const { Item } = await ddb.send(new GetCommand({
-            TableName: process.env.GIT_CONNECTIONS_TABLE,
-            Key: { userId },
-          }));
+          const { Item } = await ddb.send(
+            new GetCommand({
+              TableName: process.env.GIT_CONNECTIONS_TABLE,
+              Key: { userId },
+            }),
+          );
           if (Item?.parameterName || Item?.accessToken) {
             gitToken = await resolveGitToken(ssm, Item);
           }
-        } catch (e) { console.error('Failed to fetch git token:', e.message); }
+        } catch (e) {
+          console.error('Failed to fetch git token:', e.message);
+        }
       }
 
       // Fall back to gitToken passed in request body (used by orchestrator/system re-triggers)
@@ -555,19 +696,20 @@ exports.handler = async (event) => {
 
       // Require GitHub connection for projects with a git repo
       if (gitRepo && !gitToken) {
-        return response(400, { 
-          error: 'GitHub not connected', 
-          message: 'You must connect your GitHub account before running agents on this project. Go to project settings to connect GitHub.'
+        return response(400, {
+          error: 'GitHub not connected',
+          message:
+            'You must connect your GitHub account before running agents on this project. Go to project settings to connect GitHub.',
         });
       }
 
-      const job = { 
-        executionId, 
-        projectId, 
-        agentType: input.phase || sprintPhase || 'inception', 
-        description, 
-        gitRepo, 
-        userId: userId || '', 
+      const job = {
+        executionId,
+        projectId,
+        agentType: input.phase || sprintPhase || 'inception',
+        description,
+        gitRepo,
+        userId: userId || '',
         sprintId: input.sprintId || '',
         taskId: input.taskId || '',
         branch: input.branch || '',
@@ -580,7 +722,9 @@ exports.handler = async (event) => {
       };
 
       // Cleanup stale workers before looking for idle ones
-      await cleanupStaleWorkers().catch(e => console.error('cleanupStaleWorkers error:', e.message));
+      await cleanupStaleWorkers().catch((e) =>
+        console.error('cleanupStaleWorkers error:', e.message),
+      );
 
       // Try to assign to an idle worker — retry multiple candidates to handle
       // race conditions where another job grabs the same worker concurrently.
@@ -593,7 +737,9 @@ exports.handler = async (event) => {
           break;
         } catch {
           // ConditionalCheckFailed — another request grabbed this worker, try next
-          console.log(`[agents] Worker ${idle.workerId} assignment failed (likely race), trying next`);
+          console.log(
+            `[agents] Worker ${idle.workerId} assignment failed (likely race), trying next`,
+          );
         }
       }
       if (!taskArn) {
@@ -609,12 +755,14 @@ exports.handler = async (event) => {
           if (userId !== 'system' && userId !== 'orchestrator') {
             // Only look at workers on the current pool version; older versions
             // may have had different CLIs installed or different credentials.
-            const currentVersion = items.filter(w => w.version === POOL_VERSION);
-            const anyAdvertising = currentVersion.some(w => (w.availableClis || []).includes(job.agentCli));
+            const currentVersion = items.filter((w) => w.version === POOL_VERSION);
+            const anyAdvertising = currentVersion.some((w) =>
+              (w.availableClis || []).includes(job.agentCli),
+            );
             if (currentVersion.length > 0 && !anyAdvertising) {
               // Pick the first reported auth error for this CLI.
               const reported = currentVersion
-                .map(w => w.cliAuthErrors?.[job.agentCli])
+                .map((w) => w.cliAuthErrors?.[job.agentCli])
                 .find(Boolean);
               if (reported) {
                 return response(400, {
@@ -630,17 +778,23 @@ exports.handler = async (event) => {
 
           // Check pool cap before launching a new worker (reuse the scan above)
           if (items.length >= MAX_POOL_WORKERS) {
-            return response(503, { error: 'Agent pool at capacity', message: `Maximum ${MAX_POOL_WORKERS} workers reached. Please try again shortly.` });
+            return response(503, {
+              error: 'Agent pool at capacity',
+              message: `Maximum ${MAX_POOL_WORKERS} workers reached. Please try again shortly.`,
+            });
           }
         }
         const wid = `worker-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         const arn = await launchPoolWorker(wid);
-        await ddb.send(new UpdateCommand({
-          TableName: POOL_TABLE, Key: { workerId: wid },
-          UpdateExpression: 'SET #s = :s, job = :j',
-          ExpressionAttributeNames: { '#s': 'status' },
-          ExpressionAttributeValues: { ':s': 'assigned', ':j': job },
-        }));
+        await ddb.send(
+          new UpdateCommand({
+            TableName: POOL_TABLE,
+            Key: { workerId: wid },
+            UpdateExpression: 'SET #s = :s, job = :j',
+            ExpressionAttributeNames: { '#s': 'status' },
+            ExpressionAttributeValues: { ':s': 'assigned', ':j': job },
+          }),
+        );
         taskArn = arn;
       }
       ensurePoolSize().catch(() => {});
@@ -649,38 +803,46 @@ exports.handler = async (event) => {
         await withNeptune(async (g) => {
           // Store execution info on Task node for sub-agents
           if (input.taskId) {
-            await g.V().has('Task', 'id', input.taskId)
+            await g
+              .V()
+              .has('Task', 'id', input.taskId)
               .property(cardinality.single, 'task_execution_id', executionId)
               .property(cardinality.single, 'task_execution_arn', taskArn)
               .property(cardinality.single, 'task_execution_status', 'RUNNING')
               .property(cardinality.single, 'task_dispatched_at', new Date().toISOString())
-              .property(cardinality.single, 'status', 'in_progress').next();
+              .property(cardinality.single, 'status', 'in_progress')
+              .next();
           }
-          
+
           // Store execution info on Sprint node (NEW: replaces Project storage)
           if (input.sprintId) {
-            const updateQuery = g.V().has('Sprint', 'id', input.sprintId)
+            const updateQuery = g
+              .V()
+              .has('Sprint', 'id', input.sprintId)
               .property(cardinality.single, 'current_execution_arn', taskArn)
               .property(cardinality.single, 'current_execution_id', executionId)
               .property(cardinality.single, 'current_agent_type', job.agentType)
               .property(cardinality.single, 'current_agent_status', 'running')
               .property(cardinality.single, 'agent_started_at', new Date().toISOString());
-            
+
             // Update sprint phase only for inception (other phases require manual approval)
             const agentType = (job.agentType || '').toLowerCase();
             if (agentType === 'inception') {
               updateQuery.property(cardinality.single, 'phase', 'INCEPTION');
             }
             // Note: CONSTRUCTION and REVIEW phases are set via manual approval in the UI
-            
+
             await updateQuery.next();
 
             // When a construction-orchestrator re-run starts (run_number > 1), mark any
             // existing Review nodes for this sprint as stale so the review phase creates fresh ones.
-            const isConstructionOrchestrator = (job.agentType || '').toLowerCase() === 'construction-orchestrator';
+            const isConstructionOrchestrator =
+              (job.agentType || '').toLowerCase() === 'construction-orchestrator';
             if (isConstructionOrchestrator) {
               try {
-                await g.V().has('Sprint', 'id', input.sprintId)
+                await g
+                  .V()
+                  .has('Sprint', 'id', input.sprintId)
                   .out('HAS_REVIEW')
                   .hasLabel('Review')
                   .not(__.has('stale', 'true'))
@@ -696,19 +858,26 @@ exports.handler = async (event) => {
             // Only track top-level phase agents (not sub-agents like construction task workers).
             const isTopLevelAgent = !input.taskId;
             if (isTopLevelAgent) {
-              const normalizedPhase = (job.agentType || 'inception').toLowerCase().replace('construction-orchestrator', 'construction').replace(/^review.*/, 'review');
+              const normalizedPhase = (job.agentType || 'inception')
+                .toLowerCase()
+                .replace('construction-orchestrator', 'construction')
+                .replace(/^review.*/, 'review');
               const phaseLabel = normalizedPhase.toUpperCase();
 
               // Count existing AgentRun nodes for this sprint+phase to determine run_number
-              const existingRuns = await g.V().has('Sprint', 'id', input.sprintId)
+              const existingRuns = await g
+                .V()
+                .has('Sprint', 'id', input.sprintId)
                 .out('HAS_AGENT_RUN')
                 .has('AgentRun', 'phase', phaseLabel)
-                .count().next();
+                .count()
+                .next();
               const runNumber = (existingRuns.value || 0) + 1;
               job.runNumber = runNumber;
 
               const runId = `run-${input.sprintId}-${phaseLabel.toLowerCase()}-${runNumber}`;
-              await g.addV('AgentRun')
+              await g
+                .addV('AgentRun')
                 .property('id', runId)
                 .property('phase', phaseLabel)
                 .property('agent_type', job.agentType)
@@ -719,19 +888,26 @@ exports.handler = async (event) => {
                 .property('sprint_id', input.sprintId)
                 .property('change_request', input.changeRequest || '')
                 .as('run')
-                .V().has('Sprint', 'id', input.sprintId)
-                .addE('HAS_AGENT_RUN').to('run')
+                .V()
+                .has('Sprint', 'id', input.sprintId)
+                .addE('HAS_AGENT_RUN')
+                .to('run')
                 .next();
             }
           } else {
             // Fallback: Store on Project node for backward compatibility
-            await g.V().has('Project', 'id', projectId)
+            await g
+              .V()
+              .has('Project', 'id', projectId)
               .property(cardinality.single, 'current_execution_arn', taskArn)
               .property(cardinality.single, 'current_execution_id', executionId)
-              .property(cardinality.single, 'current_execution_status', 'RUNNING').next();
+              .property(cardinality.single, 'current_execution_status', 'RUNNING')
+              .next();
           }
         });
-      } catch (e) { console.error('Neptune write failed:', e.message); }
+      } catch (e) {
+        console.error('Neptune write failed:', e.message);
+      }
 
       return response(200, { executionArn: taskArn, executionId });
     }
@@ -741,11 +917,18 @@ exports.handler = async (event) => {
       const sprintId = event.queryStringParameters?.sprintId;
       if (!sprintId) return response(400, { error: 'sprintId query parameter required' });
       return await withNeptune(async (g) => {
-        const tasks = await g.V().has('Sprint', 'id', sprintId)
-          .out('CONTAINS').hasLabel('Task').valueMap(true).toList();
-        const taskStatuses = tasks.map(t => {
+        const tasks = await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .out('CONTAINS')
+          .hasLabel('Task')
+          .valueMap(true)
+          .toList();
+        const taskStatuses = tasks.map((t) => {
           const props = {};
-          t.forEach((v, k) => { props[k] = Array.isArray(v) ? v[0] : v; });
+          t.forEach((v, k) => {
+            props[k] = Array.isArray(v) ? v[0] : v;
+          });
           return {
             taskId: props.id,
             title: props.title,
@@ -765,7 +948,7 @@ exports.handler = async (event) => {
       console.log('[GET /agents] projectId:', projectId, 'sprintId:', sprintId);
 
       // Proactively prune stale workers on every status poll (fire-and-forget)
-      cleanupStaleWorkers().catch(e => console.error('cleanupStaleWorkers error:', e.message));
+      cleanupStaleWorkers().catch((e) => console.error('cleanupStaleWorkers error:', e.message));
 
       return await withNeptune(async (g) => {
         // Use Sprint vertex if sprintId provided, otherwise fallback to Project
@@ -786,14 +969,21 @@ exports.handler = async (event) => {
         // Helper to write terminal status to Sprint and AgentRun nodes
         const writeTerminalStatus = async (statusStr, execIdForRun) => {
           const completedAt = new Date().toISOString();
-          await g.V().has(vertexLabel, 'id', vertexId)
+          await g
+            .V()
+            .has(vertexLabel, 'id', vertexId)
             .property(cardinality.single, 'current_agent_status', statusStr)
-            .property(cardinality.single, 'agent_completed_at', completedAt).next();
+            .property(cardinality.single, 'agent_completed_at', completedAt)
+            .next();
           if (execIdForRun) {
-            await g.V().hasLabel('AgentRun').has('execution_id', execIdForRun)
+            await g
+              .V()
+              .hasLabel('AgentRun')
+              .has('execution_id', execIdForRun)
               .property(cardinality.single, 'status', statusStr)
               .property(cardinality.single, 'completed_at', completedAt)
-              .next().catch(() => {});
+              .next()
+              .catch(() => {});
           }
         };
 
@@ -802,12 +992,15 @@ exports.handler = async (event) => {
         if (POOL_TABLE) {
           const poolWorkers = [];
           for (const poolStatus of ['busy', 'assigned']) {
-            const qr = await ddb.send(new QueryCommand({
-              TableName: POOL_TABLE, IndexName: 'StatusIndex',
-              KeyConditionExpression: '#s = :s',
-              ExpressionAttributeNames: { '#s': 'status' },
-              ExpressionAttributeValues: { ':s': poolStatus },
-            }));
+            const qr = await ddb.send(
+              new QueryCommand({
+                TableName: POOL_TABLE,
+                IndexName: 'StatusIndex',
+                KeyConditionExpression: '#s = :s',
+                ExpressionAttributeNames: { '#s': 'status' },
+                ExpressionAttributeValues: { ':s': poolStatus },
+              }),
+            );
             poolWorkers.push(...(qr.Items || []));
           }
           for (const w of poolWorkers) {
@@ -815,11 +1008,18 @@ exports.handler = async (event) => {
             const matchesSprint = sprintId ? w.job?.sprintId === sprintId : true;
             if (matchesProject && matchesSprint) {
               // Found running agent - sync Neptune
-              await g.V().has(vertexLabel, 'id', vertexId)
+              await g
+                .V()
+                .has(vertexLabel, 'id', vertexId)
                 .property(cardinality.single, 'current_execution_arn', w.taskArn)
                 .property(cardinality.single, 'current_execution_id', w.job.executionId)
-                .property(cardinality.single, 'current_agent_status', 'running').next();
-              return response(200, { executionArn: w.taskArn, executionId: w.job.executionId, status: 'RUNNING' });
+                .property(cardinality.single, 'current_agent_status', 'running')
+                .next();
+              return response(200, {
+                executionArn: w.taskArn,
+                executionId: w.job.executionId,
+                status: 'RUNNING',
+              });
             }
           }
         }
@@ -831,7 +1031,9 @@ exports.handler = async (event) => {
           if (agentStartedAt) {
             const elapsed = Date.now() - new Date(agentStartedAt).getTime();
             if (elapsed > STALE_AGENT_MS) {
-              console.log(`[GET /agents] Agent stale (${Math.round(elapsed / 60000)}m), marking as failed`);
+              console.log(
+                `[GET /agents] Agent stale (${Math.round(elapsed / 60000)}m), marking as failed`,
+              );
               await writeTerminalStatus('failed', execId);
               return response(200, { executionArn: arn, executionId: execId, status: 'FAILED' });
             }
@@ -839,22 +1041,28 @@ exports.handler = async (event) => {
 
           // Check agent-outputs for final status
           if (process.env.AGENT_OUTPUTS_TABLE && execId) {
-            const outputQuery = await ddb.send(new QueryCommand({
-              TableName: process.env.AGENT_OUTPUTS_TABLE,
-              KeyConditionExpression: 'executionId = :eid',
-              ExpressionAttributeValues: { ':eid': execId },
-              Limit: 1,
-            }));
+            const outputQuery = await ddb.send(
+              new QueryCommand({
+                TableName: process.env.AGENT_OUTPUTS_TABLE,
+                KeyConditionExpression: 'executionId = :eid',
+                ExpressionAttributeValues: { ':eid': execId },
+                Limit: 1,
+              }),
+            );
             const outputItem = outputQuery.Items?.[0];
             if (outputItem) {
               const s = outputItem.status;
-              const mapped = s === 'completed' ? 'SUCCEEDED' : s === 'failed' ? 'FAILED' : 'RUNNING';
+              const mapped =
+                s === 'completed' ? 'SUCCEEDED' : s === 'failed' ? 'FAILED' : 'RUNNING';
               const statusStr = mapped.toLowerCase();
               if (mapped === 'SUCCEEDED' || mapped === 'FAILED') {
                 await writeTerminalStatus(statusStr, execId);
               } else {
-                await g.V().has(vertexLabel, 'id', vertexId)
-                  .property(cardinality.single, 'current_agent_status', statusStr).next();
+                await g
+                  .V()
+                  .has(vertexLabel, 'id', vertexId)
+                  .property(cardinality.single, 'current_agent_status', statusStr)
+                  .next();
               }
               return response(200, { executionArn: arn, executionId: execId, status: mapped });
             }
@@ -865,10 +1073,17 @@ exports.handler = async (event) => {
             if (taskStatus.status === 'SUCCEEDED' || taskStatus.status === 'FAILED') {
               await writeTerminalStatus(statusStr, execId);
             } else {
-              await g.V().has(vertexLabel, 'id', vertexId)
-                .property(cardinality.single, 'current_agent_status', statusStr).next();
+              await g
+                .V()
+                .has(vertexLabel, 'id', vertexId)
+                .property(cardinality.single, 'current_agent_status', statusStr)
+                .next();
             }
-            return response(200, { executionArn: arn, executionId: execId, status: taskStatus.status });
+            return response(200, {
+              executionArn: arn,
+              executionId: execId,
+              status: taskStatus.status,
+            });
           } catch {
             await writeTerminalStatus('failed', execId);
             return response(200, { executionArn: arn, executionId: execId, status: 'FAILED' });
@@ -881,10 +1096,14 @@ exports.handler = async (event) => {
 
     // GET /agents/{taskId}/questions
     if (httpMethod === 'GET' && taskId && path.endsWith('/questions')) {
-      const result = await ddb.send(new QueryCommand({
-        TableName: process.env.QUESTIONS_TABLE, IndexName: 'AgentTaskIdIndex',
-        KeyConditionExpression: 'agentTaskId = :taskId', ExpressionAttributeValues: { ':taskId': taskId },
-      }));
+      const result = await ddb.send(
+        new QueryCommand({
+          TableName: process.env.QUESTIONS_TABLE,
+          IndexName: 'AgentTaskIdIndex',
+          KeyConditionExpression: 'agentTaskId = :taskId',
+          ExpressionAttributeValues: { ':taskId': taskId },
+        }),
+      );
       return response(200, { questions: result.Items });
     }
 
@@ -892,15 +1111,26 @@ exports.handler = async (event) => {
     if (httpMethod === 'POST' && questionId) {
       const { structuredAnswer } = JSON.parse(body);
       const userId = event.requestContext.authorizer.claims.sub;
-      const question = await ddb.send(new GetCommand({ TableName: process.env.QUESTIONS_TABLE, Key: { questionId } }));
+      const question = await ddb.send(
+        new GetCommand({ TableName: process.env.QUESTIONS_TABLE, Key: { questionId } }),
+      );
       if (!question.Item) return response(404, { error: 'Question not found' });
-      const structuredAnswerJson = typeof structuredAnswer === 'string' ? structuredAnswer : JSON.stringify(structuredAnswer);
-      await ddb.send(new UpdateCommand({
-        TableName: process.env.QUESTIONS_TABLE, Key: { questionId },
-        UpdateExpression: 'SET #s = :s, structuredAnswer = :a, answeredBy = :u, answeredAt = :t',
-        ExpressionAttributeNames: { '#s': 'status' },
-        ExpressionAttributeValues: { ':s': 'answered', ':a': structuredAnswerJson, ':u': userId, ':t': Date.now() },
-      }));
+      const structuredAnswerJson =
+        typeof structuredAnswer === 'string' ? structuredAnswer : JSON.stringify(structuredAnswer);
+      await ddb.send(
+        new UpdateCommand({
+          TableName: process.env.QUESTIONS_TABLE,
+          Key: { questionId },
+          UpdateExpression: 'SET #s = :s, structuredAnswer = :a, answeredBy = :u, answeredAt = :t',
+          ExpressionAttributeNames: { '#s': 'status' },
+          ExpressionAttributeValues: {
+            ':s': 'answered',
+            ':a': structuredAnswerJson,
+            ':u': userId,
+            ':t': Date.now(),
+          },
+        }),
+      );
       return response(200, { success: true });
     }
 
@@ -910,20 +1140,24 @@ exports.handler = async (event) => {
       // taskId may be an executionId (exec-...) or an ECS task ARN
       if (process.env.AGENT_OUTPUTS_TABLE) {
         // Try taskId directly as executionId
-        let outputQuery = await ddb.send(new QueryCommand({
-          TableName: process.env.AGENT_OUTPUTS_TABLE,
-          KeyConditionExpression: 'executionId = :eid',
-          ExpressionAttributeValues: { ':eid': taskId },
-          Limit: 1,
-        }));
-        // Also try the executionId query param if provided
-        if (!outputQuery.Items?.length && event.queryStringParameters?.executionId) {
-          outputQuery = await ddb.send(new QueryCommand({
+        let outputQuery = await ddb.send(
+          new QueryCommand({
             TableName: process.env.AGENT_OUTPUTS_TABLE,
             KeyConditionExpression: 'executionId = :eid',
-            ExpressionAttributeValues: { ':eid': event.queryStringParameters.executionId },
+            ExpressionAttributeValues: { ':eid': taskId },
             Limit: 1,
-          }));
+          }),
+        );
+        // Also try the executionId query param if provided
+        if (!outputQuery.Items?.length && event.queryStringParameters?.executionId) {
+          outputQuery = await ddb.send(
+            new QueryCommand({
+              TableName: process.env.AGENT_OUTPUTS_TABLE,
+              KeyConditionExpression: 'executionId = :eid',
+              ExpressionAttributeValues: { ':eid': event.queryStringParameters.executionId },
+              Limit: 1,
+            }),
+          );
         }
         const outputItem = outputQuery.Items?.[0];
         if (outputItem) {
@@ -941,15 +1175,19 @@ exports.handler = async (event) => {
       // Find the worker with this taskArn and clear its job
       if (POOL_TABLE) {
         const scan = await ddb.send(new ScanCommand({ TableName: POOL_TABLE }));
-        for (const w of (scan.Items || [])) {
+        for (const w of scan.Items || []) {
           if (w.taskArn === taskId && w.job) {
-            await ddb.send(new UpdateCommand({
-              TableName: POOL_TABLE,
-              Key: { workerId: w.workerId },
-              UpdateExpression: 'SET #s = :s, job = :j',
-              ExpressionAttributeNames: { '#s': 'status' },
-              ExpressionAttributeValues: { ':s': 'idle', ':j': null },
-            })).catch(() => {});
+            await ddb
+              .send(
+                new UpdateCommand({
+                  TableName: POOL_TABLE,
+                  Key: { workerId: w.workerId },
+                  UpdateExpression: 'SET #s = :s, job = :j',
+                  ExpressionAttributeNames: { '#s': 'status' },
+                  ExpressionAttributeValues: { ':s': 'idle', ':j': null },
+                }),
+              )
+              .catch(() => {});
             break;
           }
         }
@@ -957,23 +1195,32 @@ exports.handler = async (event) => {
       // Clear execution state from Neptune (both Project and Sprint vertices)
       await withNeptune(async (g) => {
         // Clear Project vertex (backward compatibility)
-        await g.V().has('Project', 'current_execution_arn', taskId)
+        await g
+          .V()
+          .has('Project', 'current_execution_arn', taskId)
           .properties('current_execution_arn', 'current_execution_id', 'current_execution_status')
-          .drop().next();
+          .drop()
+          .next();
         // Clear Sprint vertex — mark as cancelled with timestamp
         const completedAt = new Date().toISOString();
         const sprintVertices = await g.V().has('Sprint', 'current_execution_arn', taskId).toList();
         for (const sv of sprintVertices) {
           // Update AgentRun nodes BEFORE dropping execution properties
-          const runs = await g.V(sv).out('HAS_AGENT_RUN').has('AgentRun', 'status', 'running').toList();
+          const runs = await g
+            .V(sv)
+            .out('HAS_AGENT_RUN')
+            .has('AgentRun', 'status', 'running')
+            .toList();
           for (const run of runs) {
-            await g.V(run)
+            await g
+              .V(run)
               .property(cardinality.single, 'status', 'cancelled')
               .property(cardinality.single, 'completed_at', completedAt)
               .next();
           }
           // Set cancelled status and clear execution pointers
-          await g.V(sv)
+          await g
+            .V(sv)
             .property(cardinality.single, 'current_agent_status', 'cancelled')
             .property(cardinality.single, 'agent_completed_at', completedAt)
             .next();

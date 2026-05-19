@@ -35,11 +35,16 @@ async function fetchWithAuth(path: string, options: RequestInit = {}): Promise<R
   if (!response.ok) {
     const rawText = await response.text().catch(() => '');
     let parsed: Record<string, unknown> | undefined;
-    try { parsed = rawText ? JSON.parse(rawText) : undefined; } catch { /* not JSON */ }
+    try {
+      parsed = rawText ? JSON.parse(rawText) : undefined;
+    } catch {
+      /* not JSON */
+    }
     // Prefer the structured `message` from the API over the raw body text.
-    const message = (parsed && typeof parsed.message === 'string' && parsed.message)
-      ? parsed.message
-      : (rawText || 'Request failed');
+    const message =
+      parsed && typeof parsed.message === 'string' && parsed.message
+        ? parsed.message
+        : rawText || 'Request failed';
     throw new ApiError(response.status, message, parsed);
   }
 

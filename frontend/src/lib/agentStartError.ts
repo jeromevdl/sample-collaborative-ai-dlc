@@ -26,11 +26,12 @@ export function extractAgentStartError(err: unknown): AgentStartError {
 
   const body = maybeApi?.body;
   if (body && typeof body === 'object') {
-    const message = (typeof body.message === 'string' && body.message)
-      ? body.message
-      : (typeof body.error === 'string' && body.error)
-        ? body.error
-        : undefined;
+    const message =
+      typeof body.message === 'string' && body.message
+        ? body.message
+        : typeof body.error === 'string' && body.error
+          ? body.error
+          : undefined;
     if (message) {
       return {
         message,
@@ -40,8 +41,9 @@ export function extractAgentStartError(err: unknown): AgentStartError {
     }
   }
 
-  const fallback = (maybeApi && typeof maybeApi.message === 'string' && maybeApi.message)
-    ? maybeApi.message
-    : 'Unknown error while starting the agent.';
+  const fallback =
+    maybeApi && typeof maybeApi.message === 'string' && maybeApi.message
+      ? maybeApi.message
+      : 'Unknown error while starting the agent.';
   return { message: fallback };
 }

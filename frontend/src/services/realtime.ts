@@ -19,7 +19,11 @@ class RealtimeService {
   async connect(documentId: string): Promise<void> {
     // Already connected or connecting to this document — skip
     if (this.documentId === documentId) {
-      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
+      if (
+        this.ws &&
+        (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+      )
+        return;
       if (this.connectingPromise) return this.connectingPromise;
     }
 
@@ -61,7 +65,7 @@ class RealtimeService {
       if (key) {
         const handlers = this.handlers.get(key);
         console.log('[WebSocket] Handlers for', key, ':', handlers?.size || 0);
-        handlers?.forEach(h => h(data));
+        handlers?.forEach((h) => h(data));
       }
     };
 
@@ -115,7 +119,7 @@ class RealtimeService {
 
   private setStatus(status: ConnectionStatus): void {
     this.status = status;
-    this.statusHandlers.forEach(h => h(status));
+    this.statusHandlers.forEach((h) => h(status));
   }
 
   private scheduleReconnect(): void {

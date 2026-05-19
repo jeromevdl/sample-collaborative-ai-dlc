@@ -4,7 +4,10 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 const { DynamoDBClient, QueryCommand: DDBQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
-const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
+const {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} = require('@aws-sdk/client-apigatewaymanagementapi');
 const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
@@ -34,7 +37,9 @@ async function loadExtraMcpServers() {
 
   try {
     const ssm = new SSMClient({ region: process.env.AWS_REGION || 'us-east-1' });
-    const result = await ssm.send(new GetParameterCommand({ Name: ssmPath, WithDecryption: false }));
+    const result = await ssm.send(
+      new GetParameterCommand({ Name: ssmPath, WithDecryption: false }),
+    );
     const raw = result.Parameter?.Value || '[]';
     extraMcpServers = JSON.parse(raw);
     console.log(`[acp] Loaded ${extraMcpServers.length} extra MCP server(s) from SSM`);
@@ -124,19 +129,21 @@ const CONNECTIONS_CACHE_TTL = 10000; // 10 seconds
 
 async function getConnections() {
   const now = Date.now();
-  if (cachedConnections && (now - connectionsCacheTime) < CONNECTIONS_CACHE_TTL) {
+  if (cachedConnections && now - connectionsCacheTime < CONNECTIONS_CACHE_TTL) {
     return cachedConnections;
   }
   if (!env.connectionsTable) return [];
   try {
     const documentId = env.sprintId ? `sprint:${env.sprintId}` : env.projectId;
-    const result = await broadcastDdb.send(new DDBQueryCommand({
-      TableName: env.connectionsTable,
-      IndexName: 'DocumentIdIndex',
-      KeyConditionExpression: 'documentId = :docId',
-      ExpressionAttributeValues: { ':docId': { S: documentId } },
-    }));
-    cachedConnections = (result.Items || []).map(item => item.connectionId.S);
+    const result = await broadcastDdb.send(
+      new DDBQueryCommand({
+        TableName: env.connectionsTable,
+        IndexName: 'DocumentIdIndex',
+        KeyConditionExpression: 'documentId = :docId',
+        ExpressionAttributeValues: { ':docId': { S: documentId } },
+      }),
+    );
+    cachedConnections = (result.Items || []).map((item) => item.connectionId.S);
     connectionsCacheTime = now;
     return cachedConnections;
   } catch (err) {
@@ -157,17 +164,23 @@ function broadcastEvent(type, data) {
       const connectionIds = await getConnections();
       if (connectionIds.length === 0) return;
       const payload = JSON.stringify({ type, agentTaskId: env.agentTaskId || undefined, ...data });
-      await Promise.all(connectionIds.map(connId =>
-        broadcastWsClient.send(new PostToConnectionCommand({
-          ConnectionId: connId,
-          Data: payload,
-        })).catch((err) => {
-          // Connection gone (410) -- invalidate cache so we re-fetch
-          if (err.statusCode === 410 || err.$metadata?.httpStatusCode === 410) {
-            cachedConnections = null;
-          }
-        })
-      ));
+      await Promise.all(
+        connectionIds.map((connId) =>
+          broadcastWsClient
+            .send(
+              new PostToConnectionCommand({
+                ConnectionId: connId,
+                Data: payload,
+              }),
+            )
+            .catch((err) => {
+              // Connection gone (410) -- invalidate cache so we re-fetch
+              if (err.statusCode === 410 || err.$metadata?.httpStatusCode === 410) {
+                cachedConnections = null;
+              }
+            }),
+        ),
+      );
     } catch (err) {
       console.error('Broadcast failed:', err.message);
     }
@@ -227,27 +240,31 @@ async function saveStatus(status) {
   }
   statusSaved = true;
   try {
-    await ddb.send(new PutCommand({
-      TableName: env.agentOutputsTable,
-      Item: {
-        executionId: env.executionId,
-        agentType: env.agentType,
-        projectId: env.projectId,
-        sprintId: env.sprintId || undefined,
-        status,
-        // Persist the full accumulated agent output so it can be fetched later
-        outputText: fullOutputBuffer || undefined,
-        completedAt: new Date().toISOString(),
-        expiresAt: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days retention
-      },
-    }));
-    
+    await ddb.send(
+      new PutCommand({
+        TableName: env.agentOutputsTable,
+        Item: {
+          executionId: env.executionId,
+          agentType: env.agentType,
+          projectId: env.projectId,
+          sprintId: env.sprintId || undefined,
+          status,
+          // Persist the full accumulated agent output so it can be fetched later
+          outputText: fullOutputBuffer || undefined,
+          completedAt: new Date().toISOString(),
+          expiresAt: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days retention
+        },
+      }),
+    );
+
     // Update Sprint vertex with completion status
     if (env.sprintId) {
       await withNeptune(async (g) => {
         const { cardinality } = gremlin.process;
         const agentStatus = status === 'completed' ? 'completed' : 'failed';
-        await g.V().has('Sprint', 'id', env.sprintId)
+        await g
+          .V()
+          .has('Sprint', 'id', env.sprintId)
           .property(cardinality.single, 'current_agent_status', agentStatus)
           .property(cardinality.single, 'agent_completed_at', new Date().toISOString())
           .next();
@@ -261,7 +278,9 @@ async function saveStatus(status) {
       await withNeptune(async (g) => {
         const { cardinality } = gremlin.process;
         const execStatus = status === 'completed' ? 'COMPLETED' : 'FAILED';
-        await g.V().has('Task', 'id', env.agentTaskId)
+        await g
+          .V()
+          .has('Task', 'id', env.agentTaskId)
           .property(cardinality.single, 'task_execution_status', execStatus)
           .next();
         console.log(`[acp] Updated task ${env.agentTaskId} task_execution_status to ${execStatus}`);
@@ -277,7 +296,9 @@ function handleMessage(msg) {
   if (msg.method) {
     console.log(`[acp] << ${msg.id !== undefined ? 'request' : 'notification'}: ${msg.method}`);
   } else if (msg.id !== undefined) {
-    console.log(`[acp] << response id=${msg.id} ${msg.error ? 'ERROR: ' + msg.error.message : 'ok'}`);
+    console.log(
+      `[acp] << response id=${msg.id} ${msg.error ? 'ERROR: ' + msg.error.message : 'ok'}`,
+    );
   }
 
   // Response to a request we sent
@@ -287,8 +308,7 @@ function handleMessage(msg) {
     if (msg.error) {
       console.error('[acp] Error response details:', JSON.stringify(msg.error));
       reject(new Error(msg.error.message));
-    }
-    else resolve(msg.result);
+    } else resolve(msg.result);
     return;
   }
 
@@ -299,18 +319,39 @@ function handleMessage(msg) {
       // Select the best available option from what kiro-cli actually offered.
       // Prefer allow_always > allow_once > first available option.
       // NEVER fabricate an optionId — it must come from the options array.
-      const selected = options.find(o => o.kind === 'allow_always')
-        || options.find(o => o.kind === 'allow_once')
-        || options[0];
+      const selected =
+        options.find((o) => o.kind === 'allow_always') ||
+        options.find((o) => o.kind === 'allow_once') ||
+        options[0];
       if (selected) {
-        console.log(`[acp] Permission request: selecting '${selected.kind}' (optionId=${selected.optionId}) from ${options.length} options`);
-        agentProc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { outcome: { outcome: 'selected', optionId: selected.optionId } } }) + '\n');
+        console.log(
+          `[acp] Permission request: selecting '${selected.kind}' (optionId=${selected.optionId}) from ${options.length} options`,
+        );
+        agentProc.stdin.write(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: msg.id,
+            result: { outcome: { outcome: 'selected', optionId: selected.optionId } },
+          }) + '\n',
+        );
       } else {
-        console.error(`[acp] Permission request has no options, sending empty selection. params:`, JSON.stringify(msg.params));
-        agentProc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { outcome: { outcome: 'selected', optionId: 'allow-once' } } }) + '\n');
+        console.error(
+          `[acp] Permission request has no options, sending empty selection. params:`,
+          JSON.stringify(msg.params),
+        );
+        agentProc.stdin.write(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: msg.id,
+            result: { outcome: { outcome: 'selected', optionId: 'allow-once' } },
+          }) + '\n',
+        );
       }
     } else {
-      console.warn(`[acp] Unhandled request method '${msg.method}', responding with empty result. Full params:`, JSON.stringify(msg.params));
+      console.warn(
+        `[acp] Unhandled request method '${msg.method}', responding with empty result. Full params:`,
+        JSON.stringify(msg.params),
+      );
       agentProc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: {} }) + '\n');
     }
     return;
@@ -346,7 +387,7 @@ function handleSessionUpdate(params) {
       if (typeof content.text === 'string') {
         text = content.text;
       } else if (Array.isArray(content)) {
-        text = content.map(c => (typeof c === 'string' ? c : c?.text || '')).join('');
+        text = content.map((c) => (typeof c === 'string' ? c : c?.text || '')).join('');
       }
     }
     if (!text && typeof update.text === 'string') {
@@ -354,9 +395,14 @@ function handleSessionUpdate(params) {
     }
     if (!text) {
       if (ACP_VERBOSE) {
-        console.warn(`[acp] ${kind} with no extractable text. Raw update:`, JSON.stringify(update).slice(0, 500));
+        console.warn(
+          `[acp] ${kind} with no extractable text. Raw update:`,
+          JSON.stringify(update).slice(0, 500),
+        );
       } else {
-        console.warn(`[acp] ${kind} with no extractable text (set ACP_VERBOSE=true to log raw update)`);
+        console.warn(
+          `[acp] ${kind} with no extractable text (set ACP_VERBOSE=true to log raw update)`,
+        );
       }
       return;
     }
@@ -396,7 +442,9 @@ function handleSessionUpdate(params) {
       if (toolStatus === 'in_progress') frontendStatus = 'pending';
       // 'completed', 'error', 'failed' pass through as-is
 
-      console.log(`[acp] Tool call: ${toolName} (${toolStatus} -> ${frontendStatus}) id=${toolId || 'none'}`);
+      console.log(
+        `[acp] Tool call: ${toolName} (${toolStatus} -> ${frontendStatus}) id=${toolId || 'none'}`,
+      );
       broadcastEvent('agent.tool', {
         name: toolName,
         status: frontendStatus,
@@ -587,7 +635,7 @@ async function runAcpMode() {
   // Kiro and OpenCode auto-allow tools via their own permission models, so this
   // call is harmless for those drivers (it will simply fail silently if unsupported).
   const availableModes = session.modes?.availableModes || [];
-  const hasBypassMode = availableModes.some(m => m.id === 'bypassPermissions');
+  const hasBypassMode = availableModes.some((m) => m.id === 'bypassPermissions');
   if (hasBypassMode) {
     try {
       await request('session/set_mode', { sessionId, modeId: 'bypassPermissions' });
@@ -597,7 +645,9 @@ async function runAcpMode() {
       console.warn('[acp] Could not set bypassPermissions mode:', modeErr.message);
     }
   } else {
-    console.log('[acp] bypassPermissions mode not available — relying on request_permission handler');
+    console.log(
+      '[acp] bypassPermissions mode not available — relying on request_permission handler',
+    );
   }
 
   broadcastEvent('agent.started', { projectId: env.projectId });

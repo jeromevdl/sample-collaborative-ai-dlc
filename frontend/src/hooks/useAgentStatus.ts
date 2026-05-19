@@ -5,10 +5,10 @@ import type { StructuredAnswer } from '../services/questions';
 import { realtimeService } from '../services/realtime';
 
 export interface ToolCallEvent {
-  id: string;          // toolCallId from backend, or generated fallback
+  id: string; // toolCallId from backend, or generated fallback
   name: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
-  startedAt: number;   // Date.now()
+  startedAt: number; // Date.now()
   completedAt?: number;
 }
 
@@ -53,7 +53,13 @@ class SeqDeduplicator {
   }
 }
 
-export function useAgentStatus({ executionArn, executionId, projectId, sprintId, sprintAgentStatus }: UseAgentStatusOptions) {
+export function useAgentStatus({
+  executionArn,
+  executionId,
+  projectId,
+  sprintId,
+  sprintAgentStatus,
+}: UseAgentStatusOptions) {
   const [status, setStatus] = useState<AgentExecution | null>(null);
   const [questions, setQuestions] = useState<AgentQuestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,11 +88,17 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
   // Initial check for execution when component mounts, sprintId changes,
   // or sprint status transitions to 'running' (detected via background polling)
   useEffect(() => {
-    console.log('[useAgentStatus] Initial check:', { projectId, sprintId, executionArn, sprintAgentStatus });
+    console.log('[useAgentStatus] Initial check:', {
+      projectId,
+      sprintId,
+      executionArn,
+      sprintAgentStatus,
+    });
     if (projectId && sprintId) {
       console.log('[useAgentStatus] Calling getCurrentExecution with:', projectId, sprintId);
-      agentsService.getCurrentExecution(projectId, sprintId)
-        .then(res => {
+      agentsService
+        .getCurrentExecution(projectId, sprintId)
+        .then((res) => {
           console.log('[useAgentStatus] getCurrentExecution response:', res);
           if (res.executionArn) {
             setCurrentArn(res.executionArn);
@@ -99,7 +111,7 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
             setStatus(null);
           }
         })
-        .catch(err => console.error('Failed to get current execution:', err));
+        .catch((err) => console.error('Failed to get current execution:', err));
     }
   }, [projectId, sprintId, sprintAgentStatus]); // Re-fetch when sprint status changes
 
@@ -107,7 +119,10 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
     if (!currentArn && !executionId) return;
     setLoading(true);
     try {
-      const promises: [Promise<AgentExecution> | null, Promise<{ questions: AgentQuestion[] }> | null] = [null, null];
+      const promises: [
+        Promise<AgentExecution> | null,
+        Promise<{ questions: AgentQuestion[] }> | null,
+      ] = [null, null];
       if (currentArn) {
         promises[0] = agentsService.getStatus(currentArn, executionId || undefined);
       }
@@ -120,7 +135,11 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
       if (execStatus) {
         setStatus(execStatus);
         // If agent completed and we have no streaming text, use the stored outputText
-        if ((execStatus.status === 'SUCCEEDED' || execStatus.status === 'FAILED') && !streamBuffer.current && execStatus.outputText) {
+        if (
+          (execStatus.status === 'SUCCEEDED' || execStatus.status === 'FAILED') &&
+          !streamBuffer.current &&
+          execStatus.outputText
+        ) {
           streamBuffer.current = execStatus.outputText;
           setStreamingText(execStatus.outputText);
           setCompletedOutput(execStatus.outputText);
@@ -136,10 +155,18 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
   }, [currentArn, executionId]);
 
   // Keep refs updated
-  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
-  useEffect(() => { currentArnRef.current = currentArn; }, [currentArn]);
-  useEffect(() => { projectIdRef.current = projectId; }, [projectId]);
-  useEffect(() => { sprintIdRef.current = sprintId; }, [sprintId]);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
+  useEffect(() => {
+    currentArnRef.current = currentArn;
+  }, [currentArn]);
+  useEffect(() => {
+    projectIdRef.current = projectId;
+  }, [projectId]);
+  useEffect(() => {
+    sprintIdRef.current = sprintId;
+  }, [sprintId]);
 
   // Poll less frequently - streaming handles real-time updates
   useEffect(() => {
@@ -162,7 +189,10 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
         setCompletedOutput('');
         if (!currentArnRef.current && projectIdRef.current) {
           try {
-            const res = await agentsService.getCurrentExecution(projectIdRef.current, sprintIdRef.current);
+            const res = await agentsService.getCurrentExecution(
+              projectIdRef.current,
+              sprintIdRef.current,
+            );
             if (res.executionArn) {
               setCurrentArn(res.executionArn);
               // Set status directly — refreshRef closes over stale currentArn
@@ -170,16 +200,19 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
             }
           } catch {}
         } else {
-          setStatus(prev => prev ? { ...prev, status: 'RUNNING' } : prev);
+          setStatus((prev) => (prev ? { ...prev, status: 'RUNNING' } : prev));
         }
       }),
       realtimeService.on('agent.completed', async () => {
         setActiveToolCall(null);
         setCompletedOutput(streamBuffer.current);
-        setStatus(prev => prev ? { ...prev, status: 'SUCCEEDED' } : prev);
+        setStatus((prev) => (prev ? { ...prev, status: 'SUCCEEDED' } : prev));
         if (!currentArnRef.current && projectIdRef.current) {
           try {
-            const res = await agentsService.getCurrentExecution(projectIdRef.current, sprintIdRef.current);
+            const res = await agentsService.getCurrentExecution(
+              projectIdRef.current,
+              sprintIdRef.current,
+            );
             if (res.executionArn) setCurrentArn(res.executionArn);
           } catch {}
         }
@@ -187,13 +220,13 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
         refreshRef.current();
       }),
       realtimeService.on('agent.question', (data) => {
-        setQuestions(prev => [...prev, data]);
+        setQuestions((prev) => [...prev, data]);
       }),
       realtimeService.on('agent.artifacts', () => {
-        setArtifactsUpdated(prev => prev + 1);
+        setArtifactsUpdated((prev) => prev + 1);
       }),
       realtimeService.on('agent.error', () => {
-        setStatus(prev => prev ? { ...prev, status: 'FAILED' } : prev);
+        setStatus((prev) => (prev ? { ...prev, status: 'FAILED' } : prev));
         // Still save whatever we got as completed output
         if (streamBuffer.current) {
           setCompletedOutput(streamBuffer.current);
@@ -225,19 +258,24 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
           }
           setActiveToolCall(toolName);
           const toolId = data.toolCallId || `tool-${++toolCallCounter.current}`;
-          setToolCalls(prev => [...prev, {
-            id: toolId,
-            name: toolName,
-            status: 'pending',
-            startedAt: Date.now(),
-          }]);
+          setToolCalls((prev) => [
+            ...prev,
+            {
+              id: toolId,
+              name: toolName,
+              status: 'pending',
+              startedAt: Date.now(),
+            },
+          ]);
         } else {
           setActiveToolCall(null);
           // Mark the latest pending/running tool with this name as completed
-          setToolCalls(prev => {
-            const idx = [...prev].reverse().findIndex(
-              t => t.name === toolName && (t.status === 'pending' || t.status === 'running')
-            );
+          setToolCalls((prev) => {
+            const idx = [...prev]
+              .reverse()
+              .findIndex(
+                (t) => t.name === toolName && (t.status === 'pending' || t.status === 'running'),
+              );
             if (idx === -1) return prev;
             const realIdx = prev.length - 1 - idx;
             const updated = [...prev];
@@ -253,15 +291,17 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
       realtimeService.on('agent.tool_update', (data) => {
         if (!toolUpdateDedup.current.accept(data.seq)) return;
         if (data.toolCallId) {
-          setToolCalls(prev => prev.map(t =>
-            t.id === data.toolCallId
-              ? { ...t, status: data.status === 'error' ? 'failed' : 'running' }
-              : t
-          ));
+          setToolCalls((prev) =>
+            prev.map((t) =>
+              t.id === data.toolCallId
+                ? { ...t, status: data.status === 'error' ? 'failed' : 'running' }
+                : t,
+            ),
+          );
         }
       }),
     ];
-    return () => unsubscribers.forEach(unsub => unsub());
+    return () => unsubscribers.forEach((unsub) => unsub());
   }, []); // Subscribe once on mount
 
   const answerQuestion = async (questionId: string, structuredAnswer: StructuredAnswer) => {
@@ -290,8 +330,19 @@ export function useAgentStatus({ executionArn, executionId, projectId, sprintId,
   }, []);
 
   return {
-    status, questions, loading, error, refresh, answerQuestion, reset,
-    artifactsUpdated, currentArn, streamingText, activeToolCall,
-    toolCalls, completedOutput, setCompletedOutput,
+    status,
+    questions,
+    loading,
+    error,
+    refresh,
+    answerQuestion,
+    reset,
+    artifactsUpdated,
+    currentArn,
+    streamingText,
+    activeToolCall,
+    toolCalls,
+    completedOutput,
+    setCompletedOutput,
   };
 }

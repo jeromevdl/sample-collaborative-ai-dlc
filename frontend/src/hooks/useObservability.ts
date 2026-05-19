@@ -7,7 +7,11 @@ import type { Project } from '../services/projects';
 import type { Sprint } from '../services/sprints';
 import type { TaskAgentStatus } from '../services/agents';
 
-export type { StuckDetection, VelocityMetrics, StuckReason } from '../lib/observability/l2Intelligence';
+export type {
+  StuckDetection,
+  VelocityMetrics,
+  StuckReason,
+} from '../lib/observability/l2Intelligence';
 
 export interface SprintProgress {
   requirementCount: number;
@@ -55,24 +59,43 @@ export function useObservability() {
 
   const addEvent = useCallback((type: string, data: Record<string, unknown> = {}) => {
     const id = `evt-${++eventCounter.current}-${Date.now()}`;
-    setActivityFeed(prev => [{
-      id, type, timestamp: Date.now(),
-      projectId: data.projectId as string | undefined,
-      sprintId: data.sprintId as string | undefined,
-      agentType: data.agentType as string | undefined,
-      detail: data.detail as string | undefined,
-    }, ...prev].slice(0, 150));
+    setActivityFeed((prev) =>
+      [
+        {
+          id,
+          type,
+          timestamp: Date.now(),
+          projectId: data.projectId as string | undefined,
+          sprintId: data.sprintId as string | undefined,
+          agentType: data.agentType as string | undefined,
+          detail: data.detail as string | undefined,
+        },
+        ...prev,
+      ].slice(0, 150),
+    );
   }, []);
 
   const clearStuck = useCallback((sprintId: string) => {
     l2.current.clearSprint(sprintId);
-    setStuckDetections(prev => prev.filter(s => s.sprintId !== sprintId));
+    setStuckDetections((prev) => prev.filter((s) => s.sprintId !== sprintId));
   }, []);
 
   const markBlocked = useCallback((sprintId: string, projectName: string) => {
-    setStuckDetections(prev => {
-      const filtered = prev.filter(s => !(s.sprintId === sprintId && s.reason === 'blocked_question'));
-      return [...filtered, { sprintId, projectName, reason: 'blocked_question', message: 'Agent paused — waiting for human answer', durationMs: 0, severity: 'critical' }];
+    setStuckDetections((prev) => {
+      const filtered = prev.filter(
+        (s) => !(s.sprintId === sprintId && s.reason === 'blocked_question'),
+      );
+      return [
+        ...filtered,
+        {
+          sprintId,
+          projectName,
+          reason: 'blocked_question',
+          message: 'Agent paused — waiting for human answer',
+          durationMs: 0,
+          severity: 'critical',
+        },
+      ];
     });
   }, []);
 
@@ -91,30 +114,38 @@ export function useObservability() {
       setVelocityMap(newVelocityMap);
 
       // Track the most recently active sprint for WebSocket connection
-      const active = infos.find(p =>
-        p.sprint && (p.sprint.currentAgentStatus === 'running' || p.sprint.currentAgentStatus === 'waiting')
+      const active = infos.find(
+        (p) =>
+          p.sprint &&
+          (p.sprint.currentAgentStatus === 'running' || p.sprint.currentAgentStatus === 'waiting'),
       );
       setActiveSprintId(active?.sprint?.id ?? null);
 
-      setStuckDetections(prev => {
+      setStuckDetections((prev) => {
         let next = [...prev];
         for (const info of infos) {
           const sprintId = info.sprint?.id;
           if (!sprintId || info.sprint?.currentAgentStatus !== 'running') {
-            next = next.filter(s => s.sprintId !== sprintId || s.reason !== 'idle');
+            next = next.filter((s) => s.sprintId !== sprintId || s.reason !== 'idle');
             continue;
           }
           const result = l2.current.checkIdle(sprintId);
           if (result.idle) {
-            if (!next.some(s => s.sprintId === sprintId && s.reason === 'idle')) {
-              next = [...next.filter(s => !(s.sprintId === sprintId && s.reason === 'idle')), {
-                sprintId, projectName: info.project.name, reason: 'idle',
-                message: `No activity for ${Math.round(result.durationMs / 60000)} min`,
-                durationMs: result.durationMs, severity: 'medium',
-              }];
+            if (!next.some((s) => s.sprintId === sprintId && s.reason === 'idle')) {
+              next = [
+                ...next.filter((s) => !(s.sprintId === sprintId && s.reason === 'idle')),
+                {
+                  sprintId,
+                  projectName: info.project.name,
+                  reason: 'idle',
+                  message: `No activity for ${Math.round(result.durationMs / 60000)} min`,
+                  durationMs: result.durationMs,
+                  severity: 'medium',
+                },
+              ];
             }
           } else {
-            next = next.filter(s => !(s.sprintId === sprintId && s.reason === 'idle'));
+            next = next.filter((s) => !(s.sprintId === sprintId && s.reason === 'idle'));
           }
         }
         return next;
@@ -135,11 +166,26 @@ export function useObservability() {
   }, [refresh, refreshProjects]);
 
   useObservabilityEvents({
-    addEvent, clearStuck, markBlocked,
-    setLastToolMap, setPendingQuestions, setStuckDetections,
-    refreshProjects, projectsRef, l2,
+    addEvent,
+    clearStuck,
+    markBlocked,
+    setLastToolMap,
+    setPendingQuestions,
+    setStuckDetections,
+    refreshProjects,
+    projectsRef,
+    l2,
     activeSprintId,
   });
 
-  return { projects, projectsLoading, activityFeed, lastToolMap, pendingQuestions, stuckDetections, velocityMap, refresh };
+  return {
+    projects,
+    projectsLoading,
+    activityFeed,
+    lastToolMap,
+    pendingQuestions,
+    stuckDetections,
+    velocityMap,
+    refresh,
+  };
 }

@@ -74,10 +74,7 @@ export function CollaborativeTextarea({
   const handleSelectionChange = useCallback(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      onCursorChange(
-        textarea.selectionStart,
-        textarea.selectionEnd - textarea.selectionStart,
-      );
+      onCursorChange(textarea.selectionStart, textarea.selectionEnd - textarea.selectionStart);
     }
   }, [onCursorChange]);
 
@@ -134,10 +131,7 @@ export function CollaborativeTextarea({
             className="absolute flex flex-col items-start"
             style={{ top: pos.top, left: pos.left }}
           >
-            <div
-              className="w-0.5 h-5 animate-pulse"
-              style={{ backgroundColor: pos.user.color }}
-            />
+            <div className="w-0.5 h-5 animate-pulse" style={{ backgroundColor: pos.user.color }} />
             <div
               className="text-[10px] text-white px-1 rounded -mt-0.5 whitespace-nowrap"
               style={{ backgroundColor: pos.user.color }}

@@ -1,6 +1,9 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
+const {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} = require('@aws-sdk/client-apigatewaymanagementapi');
 const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 const { getUrlAndHeaders } = require('gremlin-aws-sigv4/lib/utils');
@@ -31,21 +34,25 @@ async function withNeptune(fn) {
 }
 
 exports.handler = async (event) => {
-  const { questionId, agentTaskId, taskToken, questions, projectId, sprintId } = JSON.parse(event.body || event);
-  
-  await ddb.send(new PutCommand({
-    TableName: process.env.QUESTIONS_TABLE,
-    Item: {
-      questionId,
-      agentTaskId,
-      taskToken,
-      questions,
-      projectId,
-      sprintId: sprintId || null,
-      status: 'pending',
-      createdAt: Date.now()
-    }
-  }));
+  const { questionId, agentTaskId, taskToken, questions, projectId, sprintId } = JSON.parse(
+    event.body || event,
+  );
+
+  await ddb.send(
+    new PutCommand({
+      TableName: process.env.QUESTIONS_TABLE,
+      Item: {
+        questionId,
+        agentTaskId,
+        taskToken,
+        questions,
+        projectId,
+        sprintId: sprintId || null,
+        status: 'pending',
+        createdAt: Date.now(),
+      },
+    }),
+  );
 
   // Update Sprint status + create timeline event in Neptune (single connection)
   if (sprintId) {
@@ -53,13 +60,18 @@ exports.handler = async (event) => {
       await withNeptune(async (g) => {
         const { cardinality } = gremlin.process;
         // Mark sprint as waiting for user input
-        await g.V().has('Sprint', 'id', sprintId)
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
           .property(cardinality.single, 'current_agent_status', 'waiting')
           .next();
         // Create timeline event (once, server-side — avoids per-client duplicates)
         const teId = `te-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const timestamp = new Date().toISOString();
-        await g.V().has('Sprint', 'id', sprintId).as('s')
+        await g
+          .V()
+          .has('Sprint', 'id', sprintId)
+          .as('s')
           .addV('TimelineEvent')
           .property('id', teId)
           .property('type', 'question_asked')
@@ -70,7 +82,9 @@ exports.handler = async (event) => {
           .property('timestamp', timestamp)
           .property('sprint_id', sprintId)
           .as('e')
-          .addE('HAS_TIMELINE_EVENT').from_('s').to('e')
+          .addE('HAS_TIMELINE_EVENT')
+          .from_('s')
+          .to('e')
           .next();
       });
     } catch (e) {
@@ -85,23 +99,37 @@ exports.handler = async (event) => {
   // Parse questions for broadcast (stored as JSON string from MCP tool)
   const parsedQuestions = typeof questions === 'string' ? JSON.parse(questions) : questions;
 
-  await Promise.all(connections.map(connId =>
-    wsClient.send(new PostToConnectionCommand({
-      ConnectionId: connId,
-      Data: JSON.stringify({ type: 'agent.question', questionId, questions: parsedQuestions, agentTaskId, sprintId })
-    })).catch(() => {})
-  ));
+  await Promise.all(
+    connections.map((connId) =>
+      wsClient
+        .send(
+          new PostToConnectionCommand({
+            ConnectionId: connId,
+            Data: JSON.stringify({
+              type: 'agent.question',
+              questionId,
+              questions: parsedQuestions,
+              agentTaskId,
+              sprintId,
+            }),
+          }),
+        )
+        .catch(() => {}),
+    ),
+  );
 
   return { statusCode: 200, body: JSON.stringify({ questionId }) };
 };
 
 async function getSprintConnections(sprintId) {
   // Query connections by documentId (sprint:sprintId) using GSI
-  const result = await ddb.send(new QueryCommand({
-    TableName: process.env.CONNECTIONS_TABLE,
-    IndexName: 'DocumentIdIndex',
-    KeyConditionExpression: 'documentId = :docId',
-    ExpressionAttributeValues: { ':docId': `sprint:${sprintId}` }
-  }));
-  return (result.Items || []).map(item => item.connectionId);
+  const result = await ddb.send(
+    new QueryCommand({
+      TableName: process.env.CONNECTIONS_TABLE,
+      IndexName: 'DocumentIdIndex',
+      KeyConditionExpression: 'documentId = :docId',
+      ExpressionAttributeValues: { ':docId': `sprint:${sprintId}` },
+    }),
+  );
+  return (result.Items || []).map((item) => item.connectionId);
 }

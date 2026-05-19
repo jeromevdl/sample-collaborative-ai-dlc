@@ -6,8 +6,8 @@ The Review phase is where the code produced during Construction is evaluated for
 
 1. The Construction Agent finishes and creates a pull request
 2. Two review agents are launched automatically:
-    - A **Blind Review Agent** that evaluates without seeing file details
-    - A **Full Review Agent** that evaluates with complete context
+   - A **Blind Review Agent** that evaluates without seeing file details
+   - A **Full Review Agent** that evaluates with complete context
 3. Each agent produces a review with comments, risk scores, and reasoning
 4. You add manual comments and make the final decision
 5. The review passes or fails

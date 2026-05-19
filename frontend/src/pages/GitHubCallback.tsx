@@ -20,8 +20,8 @@ export default function GitHubCallback() {
     }
 
     fetch(`${API_BASE_URL}/github/callback?code=${code}&state=${state}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setStatus('success');
           setTimeout(() => navigate('/dashboard?reopenCreateProject=1'), 1500);

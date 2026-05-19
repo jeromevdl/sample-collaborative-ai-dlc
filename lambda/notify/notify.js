@@ -1,6 +1,9 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
+import {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} from '@aws-sdk/client-apigatewaymanagementapi';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const wsClient = new ApiGatewayManagementApiClient({ endpoint: process.env.WEBSOCKET_ENDPOINT });
@@ -18,19 +21,25 @@ export const handler = async (event) => {
   if (detail.sprintId) docIds.add(`sprint:${detail.sprintId}`);
 
   for (const docId of docIds) {
-    const connections = await ddb.send(new QueryCommand({
-      TableName: process.env.CONNECTIONS_TABLE,
-      IndexName: 'DocumentIdIndex',
-      KeyConditionExpression: 'documentId = :docId',
-      ExpressionAttributeValues: { ':docId': docId }
-    }));
+    const connections = await ddb.send(
+      new QueryCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+        IndexName: 'DocumentIdIndex',
+        KeyConditionExpression: 'documentId = :docId',
+        ExpressionAttributeValues: { ':docId': docId },
+      }),
+    );
 
-    await Promise.allSettled((connections.Items ?? []).map(item =>
-      wsClient.send(new PostToConnectionCommand({
-        ConnectionId: item.connectionId,
-        Data: message
-      }))
-    ));
+    await Promise.allSettled(
+      (connections.Items ?? []).map((item) =>
+        wsClient.send(
+          new PostToConnectionCommand({
+            ConnectionId: item.connectionId,
+            Data: message,
+          }),
+        ),
+      ),
+    );
   }
 
   return { statusCode: 200 };

@@ -61,7 +61,9 @@ export function TimelinePanel({ events, loading }: Props) {
             <div className="pb-4 min-w-0 flex-1">
               <p className="text-sm leading-tight">{event.title}</p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground">{relativeTime(event.timestamp)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {relativeTime(event.timestamp)}
+                </span>
                 {event.userName && (
                   <span className="text-xs text-muted-foreground">by {event.userName}</span>
                 )}

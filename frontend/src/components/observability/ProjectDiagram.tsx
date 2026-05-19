@@ -7,7 +7,12 @@ import type { ProjectAgentInfo, SprintProgress, VelocityMetrics } from '@/hooks/
 import type { Sprint } from '@/services/sprints';
 import type { TaskAgentStatus } from '@/services/agents';
 
-function getStepsDone(phase: PhaseKey, progress: SprintProgress | null, sprint: Sprint | null, taskStatuses: TaskAgentStatus[]): Set<string> {
+function getStepsDone(
+  phase: PhaseKey,
+  progress: SprintProgress | null,
+  sprint: Sprint | null,
+  taskStatuses: TaskAgentStatus[],
+): Set<string> {
   const done = new Set<string>();
   if (!sprint) return done;
 
@@ -23,22 +28,31 @@ function getStepsDone(phase: PhaseKey, progress: SprintProgress | null, sprint: 
   }
 
   if (phase === 'CONSTRUCTION') {
-    const hasRunningOrDone = taskStatuses.some(t => t.executionStatus === 'RUNNING' || t.executionStatus === 'SUCCEEDED');
-    const allDone = taskStatuses.length > 0 && taskStatuses.every(t => t.executionStatus === 'SUCCEEDED');
+    const hasRunningOrDone = taskStatuses.some(
+      (t) => t.executionStatus === 'RUNNING' || t.executionStatus === 'SUCCEEDED',
+    );
+    const allDone =
+      taskStatuses.length > 0 && taskStatuses.every((t) => t.executionStatus === 'SUCCEEDED');
     if (hasRunningOrDone || progress?.codeFileCount) done.add('code_generation');
     if (allDone || sprint.prUrl) done.add('build_and_test');
   }
 
   if (phase === 'REVIEW') {
     if (sprint.prUrl) done.add('code_review');
-    if (sprint.currentAgentStatus === 'completed' && sprint.phase === 'REVIEW') done.add('pr_approval');
+    if (sprint.currentAgentStatus === 'completed' && sprint.phase === 'REVIEW')
+      done.add('pr_approval');
   }
 
   return done;
 }
 
 // Steps conditionnels qui ne seront pas réalisés — phase passée sans eux
-function getStepsSkipped(_phase: PhaseKey, stepsDone: Set<string>, isPastPhase: boolean, steps: { key: string; mandatory: boolean }[]): Set<string> {
+function getStepsSkipped(
+  _phase: PhaseKey,
+  stepsDone: Set<string>,
+  isPastPhase: boolean,
+  steps: { key: string; mandatory: boolean }[],
+): Set<string> {
   if (!isPastPhase) return new Set();
   const skipped = new Set<string>();
   for (const step of steps) {
@@ -55,15 +69,29 @@ interface Props {
   onNavigate: (path: string) => void;
 }
 
-export function ProjectDiagram({ info, lastTool, pendingQuestions = 0, velocity, onNavigate }: Props) {
+export function ProjectDiagram({
+  info,
+  lastTool,
+  pendingQuestions = 0,
+  velocity,
+  onNavigate,
+}: Props) {
   const { project, sprint, progress, taskStatuses } = info;
   const agentStatus = sprint?.currentAgentStatus;
   const currentPhase = sprint?.phase as PhaseKey | undefined;
   const currentPhaseIdx = currentPhase ? PHASE_ORDER.indexOf(currentPhase) : -1;
 
   const handleClick = () => {
-    if (!sprint) { onNavigate(`/project/${project.id}`); return; }
-    const route = currentPhase === 'CONSTRUCTION' ? '/construction' : currentPhase === 'REVIEW' ? '/review' : '';
+    if (!sprint) {
+      onNavigate(`/project/${project.id}`);
+      return;
+    }
+    const route =
+      currentPhase === 'CONSTRUCTION'
+        ? '/construction'
+        : currentPhase === 'REVIEW'
+          ? '/review'
+          : '';
     onNavigate(`/project/${project.id}/sprint/${sprint.id}${route}`);
   };
 
@@ -83,7 +111,8 @@ export function ProjectDiagram({ info, lastTool, pendingQuestions = 0, velocity,
           <span className="font-semibold text-sm">{project.name}</span>
           {project.gitRepo && (
             <span className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
-              <GitBranch className="h-3 w-3" />{project.gitRepo}
+              <GitBranch className="h-3 w-3" />
+              {project.gitRepo}
             </span>
           )}
         </div>
@@ -115,7 +144,12 @@ export function ProjectDiagram({ info, lastTool, pendingQuestions = 0, velocity,
         )}
         {PHASE_CONFIGS.map((phase, phaseIdx) => {
           const isPastPhase = currentPhaseIdx > phaseIdx;
-          const stepsDone = getStepsDone(phase.key, progress, sprint ?? null, phase.key === 'CONSTRUCTION' ? taskStatuses : []);
+          const stepsDone = getStepsDone(
+            phase.key,
+            progress,
+            sprint ?? null,
+            phase.key === 'CONSTRUCTION' ? taskStatuses : [],
+          );
           const stepsSkipped = getStepsSkipped(phase.key, stepsDone, isPastPhase, phase.steps);
           return (
             <div key={phase.key}>
@@ -128,8 +162,12 @@ export function ProjectDiagram({ info, lastTool, pendingQuestions = 0, velocity,
                 stepsSkipped={stepsSkipped}
                 isCurrentPhase={phase.key === currentPhase}
                 isPastPhase={isPastPhase}
-                isFuturePhase={sprint !== null && currentPhaseIdx !== -1 && currentPhaseIdx < phaseIdx}
-                isUnlocked={sprint !== null && (currentPhaseIdx === -1 || currentPhaseIdx >= phaseIdx)}
+                isFuturePhase={
+                  sprint !== null && currentPhaseIdx !== -1 && currentPhaseIdx < phaseIdx
+                }
+                isUnlocked={
+                  sprint !== null && (currentPhaseIdx === -1 || currentPhaseIdx >= phaseIdx)
+                }
                 agentStatus={agentStatus}
                 progress={progress}
                 sprint={sprint ?? null}

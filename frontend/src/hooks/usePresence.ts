@@ -66,21 +66,25 @@ export function usePresence(documentId: string, currentUser: { id: string; name:
 
   const connectionStatus = synced ? 'connected' : 'connecting';
 
-  const updateCursor = useCallback((x: number, y: number) => {
-    awareness?.setLocalStateField('cursor', { x, y });
-  }, [awareness]);
+  const updateCursor = useCallback(
+    (x: number, y: number) => {
+      awareness?.setLocalStateField('cursor', { x, y });
+    },
+    [awareness],
+  );
 
-  const setActivity = useCallback((activity: UserPresence['activity'], activityTarget?: string) => {
-    awareness?.setLocalStateField('presence', {
-      userId: currentUser.id,
-      name: currentUser.name,
-      color,
-      activity,
-      activityTarget,
-    });
-  }, [awareness, currentUser.id, currentUser.name, color]);
+  const setActivity = useCallback(
+    (activity: UserPresence['activity'], activityTarget?: string) => {
+      awareness?.setLocalStateField('presence', {
+        userId: currentUser.id,
+        name: currentUser.name,
+        color,
+        activity,
+        activityTarget,
+      });
+    },
+    [awareness, currentUser.id, currentUser.name, color],
+  );
 
   return { users, connectionStatus, updateCursor, setActivity };
 }
-
-
