@@ -5,6 +5,7 @@
     "lambda/get-agent-output",
     "lambda/notify",
     "lambda/ws-authorizer",
+    "lambda/ws-connection",
     "lambda/ws-message"
   ],
   "scripts": {

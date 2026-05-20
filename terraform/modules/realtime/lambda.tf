@@ -66,6 +66,10 @@ module "connection_lambda" {
   source_path = [
     {
       path = "${path.module}/../../../lambda/ws-connection"
+      commands = [
+        "cd ../.. && npm run build -w ws-connection",
+        ":zip lambda/ws-connection/.build",
+      ]
     }
   ]
 
