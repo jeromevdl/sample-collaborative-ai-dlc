@@ -70,12 +70,21 @@ resource "aws_api_gateway_resource" "project_steering_docs" {
 }
 
 # -----------------------------------------------------------------------------
-# /sprints/{sprintId}/tasks/{taskId}/config Resource
+# /sprints/{sprintId}/tasks/{taskId}/mcp-servers Resource
 # -----------------------------------------------------------------------------
-resource "aws_api_gateway_resource" "task_config" {
+resource "aws_api_gateway_resource" "task_mcp_servers" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   parent_id   = aws_api_gateway_resource.task.id
-  path_part   = "config"
+  path_part   = "mcp-servers"
+}
+
+# -----------------------------------------------------------------------------
+# /sprints/{sprintId}/tasks/{taskId}/steering-docs Resource
+# -----------------------------------------------------------------------------
+resource "aws_api_gateway_resource" "task_steering_docs" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.task.id
+  path_part   = "steering-docs"
 }
 
 # -----------------------------------------------------------------------------
@@ -474,12 +483,12 @@ resource "aws_api_gateway_integration" "project_steering_docs_put" {
 }
 
 # =============================================================================
-# Task Config Methods (GET, PUT)
-# /sprints/{sprintId}/tasks/{taskId}/config
+# Task MCP Servers Methods (GET, PUT)
+# /sprints/{sprintId}/tasks/{taskId}/mcp-servers
 # =============================================================================
-resource "aws_api_gateway_method" "task_config_get" {
+resource "aws_api_gateway_method" "task_mcp_servers_get" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
-  resource_id   = aws_api_gateway_resource.task_config.id
+  resource_id   = aws_api_gateway_resource.task_mcp_servers.id
   http_method   = "GET"
   authorization = "COGNITO_USER_POOLS"
   authorizer_id = aws_api_gateway_authorizer.cognito.id
@@ -490,9 +499,9 @@ resource "aws_api_gateway_method" "task_config_get" {
   }
 }
 
-resource "aws_api_gateway_method" "task_config_put" {
+resource "aws_api_gateway_method" "task_mcp_servers_put" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
-  resource_id   = aws_api_gateway_resource.task_config.id
+  resource_id   = aws_api_gateway_resource.task_mcp_servers.id
   http_method   = "PUT"
   authorization = "COGNITO_USER_POOLS"
   authorizer_id = aws_api_gateway_authorizer.cognito.id
@@ -503,19 +512,67 @@ resource "aws_api_gateway_method" "task_config_put" {
   }
 }
 
-resource "aws_api_gateway_integration" "task_config_get" {
+resource "aws_api_gateway_integration" "task_mcp_servers_get" {
   rest_api_id             = aws_api_gateway_rest_api.main.id
-  resource_id             = aws_api_gateway_resource.task_config.id
-  http_method             = aws_api_gateway_method.task_config_get.http_method
+  resource_id             = aws_api_gateway_resource.task_mcp_servers.id
+  http_method             = aws_api_gateway_method.task_mcp_servers_get.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = var.tasks_lambda_invoke_arn
 }
 
-resource "aws_api_gateway_integration" "task_config_put" {
+resource "aws_api_gateway_integration" "task_mcp_servers_put" {
   rest_api_id             = aws_api_gateway_rest_api.main.id
-  resource_id             = aws_api_gateway_resource.task_config.id
-  http_method             = aws_api_gateway_method.task_config_put.http_method
+  resource_id             = aws_api_gateway_resource.task_mcp_servers.id
+  http_method             = aws_api_gateway_method.task_mcp_servers_put.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.tasks_lambda_invoke_arn
+}
+
+# =============================================================================
+# Task Steering Docs Methods (GET, PUT)
+# /sprints/{sprintId}/tasks/{taskId}/steering-docs
+# =============================================================================
+resource "aws_api_gateway_method" "task_steering_docs_get" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.task_steering_docs.id
+  http_method   = "GET"
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito.id
+
+  request_parameters = {
+    "method.request.path.sprintId" = true
+    "method.request.path.taskId"   = true
+  }
+}
+
+resource "aws_api_gateway_method" "task_steering_docs_put" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.task_steering_docs.id
+  http_method   = "PUT"
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito.id
+
+  request_parameters = {
+    "method.request.path.sprintId" = true
+    "method.request.path.taskId"   = true
+  }
+}
+
+resource "aws_api_gateway_integration" "task_steering_docs_get" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.task_steering_docs.id
+  http_method             = aws_api_gateway_method.task_steering_docs_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.tasks_lambda_invoke_arn
+}
+
+resource "aws_api_gateway_integration" "task_steering_docs_put" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.task_steering_docs.id
+  http_method             = aws_api_gateway_method.task_steering_docs_put.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = var.tasks_lambda_invoke_arn
@@ -918,10 +975,16 @@ module "cors_project_steering_docs" {
   resource_id = aws_api_gateway_resource.project_steering_docs.id
 }
 
-module "cors_task_config" {
+module "cors_task_mcp_servers" {
   source      = "./cors"
   rest_api_id = aws_api_gateway_rest_api.main.id
-  resource_id = aws_api_gateway_resource.task_config.id
+  resource_id = aws_api_gateway_resource.task_mcp_servers.id
+}
+
+module "cors_task_steering_docs" {
+  source      = "./cors"
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.task_steering_docs.id
 }
 
 module "cors_sprints" {

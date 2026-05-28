@@ -10,16 +10,6 @@ export interface Task {
   dependencies?: string[];
 }
 
-export interface TaskConfig {
-  mcpServers: string;
-  steeringDocs: SteeringDoc[];
-}
-
-export interface UpdateTaskConfigInput {
-  mcpServers?: string;
-  steeringDocs?: Array<{ filename: string }>;
-}
-
 export const tasksService = {
   list: (sprintId: string) => api.get<Task[]>(`/sprints/${sprintId}/tasks`),
   get: (sprintId: string, id: string) => api.get<Task>(`/sprints/${sprintId}/tasks/${id}`),
@@ -38,12 +28,22 @@ export const tasksService = {
     api.put<Task>(`/sprints/${sprintId}/tasks/${id}`, input),
   delete: (sprintId: string, id: string) => api.delete(`/sprints/${sprintId}/tasks/${id}`),
 
-  // Task-level configuration: MCP servers and steering docs
-  getConfig: (sprintId: string, taskId: string) =>
-    api.get<TaskConfig>(`/sprints/${sprintId}/tasks/${taskId}/config`),
-  updateConfig: (sprintId: string, taskId: string, input: UpdateTaskConfigInput) =>
+  // Task-level MCP servers (raw JSON string)
+  getMcpServers: (sprintId: string, taskId: string) =>
+    api.get<{ mcpServers: string }>(`/sprints/${sprintId}/tasks/${taskId}/mcp-servers`),
+  updateMcpServers: (sprintId: string, taskId: string, mcpServers: string) =>
+    api.put<{ saved: boolean }>(`/sprints/${sprintId}/tasks/${taskId}/mcp-servers`, { mcpServers }),
+
+  // Task-level steering docs
+  getSteeringDocs: (sprintId: string, taskId: string) =>
+    api.get<{ steeringDocs: SteeringDoc[] }>(`/sprints/${sprintId}/tasks/${taskId}/steering-docs`),
+  updateSteeringDocs: (
+    sprintId: string,
+    taskId: string,
+    steeringDocs: Array<{ filename: string }>,
+  ) =>
     api.put<{
       saved: boolean;
       uploadUrls: Array<{ filename: string; s3Key: string; uploadUrl: string }>;
-    }>(`/sprints/${sprintId}/tasks/${taskId}/config`, input),
+    }>(`/sprints/${sprintId}/tasks/${taskId}/steering-docs`, { steeringDocs }),
 };

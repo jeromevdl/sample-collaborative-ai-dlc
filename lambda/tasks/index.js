@@ -40,13 +40,17 @@ exports.handler = async (event) => {
     const { sprintId, taskId } = pathParameters || {};
 
     // ---------------------------------------------------------------------------
-    // Sub-resource routing: /sprints/{sprintId}/tasks/{taskId}/config
-    // Detected by examining event.path since the /config resource has its own
+    // Sub-resource routing: /sprints/{sprintId}/tasks/{taskId}/mcp-servers
+    //                       /sprints/{sprintId}/tasks/{taskId}/steering-docs
+    // Detected by examining event.path since each sub-resource has its own
     // API Gateway resource that maps to this Lambda.
     // ---------------------------------------------------------------------------
     const requestPath = event.path || '';
-    if (taskId && requestPath.endsWith('/config')) {
-      return await handleTaskConfig(g, res, httpMethod, sprintId, taskId, body);
+    if (taskId && requestPath.endsWith('/mcp-servers')) {
+      return await handleTaskMcpServers(g, res, httpMethod, taskId, body);
+    }
+    if (taskId && requestPath.endsWith('/steering-docs')) {
+      return await handleTaskSteeringDocs(g, res, httpMethod, taskId, body);
     }
 
     switch (httpMethod) {
@@ -226,7 +230,8 @@ exports.handler = async (event) => {
 };
 
 // ---------------------------------------------------------------------------
-// Task-level config: GET/PUT /sprints/{sprintId}/tasks/{taskId}/config
+// Task-level config: GET/PUT /sprints/{sprintId}/tasks/{taskId}/mcp-servers
+//                    GET/PUT /sprints/{sprintId}/tasks/{taskId}/steering-docs
 // Manages task-level mcp_servers and steering_docs properties.
 // ---------------------------------------------------------------------------
 
@@ -238,16 +243,50 @@ const getTaskVal = (v, key) => {
   return raw ?? '';
 };
 
-async function handleTaskConfig(g, res, httpMethod, sprintId, taskId, body) {
+// ---------------------------------------------------------------------------
+// Task-level MCP servers: GET/PUT /sprints/{sprintId}/tasks/{taskId}/mcp-servers
+// ---------------------------------------------------------------------------
+
+async function handleTaskMcpServers(g, res, httpMethod, taskId, body) {
+  if (httpMethod === 'GET') {
+    const r = await g.V().has('Task', 'id', taskId).valueMap('mcp_servers').next();
+    if (!r.value) return res(404, { error: 'Task not found' });
+    const raw = getTaskVal(r.value, 'mcp_servers') || '[]';
+    return res(200, { mcpServers: raw });
+  }
+
+  if (httpMethod === 'PUT') {
+    const data = JSON.parse(body || '{}');
+    const mcpServersJson = data.mcpServers || '[]';
+    // Validate JSON
+    try {
+      JSON.parse(mcpServersJson);
+    } catch {
+      return res(400, { error: 'mcpServers must be a valid JSON string' });
+    }
+    await g
+      .V()
+      .has('Task', 'id', taskId)
+      .property(cardinality.single, 'mcp_servers', mcpServersJson)
+      .next();
+    return res(200, { saved: true });
+  }
+
+  return res(405, { error: 'Method not allowed' });
+}
+
+// ---------------------------------------------------------------------------
+// Task-level steering docs: GET/PUT /sprints/{sprintId}/tasks/{taskId}/steering-docs
+// ---------------------------------------------------------------------------
+
+async function handleTaskSteeringDocs(g, res, httpMethod, taskId, body) {
   const artifactsBucket = process.env.ARTIFACTS_BUCKET;
   const region = process.env.AWS_REGION || 'us-east-1';
   const s3 = new S3Client({ region });
 
   if (httpMethod === 'GET') {
-    const r = await g.V().has('Task', 'id', taskId).valueMap().next();
+    const r = await g.V().has('Task', 'id', taskId).valueMap('steering_docs').next();
     if (!r.value) return res(404, { error: 'Task not found' });
-
-    const mcpServers = getTaskVal(r.value, 'mcp_servers') || '[]';
     let docs = [];
     try {
       docs = JSON.parse(getTaskVal(r.value, 'steering_docs') || '[]');
@@ -272,7 +311,7 @@ async function handleTaskConfig(g, res, httpMethod, sprintId, taskId, body) {
       }),
     );
 
-    return res(200, { mcpServers, steeringDocs: docsWithUrls });
+    return res(200, { steeringDocs: docsWithUrls });
   }
 
   if (httpMethod === 'PUT') {
@@ -285,20 +324,6 @@ async function handleTaskConfig(g, res, httpMethod, sprintId, taskId, body) {
     const incomingDocs = data.steeringDocs || [];
     if (incomingDocs.length > 20) {
       return res(400, { error: 'Maximum 20 steering documents per task' });
-    }
-
-    // Persist mcp_servers if provided
-    if (data.mcpServers !== undefined) {
-      try {
-        JSON.parse(data.mcpServers);
-      } catch {
-        return res(400, { error: 'mcpServers must be a valid JSON string' });
-      }
-      await g
-        .V()
-        .has('Task', 'id', taskId)
-        .property(cardinality.single, 'mcp_servers', data.mcpServers)
-        .next();
     }
 
     // Resolve project ID for S3 key construction
