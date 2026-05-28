@@ -257,16 +257,6 @@ function getRulesDir(workspaceDir) {
   return path.join(workspaceDir, '.claude', 'rules');
 }
 
-/**
- * claude-agent-acp reads project instructions from AGENTS.md (via CLAUDE.md shim)
- * and .claude/rules/*.md. The entry-point and rules directory are now written
- * directly by pool-worker via getEntryPointPath() / getRulesDir().
- * The concat-dir mechanism is retired — returns [] going forward.
- */
-function getAdditionalSteeringPaths(_workspaceDir) {
-  return [];
-}
-
 // ---------------------------------------------------------------------------
 // Module export
 // ---------------------------------------------------------------------------
@@ -281,5 +271,4 @@ module.exports = {
   getEnvForAcpProcess,
   getEntryPointPath,
   getRulesDir,
-  getAdditionalSteeringPaths,
 };

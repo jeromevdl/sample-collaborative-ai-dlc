@@ -369,44 +369,9 @@ async function fetchSteeringFiles(phase, agentCli, projectId, taskId) {
   }
 
   // ---------------------------------------------------------------------------
-  // Driver-specific additional steering paths (retained as extension point;
-  // all current drivers return [] after this refactor).
-  // ---------------------------------------------------------------------------
-  const additionalPaths = activeDriver.getAdditionalSteeringPaths(workspaceDir);
-  for (const entry of additionalPaths) {
-    try {
-      if (entry.type === 'concat-dir') {
-        // Concatenate all .md files from src dir into a single dest file
-        execSync(`mkdir -p "${path.dirname(entry.dest)}"`, { stdio: 'ignore' });
-        const files = fs
-          .readdirSync(entry.src)
-          .filter((f) => f.endsWith('.md'))
-          .sort();
-        const combined = files
-          .map((f) => fs.readFileSync(path.join(entry.src, f), 'utf8'))
-          .join('\n\n---\n\n');
-        fs.writeFileSync(entry.dest, combined, 'utf8');
-        console.log(`[pool-worker] Wrote ${files.length} steering files to ${entry.dest}`);
-      } else if (entry.type === 'copy-file') {
-        execSync(`mkdir -p "${path.dirname(entry.dest)}"`, { stdio: 'ignore' });
-        fs.copyFileSync(entry.src, entry.dest);
-      } else if (entry.type === 'dir') {
-        execSync(`mkdir -p "${entry.dest}"`, { stdio: 'ignore' });
-        const files = fs.readdirSync(entry.src).filter((f) => f.endsWith('.md'));
-        for (const f of files) {
-          fs.copyFileSync(path.join(entry.src, f), path.join(entry.dest, f));
-        }
-      }
-    } catch (err) {
-      console.error(
-        `[pool-worker] Failed to write additional steering path "${entry.dest}":`,
-        err.message,
-      );
-    }
-  }
-
   // Write project-level and task-level scoped rules into the rules directory.
   // Best-effort — failures are logged but do not abort the workspace setup.
+  // ---------------------------------------------------------------------------
   await writeScopedRules(rulesDir, projectId, taskId);
 }
 

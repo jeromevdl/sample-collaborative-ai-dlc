@@ -10,7 +10,6 @@
 //   getMode()                      — 'acp' (JSON-RPC stdio) | 'print' (one-shot -p flag)
 //   getAcpCommand()                — command + args to spawn
 //   getEnvForAcpProcess(baseEnv)   — extra env vars for the spawned process
-//   getAdditionalSteeringPaths(workspaceDir)
 //
 // Each driver may optionally implement:
 //   isInstalled()                  — returns true if the CLI binary is present.

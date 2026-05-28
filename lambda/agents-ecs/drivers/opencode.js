@@ -225,17 +225,6 @@ function getRulesDir(workspaceDir) {
   return path.join(workspaceDir, '.opencode', 'rules');
 }
 
-/**
- * OpenCode reads project instructions from AGENTS.md and .opencode/rules/*.md
- * (via the instructions glob in opencode.json written by writeProjectConfig).
- * The entry-point and rules directory are now written directly by pool-worker
- * via getEntryPointPath() / getRulesDir(). The concat-dir mechanism is
- * retired — returns [] going forward.
- */
-function getAdditionalSteeringPaths(_workspaceDir) {
-  return [];
-}
-
 // ---------------------------------------------------------------------------
 // Module export
 // ---------------------------------------------------------------------------
@@ -250,5 +239,4 @@ module.exports = {
   writeProjectConfig,
   getEntryPointPath,
   getRulesDir,
-  getAdditionalSteeringPaths,
 };

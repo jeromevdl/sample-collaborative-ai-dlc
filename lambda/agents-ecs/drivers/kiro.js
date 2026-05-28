@@ -154,20 +154,6 @@ function getRulesDir(workspaceDir) {
   return path.join(workspaceDir, '.kiro', 'steering');
 }
 
-/**
- * Returns additional workspace paths to copy steering content to,
- * beyond the native per-driver locations (which pool-worker handles via
- * getEntryPointPath / getRulesDir).
- *
- * For Kiro, .kiro/steering/ is the native location — no extra copies needed.
- *
- * @param {string} _workspaceDir - absolute path to the workspace root
- * @returns {Array<{type: 'dir'|'file', dest: string}>}
- */
-function getAdditionalSteeringPaths(_workspaceDir) {
-  return [];
-}
-
 // ---------------------------------------------------------------------------
 // Module export
 // ---------------------------------------------------------------------------
@@ -181,5 +167,4 @@ module.exports = {
   getEnvForAcpProcess,
   getEntryPointPath,
   getRulesDir,
-  getAdditionalSteeringPaths,
 };
