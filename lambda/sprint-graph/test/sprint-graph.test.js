@@ -36,8 +36,7 @@ beforeEach(async () => {
   await g.V().drop().next();
 });
 
-const addSprint = async (sprintId) =>
-  g.addV('Sprint').property('id', sprintId).next();
+const addSprint = async (sprintId) => g.addV('Sprint').property('id', sprintId).next();
 
 // containment is one of: CONTAINS, HAS_REVIEW, HAS_PR, HAS_AGENT_RUN
 const addContained = async (sprintId, label, props, containment = 'CONTAINS') => {
@@ -66,8 +65,7 @@ const addEdge = async (fromLabel, fromId, edge, toLabel, toId) => {
     .next();
 };
 
-const invoke = (sprintId) =>
-  handler({ httpMethod: 'GET', pathParameters: { sprintId } });
+const invoke = (sprintId) => handler({ httpMethod: 'GET', pathParameters: { sprintId } });
 
 describe('OPTIONS', () => {
   it('short-circuits with 200', async () => {
@@ -90,12 +88,7 @@ describe('GET /sprint-graph', () => {
     const sprintId = `s-${randomUUID()}`;
     await addSprint(sprintId);
     const taskId = await addContained(sprintId, 'Task', { title: 'T', status: 'open' });
-    const fileId = await addContained(
-      sprintId,
-      'CodeFile',
-      { file_path: '/a.js' },
-      'CONTAINS',
-    );
+    const fileId = await addContained(sprintId, 'CodeFile', { file_path: '/a.js' }, 'CONTAINS');
     const runId = await addContained(
       sprintId,
       'AgentRun',
