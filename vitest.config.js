@@ -8,6 +8,9 @@ const lambdas = readdirSync(fileURLToPath(lambdaRoot)).filter((name) =>
 );
 
 const setupFiles = [fileURLToPath(new URL('./test/setup.js', import.meta.url))];
+// One gremlin-server testcontainer is started for the whole vitest run and
+// shared across every project. Per-file PartitionStrategy keeps writes isolated.
+const globalSetup = [fileURLToPath(new URL('./test/gremlin-setup.js', import.meta.url))];
 
 export default defineConfig({
   test: {
@@ -19,6 +22,7 @@ export default defineConfig({
         setupFiles,
       },
     })),
+    globalSetup,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
