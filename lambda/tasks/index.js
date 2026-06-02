@@ -29,6 +29,59 @@ const mapTask = (v) => ({
   dependencies: v.get('dependencies')?.[0] ? JSON.parse(v.get('dependencies')[0]) : [],
 });
 
+// ---------------------------------------------------------------------------
+// Authorization helpers
+// ---------------------------------------------------------------------------
+
+// Verify taskId belongs to sprintId AND caller is a project member.
+// Returns null on success, or a response on failure.
+async function authorizeTaskAccess(g, res, event, sprintId, taskId) {
+  const userId = event.requestContext?.authorizer?.claims?.sub;
+  if (!userId) return res(401, { error: 'Unauthorized' });
+
+  // Validate taskId belongs to sprintId via CONTAINS edge
+  const belongs = await g
+    .V()
+    .has('Sprint', 'id', sprintId)
+    .out('CONTAINS')
+    .has('Task', 'id', taskId)
+    .hasNext();
+  if (!belongs) return res(403, { error: 'Task does not belong to this sprint' });
+
+  // Derive projectId from sprint and check caller is a member
+  const projectVertex = await g
+    .V()
+    .has('Sprint', 'id', sprintId)
+    .in_('HAS_SPRINT')
+    .hasLabel('Project')
+    .next();
+  if (!projectVertex.value) return res(404, { error: 'Project not found for sprint' });
+
+  const projectId = projectVertex.value.id
+    ? projectVertex.value.id
+    : (await g.V(projectVertex.value).values('id').next()).value;
+
+  const isMember = await g
+    .V()
+    .has('Project', 'id', projectId)
+    .out('HAS_MEMBER')
+    .has('User', 'id', userId)
+    .hasNext();
+  if (!isMember) return res(403, { error: 'Access denied' });
+
+  return null;
+}
+
+// Verify task status is 'todo'. Returns null on success, or a response on failure.
+async function requireTodoStatus(g, res, taskId) {
+  const r = await g.V().has('Task', 'id', taskId).values('status').next();
+  if (!r.value) return res(404, { error: 'Task not found' });
+  if (r.value !== 'todo') {
+    return res(409, { error: 'Task settings can only be modified when status is todo' });
+  }
+  return null;
+}
+
 exports.handler = async (event) => {
   const res = buildResponse(event);
   if (event.httpMethod === 'OPTIONS') return res(200, {});
@@ -48,10 +101,10 @@ exports.handler = async (event) => {
     // ---------------------------------------------------------------------------
     const requestPath = event.path || '';
     if (taskId && requestPath.endsWith('/mcp-servers')) {
-      return await handleTaskMcpServers(g, res, httpMethod, taskId, body);
+      return await handleTaskMcpServers(g, res, event, httpMethod, sprintId, taskId, body);
     }
     if (taskId && requestPath.endsWith('/steering-docs')) {
-      return await handleTaskSteeringDocs(g, res, httpMethod, taskId, body);
+      return await handleTaskSteeringDocs(g, res, event, httpMethod, sprintId, taskId, body);
     }
 
     switch (httpMethod) {
@@ -147,7 +200,19 @@ exports.handler = async (event) => {
       }
 
       case 'PUT': {
+        const authErr = await authorizeTaskAccess(g, res, event, sprintId, taskId);
+        if (authErr) return authErr;
+
         const data = JSON.parse(body);
+
+        // Status changes are always allowed (orchestrator agents need them).
+        // Other field edits require status === 'todo'.
+        const isStatusChangeOnly = Object.keys(data).length === 1 && data.status;
+        if (!isStatusChangeOnly) {
+          const statusErr = await requireTodoStatus(g, res, taskId);
+          if (statusErr) return statusErr;
+        }
+
         if (data.title)
           await g
             .V()
@@ -248,7 +313,7 @@ const getTaskVal = (v, key) => {
 // Task-level MCP servers: GET/PUT /sprints/{sprintId}/tasks/{taskId}/mcp-servers
 // ---------------------------------------------------------------------------
 
-async function handleTaskMcpServers(g, res, httpMethod, taskId, body) {
+async function handleTaskMcpServers(g, res, event, httpMethod, sprintId, taskId, body) {
   if (httpMethod === 'GET') {
     const r = await g.V().has('Task', 'id', taskId).valueMap('mcp_servers').next();
     if (!r.value) return res(404, { error: 'Task not found' });
@@ -257,6 +322,11 @@ async function handleTaskMcpServers(g, res, httpMethod, taskId, body) {
   }
 
   if (httpMethod === 'PUT') {
+    const authErr = await authorizeTaskAccess(g, res, event, sprintId, taskId);
+    if (authErr) return authErr;
+    const statusErr = await requireTodoStatus(g, res, taskId);
+    if (statusErr) return statusErr;
+
     const data = JSON.parse(body || '{}');
     const mcpServersJson = data.mcpServers || '[]';
     const validation = validateMcpServersJson(mcpServersJson);
@@ -281,7 +351,7 @@ async function handleTaskMcpServers(g, res, httpMethod, taskId, body) {
 // Task-level steering docs: GET/PUT /sprints/{sprintId}/tasks/{taskId}/steering-docs
 // ---------------------------------------------------------------------------
 
-async function handleTaskSteeringDocs(g, res, httpMethod, taskId, body) {
+async function handleTaskSteeringDocs(g, res, event, httpMethod, sprintId, taskId, body) {
   const artifactsBucket = process.env.ARTIFACTS_BUCKET;
   const region = process.env.AWS_REGION || 'us-east-1';
   const s3 = new S3Client({ region });
@@ -317,6 +387,11 @@ async function handleTaskSteeringDocs(g, res, httpMethod, taskId, body) {
   }
 
   if (httpMethod === 'PUT') {
+    const authErr = await authorizeTaskAccess(g, res, event, sprintId, taskId);
+    if (authErr) return authErr;
+    const statusErr = await requireTodoStatus(g, res, taskId);
+    if (statusErr) return statusErr;
+
     const data = JSON.parse(body || '{}');
 
     if (!artifactsBucket) {
