@@ -623,7 +623,7 @@ When all tasks done → YOU trigger PR creation → System pushes final state
        - If the task branch exists, merge it:
          \`git merge origin/${job.branch}--task-${(event.taskId || '').replace(/^task-/, '')} --no-edit\`
       - If merge conflicts occur, resolve them intelligently based on the code context, then commit:
-        \`git add -A && git commit -m "Merge task-${event.taskId || ''}: resolve conflicts"\`
+        \`git add -A && git commit -m "Merge task-${(event.taskId || '').replace(/^task-/, '')}: resolve conflicts"\`
       - **Verify the merge**: Run \`git log --oneline -5\` to confirm the merge commit is present.
       - If the task branch does NOT exist on remote, log a warning and continue.
 
