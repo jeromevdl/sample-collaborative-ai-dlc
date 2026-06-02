@@ -49,23 +49,15 @@ import {
   MessageCircleQuestion,
   GitBranch,
   Eye,
-  RotateCcw,
   Wrench,
   ArrowRight,
   Folder,
   X,
-  MoreVertical,
-  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StructuredAnswer } from '@/services/questions';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { TaskSettingsDialog } from '@/components/settings/TaskSettingsDialog';
+import { TaskActionsMenu } from '@/components/domain/TaskActionsMenu';
 import type { Task } from '@/services/tasks';
 
 export default function ConstructionPage() {
@@ -611,35 +603,16 @@ export default function ConstructionPage() {
                                     </p>
                                   )}
                                 </div>
-                                {task.status === 'done' && resettingTaskId === task.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin shrink-0 mt-1" />
-                                ) : (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0 shrink-0"
-                                        title="Task actions"
-                                      >
-                                        <MoreVertical className="h-3 w-3" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-44">
-                                      <DropdownMenuItem onClick={() => setSettingsTask(task)}>
-                                        <Settings className="mr-2 h-3.5 w-3.5" />
-                                        Settings
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        disabled={task.status !== 'done'}
-                                        onClick={() => handleResetTask(task.id, task.title)}
-                                      >
-                                        <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                                        Reset to To Do
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
+                                <TaskActionsMenu
+                                  task={task}
+                                  isResetting={
+                                    task.status === 'done' && resettingTaskId === task.id
+                                  }
+                                  onOpenSettings={setSettingsTask}
+                                  onReset={handleResetTask}
+                                  variant="compact"
+                                  disableReset={task.status !== 'done'}
+                                />
                               </div>
                               {stream?.text && task.status === 'in_progress' && (
                                 <div className="mt-2 space-y-1.5">
@@ -720,32 +693,12 @@ export default function ConstructionPage() {
                           readOnly
                         />
                       </div>
-                      {resettingTaskId === task.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 mt-2" />
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="shrink-0 gap-1 mt-1 h-7 px-2"
-                              title="Task actions"
-                            >
-                              <MoreVertical className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onClick={() => setSettingsTask(task)}>
-                              <Settings className="mr-2 h-3.5 w-3.5" />
-                              Settings
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleResetTask(task.id, task.title)}>
-                              <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                              Reset to To Do
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <TaskActionsMenu
+                        task={task}
+                        isResetting={resettingTaskId === task.id}
+                        onOpenSettings={setSettingsTask}
+                        onReset={handleResetTask}
+                      />
                     </div>
                   ))}
                 </div>
