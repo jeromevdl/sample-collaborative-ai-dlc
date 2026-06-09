@@ -6,9 +6,14 @@ ENVIRONMENT=${1:-dev}
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TF_DIR="$SCRIPT_DIR/../terraform"
 
-# Discover available environments from terraform/environments/*.tfvars
-# (keep in sync with deploy-frontend.sh — do not hardcode an env allow-list).
-AVAILABLE_ENVS=$(ls "$TF_DIR/environments/"*.tfvars 2>/dev/null | xargs -n1 basename | sed 's/\.tfvars$//' | grep -v '\.example$' | tr '\n' ' ')
+# Discover available environments from terraform/environments/*.tfvars.
+# The *.tfvars glob never matches *.tfvars.example, so no grep -v needed.
+# Fall back to "dev prod" so a fresh public clone (no .tfvars yet) still works —
+# Terraform uses its own defaults when no var-file has been initialised.
+AVAILABLE_ENVS=$(ls "$TF_DIR/environments/"*.tfvars 2>/dev/null | xargs -n1 basename | sed 's/\.tfvars$//' | tr '\n' ' ')
+if [[ -z "${AVAILABLE_ENVS// }" ]]; then
+    AVAILABLE_ENVS="dev prod"
+fi
 
 if ! echo " $AVAILABLE_ENVS " | grep -q " $ENVIRONMENT "; then
     echo "Usage: $0 <environment>"
