@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -197,25 +198,35 @@ export default function ReviewPage() {
         .catch(() => {});
   }, [projectId]);
 
+  // Fetch the sprint graph (and its PRs) on sprintId only — a full graph refetch
+  // is expensive and must not be triggered by realtime branch/baseBranch updates.
   useEffect(() => {
-    if (sprintId) {
-      sprintGraphService
-        .get(sprintId)
-        .then((graph) => {
-          const found = extractPrs(graph);
-          setPrs(found);
-          setSelectedPrId((prev) =>
-            prev && found.some((p) => p.id === prev) ? prev : (found[0]?.id ?? ''),
-          );
-          // Fall back to sprint branch if no PR node yet
-          if (found.length === 0 && sprint?.branch) {
-            setPrBranch(sprint.branch);
-            setPrBaseBranch(sprint.baseBranch || 'main');
-          }
-        })
-        .catch(() => {});
+    if (!sprintId) return;
+    sprintGraphService
+      .get(sprintId)
+      .then((graph) => {
+        const found = extractPrs(graph);
+        setPrs(found);
+        setSelectedPrId((prev) =>
+          prev && found.some((p) => p.id === prev) ? prev : (found[0]?.id ?? ''),
+        );
+      })
+      .catch((err) => {
+        // Surface PR-loading failures instead of swallowing them — a silent catch
+        // previously hid them (no PRs shown, no error).
+        console.error('Failed to load sprint graph for PRs:', err);
+      });
+  }, [sprintId]);
+
+  // One-shot fallback: when the sprint has no PR node yet, use its own branch for
+  // the Modify Code flow. Kept in its own effect (guarded by prs.length === 0) so
+  // branch/baseBranch changes don't refetch the whole graph.
+  useEffect(() => {
+    if (prs.length === 0 && sprint?.branch) {
+      setPrBranch(sprint.branch);
+      setPrBaseBranch(sprint.baseBranch || 'main');
     }
-  }, [sprintId, sprint?.branch, sprint?.baseBranch]);
+  }, [prs.length, sprint?.branch, sprint?.baseBranch]);
 
   // Selected PR drives the View/checkout/comments below. Falls back to the
   // single PR copied onto the sprint vertex for backward compatibility.
@@ -423,9 +434,9 @@ export default function ReviewPage() {
                     questionsService
                       .update(sprintId, pq.id, { draftAnswer: draft })
                       .catch((err) => {
-                        // Don't block the page if the graph fetch fails, but surface it — a
-                        // silent swallow hid PR-loading failures (no PRs shown, no error).
-                        console.error('Failed to load sprint graph for PRs:', err);
+                        // Autosave is best-effort: don't block typing if it fails,
+                        // but log so a silently dropped draft is diagnosable.
+                        console.error('Failed to autosave question draft:', err);
                       });
                   }}
                   onFocus={() => setActivity('question', pq.id)}
@@ -499,21 +510,24 @@ export default function ReviewPage() {
                 </Button>
               </div>
               {prs.length > 1 && (
-                <Tabs value={selectedPrId} onValueChange={setSelectedPrId}>
-                  <TabsList className="h-auto flex-wrap bg-background">
-                    {prs.map((p) => (
-                      <TabsTrigger
-                        key={p.id}
-                        value={p.id}
-                        className="gap-1.5 text-xs"
-                        title={p.repository}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass(p.state)}`} />
-                        {prTabLabel(p)}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
+                <ToggleGroup
+                  type="single"
+                  value={selectedPrId}
+                  onValueChange={(v) => v && setSelectedPrId(v)}
+                  className="flex-wrap justify-start"
+                >
+                  {prs.map((p) => (
+                    <ToggleGroupItem
+                      key={p.id}
+                      value={p.id}
+                      className="gap-1.5 text-xs"
+                      title={p.repository}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass(p.state)}`} />
+                      {prTabLabel(p)}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               )}
               {activePrNumber && (
                 <PrCheckoutCommand

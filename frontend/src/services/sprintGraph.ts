@@ -33,7 +33,8 @@ export interface PrInfo {
 }
 
 // Collect every PullRequest node from a sprint graph (multi-repo = one per repo).
-// Stale PRs (superseded/merged) are filtered out; result is sorted by repository
+// Superseded PRs (stale with no terminal state) are dropped, but merged PRs are kept
+// so they still surface (with a "merged" state dot); result is sorted by repository
 // for a stable tab order.
 export function extractPrs(graph: SprintGraph): PrInfo[] {
   return graph.nodes
@@ -51,7 +52,7 @@ export function extractPrs(graph: SprintGraph): PrInfo[] {
         stale: r.stale === true || r.stale === 'true',
       };
     })
-    .filter((p) => !p.stale && p.prUrl)
+    .filter((p) => (!p.stale || p.state === 'merged') && p.prUrl)
     .map(({ stale: _stale, ...p }) => p)
     .sort((a, b) => a.repository.localeCompare(b.repository));
 }

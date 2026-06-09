@@ -47,7 +47,7 @@ describe('extractPrs', () => {
     expect(prs.map((p) => p.repository)).toEqual(['owner/infra', 'owner/ui']);
   });
 
-  it('drops stale and url-less PRs', () => {
+  it('drops superseded (stale, non-merged) and url-less PRs', () => {
     const prs = extractPrs(
       graph([
         prNode({ id: 'live', repository: 'owner/ui' }),
@@ -57,6 +57,20 @@ describe('extractPrs', () => {
       ]),
     );
     expect(prs.map((p) => p.id)).toEqual(['live']);
+  });
+
+  it('keeps merged PRs even though the backend marks them stale', () => {
+    // The backend sets stale=true *and* pr_state='merged' when a PR is merged on
+    // GitHub. Merged PRs should still surface on the review page (violet dot), so
+    // only superseded stale PRs are dropped.
+    const prs = extractPrs(
+      graph([
+        prNode({ id: 'live', repository: 'owner/ui' }),
+        prNode({ id: 'merged', repository: 'owner/api', stale: true, pr_state: 'merged' }),
+        prNode({ id: 'superseded', repository: 'owner/old', stale: true, pr_state: 'open' }),
+      ]),
+    );
+    expect(prs.map((p) => p.id)).toEqual(['merged', 'live']);
   });
 
   it('defaults baseBranch to main when missing', () => {
