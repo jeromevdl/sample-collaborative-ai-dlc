@@ -12,6 +12,7 @@ const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 const { getUrlAndHeaders } = require('gremlin-aws-sigv4/lib/utils');
 const fs = require('fs');
+const { mergeUnmergedTaskBranches } = require('./merge-task-branches');
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const lambda = new LambdaClient({});
@@ -1260,8 +1261,10 @@ In multi-repo projects, creates one PR per repository and groups them in a PRGro
         }
 
         const prResults = [];
-        for (const repo of env.gitRepos) {
-          const result = await lambda.send(
+        const failedRepos = [];
+
+        const invokeCreatePr = async (repoUrl) => {
+          const inv = await lambda.send(
             new InvokeCommand({
               FunctionName: createPrLambda,
               Payload: Buffer.from(
@@ -1269,24 +1272,64 @@ In multi-repo projects, creates one PR per repository and groups them in a PRGro
                   projectId: env.projectId,
                   branch,
                   baseBranch,
-                  title:
-                    title || `Construction: ${env.sprintId} (${parseOwnerRepo(repo.url).repo})`,
+                  title: title || `Construction: ${env.sprintId} (${parseOwnerRepo(repoUrl).repo})`,
                   gitToken: env.gitToken,
-                  gitRepo: repo.url,
+                  gitRepo: repoUrl,
                   executionId: process.env.EXECUTION_ID || '',
                 }),
               ),
             }),
           );
-          const resp = JSON.parse(Buffer.from(result.Payload).toString());
+          return JSON.parse(Buffer.from(inv.Payload).toString());
+        };
+
+        for (const repo of env.gitRepos) {
+          let resp = await invokeCreatePr(repo.url);
+
+          if (
+            resp.statusCode === 409 &&
+            Array.isArray(resp.unmergedBranches) &&
+            resp.unmergedBranches.length
+          ) {
+            const { owner, repo: repoName } = parseOwnerRepo(repo.url);
+            const mergeResult = await mergeUnmergedTaskBranches({
+              owner,
+              repo: repoName,
+              sprintBranch: branch,
+              unmergedBranches: resp.unmergedBranches,
+              gitToken: env.gitToken,
+            });
+
+            if (mergeResult.conflicts.length || mergeResult.errors.length) {
+              failedRepos.push({
+                repository: repo.url,
+                error: 'Unmerged construction task branches could not be auto-merged',
+                conflicts: mergeResult.conflicts,
+                mergeErrors: mergeResult.errors,
+              });
+              continue;
+            }
+
+            resp = await invokeCreatePr(repo.url);
+          }
+
           if (resp.prUrl && resp.prNumber) {
             prResults.push({ ...resp, repository: repo.url });
           } else {
+            failedRepos.push({
+              repository: repo.url,
+              error: resp.error || resp.body || `create-pr returned status ${resp.statusCode}`,
+              unmergedBranches: resp.unmergedBranches,
+            });
             console.error(`[trigger_pr_creation] No PR created for ${repo.url}:`, resp);
           }
         }
 
-        if (prResults.length === 0) return err('No PRs were created across any repository');
+        if (prResults.length === 0) {
+          return err(
+            `No PRs were created across any repository. Failures: ${JSON.stringify(failedRepos)}`,
+          );
+        }
 
         // Persist each PR to Neptune and create a PRGroup
         await withGraph(async (g) => {
@@ -1398,6 +1441,7 @@ In multi-repo projects, creates one PR per repository and groups them in a PRGro
             prNumber: p.prNumber,
             repository: p.repository,
           })),
+          ...(failedRepos.length ? { partialFailure: true, failedRepos } : {}),
         });
       } catch (e) {
         return err(`Failed to trigger multi-repo PR creation: ${e.message}`);

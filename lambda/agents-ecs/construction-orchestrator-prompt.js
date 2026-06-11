@@ -139,11 +139,12 @@ ${isRerun ? '7.' : '6.'} **If no tasks remain** (all are "done" or "failed"):
       - Do NOT call \`trigger_pr_creation\` while any task branch is unmerged.
    b. Push the sprint branch to remote so the PR can reference it:
       \`git push origin HEAD:refs/heads/${job.branch}\`
-   c. Call \`trigger_pr_creation\` with branch="${job.branch}" and baseBranch="${job.baseBranch || 'main'}"
-      - If a PR already exists but has been merged or closed, \`trigger_pr_creation\` will automatically mark it stale and open a new PR.
-      - If \`trigger_pr_creation\` reports unmerged construction branches, fetch and merge those branches, push again, then retry PR creation.
-      - You will always get a valid, open PR URL back. Do NOT skip this call assuming a prior PR is sufficient.
-   d. You're done.
+    c. Call \`trigger_pr_creation\` with branch="${job.branch}" and baseBranch="${job.baseBranch || 'main'}"
+       - If a PR already exists but has been merged or closed, \`trigger_pr_creation\` will automatically mark it stale and open a new PR.
+       - In multi-repo projects, \`trigger_pr_creation\` auto-merges any unmerged construction task branches into each repo's sprint branch (server-side) before opening that repo's PR, so you do NOT need to merge non-primary repos yourself.
+       - If the response contains \`partialFailure: true\`, inspect \`failedRepos\`: for each entry that lists \`conflicts\`, the auto-merge hit a real merge conflict that must be resolved by hand — fetch that repo's listed task branch(es), merge into "${job.branch}", resolve the conflicts, push, then call \`trigger_pr_creation\` again to open the missing PR(s).
+       - You will always get a valid, open PR URL back for every repo with changes. Do NOT skip this call assuming a prior PR is sufficient, and do NOT exit while \`failedRepos\` is non-empty.
+    d. You're done.
 
 ${isRerun ? '8.' : '7.'} **Exit immediately** after dispatching. Do not wait for sub-agents.
 
