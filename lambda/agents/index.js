@@ -34,6 +34,7 @@ const ssm = new SSMClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
 const { cardinality } = gremlin.process;
+const __ = gremlin.process.statics;
 
 const POOL_TABLE = process.env.POOL_TABLE || '';
 const POOL_SIZE = parseInt(process.env.POOL_SIZE || '5', 10);
@@ -43,6 +44,16 @@ const POOL_VERSION = process.env.POOL_VERSION || 'unknown';
 const STALE_STARTING_MS = 5 * 60 * 1000; // 5 minutes
 const STALE_IDLE_MS = 3 * 60 * 1000; // 3 minutes
 const STALE_BUSY_MS = 30 * 60 * 1000; // 30 minutes — sub-agents should not run this long
+
+// ---------------------------------------------------------------------------
+// Repo / branch validation — authoritative gate before values reach the
+// pool-worker, which interpolates them into shell `git` commands. The projects
+// lambda validates on write, but legacy/pre-existing `git_repo` values were
+// stored without validation, so we MUST re-validate here on the read path.
+// Validators live in shared/ so the agents and projects lambdas can't drift.
+// ---------------------------------------------------------------------------
+
+const { isSafeRepo, isSafeRef } = require('./shared/repo-validation');
 
 const getConnection = async () => {
   const host = process.env.NEPTUNE_ENDPOINT;
@@ -789,6 +800,29 @@ exports.handler = async (event) => {
         });
       }
 
+      // SECURITY: re-validate every repo URL and git ref before they reach the
+      // pool-worker, which interpolates them into shell `git` commands. Legacy
+      // `git_repo` values may predate the projects-lambda write-time validation,
+      // so this read-path gate is authoritative against command injection.
+      for (const url of [gitRepo, ...gitRepos.map((r) => r.url)].filter(Boolean)) {
+        if (!isSafeRepo(url)) {
+          console.error(`[agents] Rejecting job: unsafe repository url ${JSON.stringify(url)}`);
+          return response(400, {
+            error: 'Invalid repository',
+            message: 'A linked repository URL contains unsafe characters and cannot be cloned.',
+          });
+        }
+      }
+      for (const ref of [input.branch, input.baseBranch].filter(Boolean)) {
+        if (!isSafeRef(ref)) {
+          console.error(`[agents] Rejecting job: unsafe git ref ${JSON.stringify(ref)}`);
+          return response(400, {
+            error: 'Invalid branch',
+            message: 'The branch name contains characters that are not allowed.',
+          });
+        }
+      }
+
       const globalCliModels = await loadGlobalCliModels();
       const resolvedModel = resolveAgentModel(projectCliModels, globalCliModels, projectAgentCli);
       console.log(
@@ -944,7 +978,13 @@ exports.handler = async (event) => {
                   .property(cardinality.single, 'stale_at', new Date().toISOString())
                   .toList();
               } catch (staleErr) {
-                console.error('Failed to mark Review nodes as stale:', staleErr.message);
+                // Non-fatal: construction proceeds even if stale-marking fails, but
+                // log distinctly so a silent regression (e.g. a missing `__` import)
+                // surfaces in CloudWatch instead of leaving reviews permanently un-stale.
+                console.error(
+                  `[stale-review] Failed to mark Review nodes stale for sprint ${input.sprintId}:`,
+                  staleErr,
+                );
               }
             }
 
