@@ -14,7 +14,8 @@ interface Props {
 export function CreateProjectModal({ onClose, onCreated }: Props) {
   const { status, loading: statusLoading, error: statusError, refresh } = useGitHubStatus();
   const [step, setStep] = useState(1);
-  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [primaryRepo, setPrimaryRepo] = useState<string>('');
   const [formData, setFormData] = useState<CreateProjectInput>({
     name: '',
     gitProvider: 'github',
@@ -24,15 +25,35 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRepoSelect = (repo: GitHubRepo | null) => {
-    setSelectedRepo(repo);
-    if (repo) {
-      setFormData({
-        ...formData,
-        gitRepo: repo.fullName,
-        name: repo.name,
-      });
-    }
+  const handleReposChange = (repos: GitHubRepo[]) => {
+    const fullNames = repos.map(r => r.fullName);
+    setSelectedRepos(fullNames);
+
+    const nextPrimary =
+      fullNames.length === 0
+        ? ''
+        : fullNames.includes(primaryRepo)
+          ? primaryRepo
+          : fullNames[0];
+
+    setPrimaryRepo(nextPrimary);
+
+    const primaryName = nextPrimary.split('/').pop() || '';
+    setFormData(prev => ({
+      ...prev,
+      gitRepo: nextPrimary,
+      name: primaryName,
+    }));
+  };
+
+  const handleSetPrimary = (repoFullName: string) => {
+    setPrimaryRepo(repoFullName);
+    const primaryName = repoFullName.split('/').pop() || '';
+    setFormData(prev => ({
+      ...prev,
+      gitRepo: repoFullName,
+      name: primaryName,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,11 +61,14 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
     setSubmitting(true);
     setError(null);
     try {
-      const project = await projectsService.create(formData);
-      // The "Enable GitHub issue integration" checkbox now creates a tracker
-      // binding instead of writing the legacy boolean — the backend keeps
-      // the boolean as a derived read, but the binding is the source of
-      // truth in Phase 2+.
+      const input: CreateProjectInput = {
+        ...formData,
+        repos: selectedRepos.map(url => ({
+          url,
+          role: url === primaryRepo ? 'primary' as const : 'secondary' as const,
+        })),
+      };
+      const project = await projectsService.create(input);
       if (
         formData.issueIntegrationEnabled &&
         formData.gitProvider === 'github' &&
@@ -58,8 +82,6 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
             displayName: formData.gitRepo,
           });
         } catch (err) {
-          // Non-fatal: project still got created. Surface the binding error
-          // so the user can re-enable from settings.
           console.error('Failed to add github-issues tracker:', err);
         }
       }
@@ -73,7 +95,7 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
   };
 
   const canProceedStep1 = status?.connected;
-  const canProceedStep2 = selectedRepo !== null;
+  const canProceedStep2 = selectedRepos.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -144,11 +166,49 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
           </div>
         )}
 
-        {/* Step 2: Select Repository */}
+        {/* Step 2: Select Repositories */}
         {step === 2 && (
           <div>
-            <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Select Repository</h3>
-            <GitHubRepoSelect value={formData.gitRepo} onChange={handleRepoSelect} />
+            <h3 className="font-medium mb-1 text-gray-900 dark:text-white">Select Repositories</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Choose one or more repositories. The primary repo drives issue integration and project naming.
+            </p>
+            <GitHubRepoSelect
+              multiple
+              value={selectedRepos}
+              onChange={handleReposChange}
+            />
+            {selectedRepos.length > 1 && (
+              <div className="mt-3 border dark:border-gray-600 rounded divide-y dark:divide-gray-600">
+                <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-700">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Designate primary
+                  </span>
+                </div>
+                {selectedRepos.map(repo => (
+                  <label
+                    key={repo}
+                    className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <input
+                      type="radio"
+                      name="primaryRepo"
+                      checked={primaryRepo === repo}
+                      onChange={() => handleSetPrimary(repo)}
+                      className="accent-indigo-600"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">
+                      {repo}
+                    </span>
+                    {primaryRepo === repo && (
+                      <span className="text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-1.5 py-0.5 rounded">
+                        primary
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => setStep(1)}
@@ -186,7 +246,7 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Repository
+                {selectedRepos.length > 1 ? 'Primary Repository' : 'Repository'}
               </label>
               <input
                 type="text"
@@ -194,6 +254,11 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
                 className="w-full border dark:border-gray-600 rounded px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
                 disabled
               />
+              {selectedRepos.length > 1 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  +{selectedRepos.length - 1} additional repositor{selectedRepos.length - 1 === 1 ? 'y' : 'ies'}
+                </p>
+              )}
             </div>
             {formData.gitProvider === 'github' && (
               <div className="mb-4">
