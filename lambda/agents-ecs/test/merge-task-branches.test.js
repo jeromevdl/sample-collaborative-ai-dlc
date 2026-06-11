@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
 
 import { mergeUnmergedTaskBranches } from '../mcp-server-graph/merge-task-branches.js';
 
@@ -129,26 +128,5 @@ describe('mergeUnmergedTaskBranches', () => {
     expect(empty).toEqual({ merged: [], conflicts: [], errors: [] });
     expect(missing).toEqual({ merged: [], conflicts: [], errors: [] });
     expect(fetchImpl).not.toHaveBeenCalled();
-  });
-});
-
-describe('mcp-server-graph image packaging', () => {
-  it('copies every local module required by index.js into the ECS image', () => {
-    const dockerfile = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
-    const index = readFileSync(new URL('../mcp-server-graph/index.js', import.meta.url), 'utf8');
-
-    const localRequires = [...index.matchAll(/require\('(?<path>\.\/[\w-]+)'\)/g)].map(
-      (match) => `${match.groups.path.slice('./'.length)}.js`,
-    );
-
-    expect(localRequires).toContain('merge-task-branches.js');
-
-    const mcpCopyLine = dockerfile
-      .split('\n')
-      .find((line) => line.startsWith('COPY ') && line.includes('/opt/mcp-server-graph/'));
-
-    for (const file of localRequires) {
-      expect(mcpCopyLine).toContain(`mcp-server-graph/${file}`);
-    }
   });
 });

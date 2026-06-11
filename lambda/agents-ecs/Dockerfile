@@ -49,7 +49,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
 COPY aidlc-rules /opt/aidlc-rules
 
 # Install MCP server
-COPY mcp-server-graph/package.json mcp-server-graph/index.js mcp-server-graph/merge-task-branches.js /opt/mcp-server-graph/
+COPY mcp-server-graph/package.json mcp-server-graph/index.js mcp-server-graph/merge-task-branches.js mcp-server-graph/create-repo-prs.js /opt/mcp-server-graph/
 RUN cd /opt/mcp-server-graph && npm install --production
 
 # Install ACP client (includes drivers)
