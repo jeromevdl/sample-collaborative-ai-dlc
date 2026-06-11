@@ -176,6 +176,51 @@ describe('createPrsForRepos', () => {
     expect(prResults).toEqual([]);
     expect(failedRepos).toEqual([{ repository: 'o/ui', error: 'boom' }]);
   });
+
+  it('buckets a repo with no changes into skippedRepos and continues with the others', async () => {
+    const skipped = { statusCode: 200, skipped: true, reason: 'no_changes' };
+    const invokeCreatePr = vi.fn(async (url) => (url === 'o/untouched' ? skipped : prOk(4)));
+    const mergeFn = vi.fn();
+
+    const { prResults, failedRepos, skippedRepos } = await createPrsForRepos({
+      repos: [{ url: 'o/api' }, { url: 'o/untouched' }, { url: 'o/ui' }],
+      sprintBranch: 'sprint',
+      gitToken: 't',
+      invokeCreatePr,
+      parseOwnerRepo,
+      mergeFn,
+    });
+
+    expect(prResults.map((p) => p.repository)).toEqual(['o/api', 'o/ui']);
+    expect(skippedRepos).toEqual([{ repository: 'o/untouched', reason: 'no_changes' }]);
+    expect(failedRepos).toEqual([]);
+    expect(mergeFn).not.toHaveBeenCalled();
+  });
+
+  it('re-skips a previously skipped repo on a reconciliation re-run without failing', async () => {
+    // Second trigger_pr_creation call: missingRepos lists the skipped repo as
+    // uncovered, so it is re-processed alone — it must converge to skipped
+    // again, never to failedRepos (which would page a human every run).
+    const invokeCreatePr = vi.fn(async () => ({
+      statusCode: 200,
+      skipped: true,
+      reason: 'no_changes',
+    }));
+
+    const { prResults, failedRepos, skippedRepos } = await createPrsForRepos({
+      repos: missingRepos([{ url: 'o/api' }, { url: 'o/untouched' }], [{ repository: 'o/api' }]),
+      sprintBranch: 'sprint',
+      gitToken: 't',
+      invokeCreatePr,
+      parseOwnerRepo,
+      mergeFn: vi.fn(),
+    });
+
+    expect(invokeCreatePr).toHaveBeenCalledTimes(1);
+    expect(prResults).toEqual([]);
+    expect(failedRepos).toEqual([]);
+    expect(skippedRepos).toEqual([{ repository: 'o/untouched', reason: 'no_changes' }]);
+  });
 });
 
 describe('missingRepos', () => {

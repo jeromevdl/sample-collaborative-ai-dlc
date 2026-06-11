@@ -1308,7 +1308,7 @@ In multi-repo projects, creates one PR per repository and groups them in a PRGro
           return JSON.parse(Buffer.from(inv.Payload).toString());
         };
 
-        const { prResults, failedRepos } = await createPrsForRepos({
+        const { prResults, failedRepos, skippedRepos } = await createPrsForRepos({
           repos: reposToProcess,
           sprintBranch: branch,
           gitToken: env.gitToken,
@@ -1325,6 +1325,11 @@ In multi-repo projects, creates one PR per repository and groups them in a PRGro
           : [];
 
         if (prResults.length === 0 && keptPrs.length === 0) {
+          if (failedRepos.length === 0 && skippedRepos.length > 0) {
+            // Every repo was skipped (no changes anywhere this sprint). Not a
+            // failure — erroring here would page a human for a no-op run.
+            return ok({ multiRepo: true, pullRequests: [], skippedRepos });
+          }
           return err(
             `No PRs were created across any repository. Failures: ${JSON.stringify(failedRepos)}`,
           );
@@ -1473,6 +1478,11 @@ In multi-repo projects, creates one PR per repository and groups them in a PRGro
         return ok({
           multiRepo: true,
           pullRequests: allPullRequests,
+          // Skipped repos had no changes this sprint — normal, never a
+          // failure. They are NOT persisted to the PRGroup, so a re-run lists
+          // them as missing and cheaply re-skips them (see missingRepos in
+          // create-repo-prs.js).
+          ...(skippedRepos.length ? { skippedRepos } : {}),
           ...(failedRepos.length ? { partialFailure: true, failedRepos } : {}),
         });
       } catch (e) {
