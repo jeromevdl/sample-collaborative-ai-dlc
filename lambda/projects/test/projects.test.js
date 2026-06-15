@@ -318,7 +318,30 @@ describe('PUT /projects/:id', () => {
     const res = await handler({
       httpMethod: 'PUT',
       pathParameters: { projectId: id },
-      body: JSON.stringify({ cliModels: { claude: 'not-yet-supported' } }),
+      body: JSON.stringify({ cliModels: { cursor: 'not-supported' } }),
+      ...claims(sub),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body)).toEqual({
+      error: 'Invalid cliModels configuration',
+      issues: [
+        {
+          path: 'cursor',
+          message: 'Unknown model key "cursor". Allowed: kiro, claude, opencode.',
+        },
+      ],
+    });
+  });
+
+  it('rejects a Claude cliModels value with the amazon-bedrock prefix', async () => {
+    const sub = `u-${randomUUID()}`;
+    const { id } = await createProject(sub);
+    const res = await handler({
+      httpMethod: 'PUT',
+      pathParameters: { projectId: id },
+      body: JSON.stringify({
+        cliModels: { claude: 'amazon-bedrock/us.anthropic.claude-opus-4-8' },
+      }),
       ...claims(sub),
     });
     expect(res.statusCode).toBe(400);
@@ -327,10 +350,24 @@ describe('PUT /projects/:id', () => {
       issues: [
         {
           path: 'claude',
-          message: 'Unknown model key "claude". Allowed: kiro, opencode.',
+          message:
+            'Claude model must be a bare Bedrock inference profile ID (no "amazon-bedrock/" prefix).',
         },
       ],
     });
+  });
+
+  it('persists a bare Claude cliModels override', async () => {
+    const sub = `u-${randomUUID()}`;
+    const { id } = await createProject(sub);
+    const res = await handler({
+      httpMethod: 'PUT',
+      pathParameters: { projectId: id },
+      body: JSON.stringify({ cliModels: { claude: '  us.anthropic.claude-opus-4-8  ' } }),
+      ...claims(sub),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).cliModels).toEqual({ claude: 'us.anthropic.claude-opus-4-8' });
   });
 
   it('returns 403 when the caller is not a member', async () => {

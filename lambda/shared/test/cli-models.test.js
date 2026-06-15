@@ -11,16 +11,36 @@ describe('normalizeCliModels', () => {
   });
 
   it('rejects unknown model keys', () => {
-    expect(normalizeCliModels({ claude: 'not-yet-supported' })).toEqual({
+    expect(normalizeCliModels({ cursor: 'not-supported' })).toEqual({
       valid: false,
       issues: [
         {
-          path: 'claude',
-          message: 'Unknown model key "claude". Allowed: kiro, opencode.',
+          path: 'cursor',
+          message: 'Unknown model key "cursor". Allowed: kiro, claude, opencode.',
         },
       ],
       value: {},
     });
+  });
+
+  it('accepts a bare Bedrock inference profile ID for Claude', () => {
+    expect(normalizeCliModels({ claude: ' us.anthropic.claude-opus-4-8 ' })).toEqual({
+      valid: true,
+      issues: [],
+      value: { claude: 'us.anthropic.claude-opus-4-8' },
+    });
+  });
+
+  it('rejects Claude model values with the amazon-bedrock provider prefix', () => {
+    const result = normalizeCliModels({ claude: 'amazon-bedrock/us.anthropic.claude-opus-4-8' });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual([
+      {
+        path: 'claude',
+        message:
+          'Claude model must be a bare Bedrock inference profile ID (no "amazon-bedrock/" prefix).',
+      },
+    ]);
   });
 
   it('accepts valid JSON strings', () => {
@@ -61,6 +81,6 @@ describe('parseCliModels', () => {
   });
 
   it('keeps valid entries when stored values contain unsupported keys', () => {
-    expect(parseCliModels({ kiro: 'ok', claude: 'ignored' })).toEqual({ kiro: 'ok' });
+    expect(parseCliModels({ kiro: 'ok', cursor: 'ignored' })).toEqual({ kiro: 'ok' });
   });
 });

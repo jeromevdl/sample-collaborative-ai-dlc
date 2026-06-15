@@ -43,9 +43,10 @@ const STALE_IDLE_MS = 3 * 60 * 1000; // 3 minutes
 const STALE_BUSY_MS = 30 * 60 * 1000; // 30 minutes — sub-agents should not run this long
 const RUNTIME_MODEL_OVERRIDE = {
   kiro: true,
-  // Claude's ACP/SDK path does not currently expose a verified runtime model
-  // override. Leave it on the driver default until that path is validated.
-  claude: false,
+  // Claude honors a runtime model override: the driver injects the resolved
+  // model as ANTHROPIC_MODEL (a bare Bedrock cross-region inference profile ID)
+  // into the claude-agent-acp subprocess. See lambda/agents-ecs/drivers/claude.js.
+  claude: true,
   opencode: true,
 };
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const ALLOWED_CLI_MODEL_KEYS = new Set(['kiro', 'opencode']);
+const ALLOWED_CLI_MODEL_KEYS = new Set(['kiro', 'claude', 'opencode']);
 const MAX_CLI_MODEL_LENGTH = 200;
 const OPENCODE_MODEL_PREFIX = 'amazon-bedrock/';
 
@@ -63,6 +63,15 @@ function normalizeCliModels(value) {
       issues.push({
         path: key,
         message: `OpenCode model must start with "${OPENCODE_MODEL_PREFIX}".`,
+      });
+      continue;
+    }
+    // Claude on Bedrock uses a bare cross-region inference profile ID — the
+    // inverse of OpenCode: the "amazon-bedrock/" provider prefix is invalid.
+    if (key === 'claude' && trimmed && trimmed.startsWith(OPENCODE_MODEL_PREFIX)) {
+      issues.push({
+        path: key,
+        message: `Claude model must be a bare Bedrock inference profile ID (no "${OPENCODE_MODEL_PREFIX}" prefix).`,
       });
       continue;
     }

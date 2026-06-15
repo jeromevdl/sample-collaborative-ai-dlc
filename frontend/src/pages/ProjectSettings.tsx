@@ -82,6 +82,7 @@ const AGENT_CLI_CONFIG: Record<AgentCli, { label: string; description: string }>
 
 const MODEL_CLI_LABELS: Record<RuntimeModelCli, string> = {
   kiro: 'Kiro',
+  claude: 'Claude',
   opencode: 'OpenCode',
 };
 
@@ -91,6 +92,10 @@ const MODEL_ID_HELP: Record<RuntimeModelCli, { label: string; url: string }> = {
   kiro: {
     label: 'Kiro model IDs',
     url: 'https://kiro.dev/docs/',
+  },
+  claude: {
+    label: 'Bedrock model IDs',
+    url: 'https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html',
   },
   opencode: {
     label: 'Bedrock model IDs',
@@ -130,7 +135,7 @@ export default function ProjectSettings() {
   const [availableCliNames, setAvailableCliNames] = useState<AgentCli[]>(['kiro']);
   const [runtimeModelOverride, setRuntimeModelOverride] = useState<Record<AgentCli, boolean>>({
     kiro: true,
-    claude: false,
+    claude: true,
     opencode: true,
   });
   const [editCliModels, setEditCliModels] = useState<CliModels>({});
@@ -863,7 +868,9 @@ export default function ProjectSettings() {
                               ? `Default: ${globalCliModels[cli]}`
                               : cli === 'opencode'
                                 ? 'Default: amazon-bedrock/us.anthropic.claude-sonnet-4-6'
-                                : 'Default model'
+                                : cli === 'claude'
+                                  ? 'Default: us.anthropic.claude-sonnet-4-6'
+                                  : 'Default model'
                           }
                           className="font-mono text-sm"
                           disabled={!isEditable || savingCliModels}
@@ -871,12 +878,6 @@ export default function ProjectSettings() {
                       </div>
                     );
                   })}
-                  {editAgentCli === 'claude' && (
-                    <p className="text-xs text-muted-foreground">
-                      Claude runtime model override is not supported in this release; Claude agents
-                      still run with the driver default.
-                    </p>
-                  )}
                   {!canEditProject && (
                     <p className="text-xs text-muted-foreground">
                       Only owners and admins can change model overrides
@@ -884,11 +885,7 @@ export default function ProjectSettings() {
                   )}
                   {canEditProject && (
                     <div className="flex justify-end pt-2">
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={savingCliModels || editAgentCli === 'claude'}
-                      >
+                      <Button type="submit" size="sm" disabled={savingCliModels}>
                         {savingCliModels ? 'Saving...' : 'Save Model'}
                       </Button>
                     </div>

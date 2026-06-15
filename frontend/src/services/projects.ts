@@ -2,7 +2,7 @@ import { api } from './api';
 
 export type ProjectRole = 'owner' | 'admin' | 'member';
 export type AgentCli = 'kiro' | 'claude' | 'opencode';
-export type RuntimeModelCli = 'kiro' | 'opencode';
+export type RuntimeModelCli = 'kiro' | 'claude' | 'opencode';
 export type CliModels = Partial<Record<RuntimeModelCli, string>>;
 export type RepoRole =
   | 'primary'

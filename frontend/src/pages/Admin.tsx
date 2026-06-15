@@ -97,6 +97,7 @@ const CLI_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
 
 const MODEL_CLI_LABELS: Record<RuntimeModelCli, string> = {
   kiro: 'Kiro',
+  claude: 'Claude',
   opencode: 'OpenCode',
 };
 
@@ -106,6 +107,10 @@ const MODEL_ID_HELP: Record<RuntimeModelCli, { label: string; url: string }> = {
   kiro: {
     label: 'Kiro model IDs',
     url: 'https://kiro.dev/docs/',
+  },
+  claude: {
+    label: 'Bedrock model IDs',
+    url: 'https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html',
   },
   opencode: {
     label: 'Bedrock model IDs',
@@ -622,7 +627,9 @@ export default function Admin() {
                           placeholder={
                             cli === 'opencode'
                               ? 'amazon-bedrock/us.anthropic.claude-sonnet-4-6'
-                              : 'Model ID'
+                              : cli === 'claude'
+                                ? 'us.anthropic.claude-sonnet-4-6'
+                                : 'Model ID'
                           }
                           className="font-mono text-sm h-9"
                         />
