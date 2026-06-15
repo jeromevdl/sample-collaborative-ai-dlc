@@ -886,6 +886,7 @@ async function runAcpMode() {
     { name: 'AWS_REGION', value: env.region || 'us-east-1' },
     { name: 'GIT_TOKEN', value: process.env.GIT_TOKEN || '' },
     { name: 'GIT_REPO', value: process.env.GIT_REPO || '' },
+    { name: 'GIT_REPOS', value: process.env.GIT_REPOS || '[]' },
   ];
   // Forward ECS task role credential env vars so the MCP server can call AWS APIs.
   // These are set automatically by ECS when a task role is attached; without them
