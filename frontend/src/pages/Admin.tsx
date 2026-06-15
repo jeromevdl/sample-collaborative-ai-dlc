@@ -81,9 +81,18 @@ const STATUS_CONFIG: Record<
 
 // Per-CLI badge styles shown next to the job type in the worker table
 const CLI_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
-  kiro: { label: 'kiro', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  claude: { label: 'claude', className: 'bg-violet-100 text-violet-700 border-violet-200' },
-  opencode: { label: 'opencode', className: 'bg-teal-100 text-teal-700 border-teal-200' },
+  kiro: {
+    label: 'kiro',
+    className: 'bg-amber-100 text-amber-700 border-amber-200',
+  },
+  claude: {
+    label: 'claude',
+    className: 'bg-violet-100 text-violet-700 border-violet-200',
+  },
+  opencode: {
+    label: 'opencode',
+    className: 'bg-teal-100 text-teal-700 border-teal-200',
+  },
 };
 
 const MODEL_CLI_LABELS: Record<RuntimeModelCli, string> = {
@@ -142,6 +151,9 @@ export default function Admin() {
   const [mcpServers, setMcpServers] = useState('[]');
   const [cliModels, setCliModels] = useState<CliModels>({});
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [clearingSecret, setClearingSecret] = useState<'bedrockBearerToken' | 'kiroApiKey' | null>(
+    null,
+  );
   const [settingsSaveResult, setSettingsSaveResult] = useState<'saved' | 'error' | null>(null);
   const cliModelsChanged =
     JSON.stringify(canonicalCliModels(cliModels)) !==
@@ -195,7 +207,11 @@ export default function Admin() {
     setSettingsSaving(true);
     setSettingsSaveResult(null);
     try {
-      const update: { bedrockBearerToken?: string; kiroApiKey?: string; cliModels: CliModels } = {
+      const update: {
+        bedrockBearerToken?: string;
+        kiroApiKey?: string;
+        cliModels: CliModels;
+      } = {
         cliModels,
       };
       // Only send secret fields if the user typed something
@@ -214,6 +230,28 @@ export default function Admin() {
       setSettingsSaveResult('error');
     } finally {
       setSettingsSaving(false);
+      setTimeout(() => setSettingsSaveResult(null), 4000);
+    }
+  };
+
+  // Clear a stored secret by sending an empty string; the backend resets the
+  // SSM parameter to its "placeholder" sentinel (treated as not configured).
+  const clearSecret = async (field: 'bedrockBearerToken' | 'kiroApiKey') => {
+    setClearingSecret(field);
+    setSettingsSaveResult(null);
+    try {
+      await agentsService.updateSettings({ [field]: '' });
+      const fresh = await agentsService.getSettings();
+      setSettings(fresh);
+      setCliModels(fresh.cliModels || {});
+      if (field === 'bedrockBearerToken') setBearerToken('');
+      else setKiroApiKey('');
+      setSettingsSaveResult('saved');
+    } catch (e) {
+      console.error('Failed to clear secret:', e);
+      setSettingsSaveResult('error');
+    } finally {
+      setClearingSecret(null);
       setTimeout(() => setSettingsSaveResult(null), 4000);
     }
   };
@@ -452,18 +490,36 @@ export default function Admin() {
               <>
                 {/* Bedrock Bearer Token */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground flex items-center gap-2">
-                    Bedrock Bearer Token
-                    {settings?.bedrockBearerTokenSet ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-agent-success font-normal">
-                        <CheckCircle2 className="h-3 w-3" /> Set
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-normal">
-                        <XCircle className="h-3 w-3" /> Not set — using IAM role
-                      </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-medium text-foreground flex items-center gap-2">
+                      Bedrock Bearer Token
+                      {settings?.bedrockBearerTokenSet ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-agent-success font-normal">
+                          <CheckCircle2 className="h-3 w-3" /> Set
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-normal">
+                          <XCircle className="h-3 w-3" /> Not set — Claude/OpenCode agents won't
+                          start
+                        </span>
+                      )}
+                    </label>
+                    {settings?.bedrockBearerTokenSet && (
+                      <button
+                        type="button"
+                        onClick={() => clearSecret('bedrockBearerToken')}
+                        disabled={clearingSecret !== null || settingsSaving}
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      >
+                        {clearingSecret === 'bedrockBearerToken' ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <XCircle className="h-3 w-3" />
+                        )}
+                        Clear
+                      </button>
                     )}
-                  </label>
+                  </div>
                   <Input
                     type="password"
                     placeholder={
@@ -477,28 +533,45 @@ export default function Admin() {
                     autoComplete="off"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Optional. When set, agents use this as{' '}
+                    Required for Claude Code and OpenCode agents. Agents use this as{' '}
                     <code className="bg-muted px-1 rounded text-[10px]">
                       AWS_BEARER_TOKEN_BEDROCK
                     </code>{' '}
-                    instead of the ECS task IAM role. Clear by saving an empty value.
+                    to authenticate to Bedrock. Use Clear to remove a stored token.
                   </p>
                 </div>
 
                 {/* Kiro API Key */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground flex items-center gap-2">
-                    Kiro API Key
-                    {settings?.kiroApiKeySet ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-agent-success font-normal">
-                        <CheckCircle2 className="h-3 w-3" /> Set
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-normal">
-                        <XCircle className="h-3 w-3" /> Not set
-                      </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-medium text-foreground flex items-center gap-2">
+                      Kiro API Key
+                      {settings?.kiroApiKeySet ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-agent-success font-normal">
+                          <CheckCircle2 className="h-3 w-3" /> Set
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-normal">
+                          <XCircle className="h-3 w-3" /> Not set
+                        </span>
+                      )}
+                    </label>
+                    {settings?.kiroApiKeySet && (
+                      <button
+                        type="button"
+                        onClick={() => clearSecret('kiroApiKey')}
+                        disabled={clearingSecret !== null || settingsSaving}
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      >
+                        {clearingSecret === 'kiroApiKey' ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <XCircle className="h-3 w-3" />
+                        )}
+                        Clear
+                      </button>
                     )}
-                  </label>
+                  </div>
                   <Input
                     type="password"
                     placeholder={
@@ -512,8 +585,8 @@ export default function Admin() {
                     autoComplete="off"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Required for Kiro CLI. Obtain from your Kiro account settings. Clear by saving
-                    an empty value.
+                    Required for Kiro CLI. Obtain from your Kiro account settings. Use Clear to
+                    remove a stored key.
                   </p>
                 </div>
 
