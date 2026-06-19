@@ -368,3 +368,145 @@ describe('create-pr handler — benign 422 (repo has no changes this sprint)', (
     expect(result.error).toMatch(/Failed to create PR: 422/);
   });
 });
+
+describe('create-pr GitLab merge request', () => {
+  it('creates a merge request via GitLab API when gitProvider is gitlab', async () => {
+    const { handler } = await loadCreatePr();
+    globalThis.fetch = vi.fn(async (url, options = {}) => {
+      if (url.includes('/merge_requests?source_branch=')) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes('/merge_requests') && options.method === 'POST') {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({
+            web_url: 'https://gitlab.com/group/repo/-/merge_requests/1',
+            iid: 1,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const result = await handler({
+      projectId: 'proj-1',
+      branch: 'feature/test',
+      baseBranch: 'main',
+      gitRepo: 'group/repo',
+      gitToken: 'glpat-token',
+      executionId: 'exec-1',
+      gitProvider: 'gitlab',
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(result.prUrl).toBe('https://gitlab.com/group/repo/-/merge_requests/1');
+    expect(result.prNumber).toBe(1);
+    delete globalThis.fetch;
+  });
+
+  it('returns existing MR if one already exists for the source branch', async () => {
+    const { handler } = await loadCreatePr();
+    globalThis.fetch = vi.fn(async (url) => {
+      if (url.includes('/merge_requests?source_branch=')) {
+        return {
+          ok: true,
+          json: async () => [
+            { web_url: 'https://gitlab.com/group/repo/-/merge_requests/5', iid: 5 },
+          ],
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const result = await handler({
+      projectId: 'proj-1',
+      branch: 'feature/test',
+      baseBranch: 'main',
+      gitRepo: 'group/repo',
+      gitToken: 'glpat-token',
+      executionId: 'exec-1',
+      gitProvider: 'gitlab',
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(result.prUrl).toBe('https://gitlab.com/group/repo/-/merge_requests/5');
+    expect(result.prNumber).toBe(5);
+    expect(result.existing).toBe(true);
+    delete globalThis.fetch;
+  });
+
+  it('returns skipped/no_changes on 409 conflict', async () => {
+    const { handler } = await loadCreatePr();
+    globalThis.fetch = vi.fn(async (url, options = {}) => {
+      if (url.includes('/merge_requests?source_branch=') && !options.method) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes('/merge_requests') && options.method === 'POST') {
+        return {
+          ok: false,
+          status: 409,
+          text: async () => 'Cannot create: source branch does not have any new changes',
+        };
+      }
+      // Fallback for the 'already exists' lookup
+      if (url.includes('/merge_requests?source_branch=')) {
+        return { ok: true, json: async () => [] };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const result = await handler({
+      projectId: 'proj-1',
+      branch: 'feature/empty',
+      baseBranch: 'main',
+      gitRepo: 'group/repo',
+      gitToken: 'glpat-token',
+      executionId: 'exec-1',
+      gitProvider: 'gitlab',
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe('no_changes');
+    delete globalThis.fetch;
+  });
+
+  it('falls back to GitHub when gitProvider is not set', async () => {
+    const { handler } = await loadCreatePr();
+    globalThis.fetch = vi.fn(async (url, options = {}) => {
+      // First call: listConstructionTaskRefs (matching-refs)
+      if (url.includes('/git/matching-refs/')) {
+        return { ok: true, json: async () => [] };
+      }
+      // Second call: POST /pulls returns 422
+      if (options.method === 'POST' && url.includes('/pulls')) {
+        return {
+          ok: false,
+          status: 422,
+          text: async () => JSON.stringify({ errors: [{ field: 'head', code: 'invalid' }] }),
+        };
+      }
+      // Fallback for findByBranch lookups (open/all)
+      if (url.includes('/pulls?')) {
+        return { ok: true, json: async () => [] };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const result = await handler({
+      projectId: 'proj-1',
+      branch: 'feature/test',
+      baseBranch: 'main',
+      gitRepo: 'owner/repo',
+      gitToken: 'ghp-token',
+      executionId: 'exec-1',
+    });
+
+    // Should try GitHub flow (422 -> no_changes for head invalid)
+    expect(result.statusCode).toBe(200);
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe('no_changes');
+    delete globalThis.fetch;
+  });
+});

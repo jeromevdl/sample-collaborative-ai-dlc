@@ -167,12 +167,147 @@ function isNoChanges422(errorText) {
   }
 }
 
+async function createGitLabMergeRequest({
+  projectId,
+  branch,
+  baseBranch,
+  gitRepo,
+  gitToken,
+  executionId,
+  title,
+}) {
+  try {
+    // gitRepo for GitLab is the URL-encoded project path (e.g. "group/project")
+    const encodedProject = encodeURIComponent(gitRepo);
+    const mrTitle = title || `AI-DLC: ${branch}`;
+    const mrDescription = `Automated MR created by AI-DLC Construction Agent\n\nExecution ID: ${executionId}\nProject: ${projectId}`;
+
+    const glHeaders = {
+      Authorization: `Bearer ${gitToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Check for existing MR with same source branch
+    const existingRes = await fetch(
+      `https://gitlab.com/api/v4/projects/${encodedProject}/merge_requests?source_branch=${encodeURIComponent(branch)}&state=opened`,
+      { headers: glHeaders },
+    );
+
+    if (existingRes.ok) {
+      const existingMrs = await existingRes.json();
+      if (Array.isArray(existingMrs) && existingMrs.length > 0) {
+        const existing = existingMrs[0];
+        console.log('Found existing MR:', existing.web_url);
+        return {
+          statusCode: 200,
+          prUrl: existing.web_url,
+          prNumber: existing.iid,
+          existing: true,
+        };
+      }
+    }
+
+    // Create merge request
+    const response = await fetch(
+      `https://gitlab.com/api/v4/projects/${encodedProject}/merge_requests`,
+      {
+        method: 'POST',
+        headers: glHeaders,
+        body: JSON.stringify({
+          title: mrTitle,
+          description: mrDescription,
+          source_branch: branch,
+          target_branch: baseBranch || 'main',
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      // GitLab returns 409 when MR already exists or branch has no changes
+      if (response.status === 409) {
+        // Check if it's a "no changes" scenario
+        if (errorText.toLowerCase().includes('already exists')) {
+          // Look up existing MR in any state
+          const allRes = await fetch(
+            `https://gitlab.com/api/v4/projects/${encodedProject}/merge_requests?source_branch=${encodeURIComponent(branch)}&per_page=1`,
+            { headers: glHeaders },
+          );
+          if (allRes.ok) {
+            const allMrs = await allRes.json();
+            if (Array.isArray(allMrs) && allMrs.length > 0) {
+              console.log('Found existing MR:', allMrs[0].web_url);
+              return {
+                statusCode: 200,
+                prUrl: allMrs[0].web_url,
+                prNumber: allMrs[0].iid,
+                existing: true,
+              };
+            }
+          }
+        }
+        console.log(`No changes on ${branch} for ${gitRepo} — skipping MR creation`);
+        return { statusCode: 200, skipped: true, reason: 'no_changes' };
+      }
+
+      // 422 can also indicate validation errors like "source branch does not exist"
+      if (response.status === 422) {
+        const text = (errorText || '').toLowerCase();
+        if (
+          text.includes('source branch') ||
+          text.includes('no commits') ||
+          text.includes('does not exist')
+        ) {
+          console.log(`No changes on ${branch} for ${gitRepo} — skipping MR creation`);
+          return { statusCode: 200, skipped: true, reason: 'no_changes' };
+        }
+      }
+
+      console.error('GitLab API error:', errorText);
+      throw new Error(`Failed to create MR: ${response.status} ${errorText}`);
+    }
+
+    const mr = await response.json();
+    console.log('MR created:', mr.web_url);
+
+    return {
+      statusCode: 200,
+      prUrl: mr.web_url,
+      prNumber: mr.iid,
+    };
+  } catch (err) {
+    console.error('Error creating MR:', err);
+    return {
+      statusCode: 500,
+      error: err.message,
+    };
+  }
+}
+
 exports.handler = async (event) => {
-  const { projectId, branch, baseBranch, gitRepo, gitToken, executionId, title } = event;
-  console.log('Request:', JSON.stringify({ projectId, branch, baseBranch, gitRepo, executionId }));
+  const { projectId, branch, baseBranch, gitRepo, gitToken, executionId, title, gitProvider } =
+    event;
+  console.log(
+    'Request:',
+    JSON.stringify({ projectId, branch, baseBranch, gitRepo, executionId, gitProvider }),
+  );
 
   if (!gitRepo || !branch || !gitToken) {
     return { statusCode: 400, body: 'Missing required parameters' };
+  }
+
+  // Route to GitLab merge request creation when provider is 'gitlab'
+  if (gitProvider === 'gitlab') {
+    return createGitLabMergeRequest({
+      projectId,
+      branch,
+      baseBranch,
+      gitRepo,
+      gitToken,
+      executionId,
+      title,
+    });
   }
 
   try {
@@ -307,3 +442,4 @@ exports.handler = async (event) => {
 exports.cleanupConstructionTaskBranches = cleanupConstructionTaskBranches;
 exports.getUnmergedConstructionTaskBranches = getUnmergedConstructionTaskBranches;
 exports.getConstructionBranchCleanupPrefix = getConstructionBranchCleanupPrefix;
+exports.createGitLabMergeRequest = createGitLabMergeRequest;

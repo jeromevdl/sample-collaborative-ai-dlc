@@ -6,6 +6,14 @@ output "github_oauth_secret_name" {
   value = aws_secretsmanager_secret.github_oauth.name
 }
 
+output "gitlab_oauth_secret_arn" {
+  value = aws_secretsmanager_secret.gitlab_oauth.arn
+}
+
+output "gitlab_oauth_secret_name" {
+  value = aws_secretsmanager_secret.gitlab_oauth.name
+}
+
 output "jira_oauth_secret_arn" {
   value = aws_secretsmanager_secret.jira_oauth.arn
 }

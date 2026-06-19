@@ -5,6 +5,7 @@
     "lambda/discussions",
     "lambda/get-agent-output",
     "lambda/github",
+    "lambda/gitlab",
     "lambda/migrate-tracker-fields",
     "lambda/notify",
     "lambda/projects",

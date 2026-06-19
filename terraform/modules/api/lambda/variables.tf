@@ -90,6 +90,24 @@ variable "github_redirect_uri" {
   default     = ""
 }
 
+variable "gitlab_oauth_secret_name" {
+  description = "Secrets Manager secret name for GitLab OAuth credentials"
+  type        = string
+  default     = ""
+}
+
+variable "gitlab_oauth_secret_arn" {
+  description = "Secrets Manager secret ARN for GitLab OAuth credentials"
+  type        = string
+  default     = ""
+}
+
+variable "gitlab_redirect_uri" {
+  description = "OAuth redirect URI for GitLab callback"
+  type        = string
+  default     = ""
+}
+
 variable "jira_oauth_secret_name" {
   description = "Secrets Manager secret name for Jira Cloud OAuth credentials"
   type        = string

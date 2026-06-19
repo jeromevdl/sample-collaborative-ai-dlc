@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { projectsService, type CreateProjectInput } from '../services/projects';
 import { trackersService } from '../services/trackers';
 import { useGitHubStatus } from '../hooks/useGitHubStatus';
+import { useGitLabStatus } from '../hooks/useGitLabStatus';
 import { GitHubConnectButton } from './GitHubConnectButton';
+import { GitLabConnectButton } from './GitLabConnectButton';
 import { GitHubRepoSelect } from './GitHubRepoSelect';
+import { GitLabRepoSelect } from './GitLabRepoSelect';
 import type { GitHubRepo } from '../services/github';
+import type { GitLabRepo } from '../services/gitlab';
 
 interface Props {
   onClose: () => void;
@@ -14,7 +18,18 @@ interface Props {
 const repoShortName = (fullName: string) => fullName.split('/').pop() || '';
 
 export function CreateProjectModal({ onClose, onCreated }: Props) {
-  const { status, loading: statusLoading, error: statusError, refresh } = useGitHubStatus();
+  const {
+    status: githubStatus,
+    loading: githubStatusLoading,
+    error: githubStatusError,
+    refresh: githubRefresh,
+  } = useGitHubStatus();
+  const {
+    status: gitlabStatus,
+    loading: gitlabStatusLoading,
+    error: gitlabStatusError,
+    refresh: gitlabRefresh,
+  } = useGitLabStatus();
   const [step, setStep] = useState(1);
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   const [primaryRepo, setPrimaryRepo] = useState<string>('');
@@ -38,12 +53,18 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
     }));
   };
 
-  const handleReposChange = (repos: GitHubRepo[]) => {
+  const handleReposChange = (repos: GitHubRepo[] | GitLabRepo[]) => {
     const fullNames = repos.map((r) => r.fullName);
     setSelectedRepos(fullNames);
     applyPrimaryRepo(
       fullNames.length === 0 ? '' : fullNames.includes(primaryRepo) ? primaryRepo : fullNames[0],
     );
+  };
+
+  const handleProviderChange = (provider: 'github' | 'gitlab') => {
+    setFormData((prev) => ({ ...prev, gitProvider: provider, gitRepo: '' }));
+    setSelectedRepos([]);
+    setPrimaryRepo('');
   };
 
   const handleSetPrimary = (repoFullName: string) => {
@@ -92,7 +113,8 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
     }
   };
 
-  const canProceedStep1 = status?.connected;
+  const canProceedStep1 =
+    formData.gitProvider === 'github' ? githubStatus?.connected : gitlabStatus?.connected;
   const canProceedStep2 = selectedRepos.length > 0;
 
   return (
@@ -132,19 +154,67 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
           </div>
         )}
 
-        {/* Step 1: Connect GitHub */}
+        {/* Step 1: Connect Git Provider */}
         {step === 1 && (
           <div>
-            <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Connect GitHub</h3>
-            {statusError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                {statusError}
-              </div>
+            <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Choose Git Provider</h3>
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => handleProviderChange('github')}
+                className={`flex-1 px-3 py-2 rounded border text-sm font-medium ${
+                  formData.gitProvider === 'github'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-500'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                GitHub
+              </button>
+              <button
+                type="button"
+                onClick={() => handleProviderChange('gitlab')}
+                className={`flex-1 px-3 py-2 rounded border text-sm font-medium ${
+                  formData.gitProvider === 'gitlab'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-500'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                GitLab
+              </button>
+            </div>
+            {formData.gitProvider === 'github' && (
+              <>
+                {githubStatusError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+                    {githubStatusError}
+                  </div>
+                )}
+                {githubStatusLoading ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
+                ) : (
+                  <GitHubConnectButton
+                    connected={githubStatus?.connected || false}
+                    onDisconnect={githubRefresh}
+                  />
+                )}
+              </>
             )}
-            {statusLoading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
-            ) : (
-              <GitHubConnectButton connected={status?.connected || false} onDisconnect={refresh} />
+            {formData.gitProvider === 'gitlab' && (
+              <>
+                {gitlabStatusError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+                    {gitlabStatusError}
+                  </div>
+                )}
+                {gitlabStatusLoading ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
+                ) : (
+                  <GitLabConnectButton
+                    connected={gitlabStatus?.connected || false}
+                    onDisconnect={gitlabRefresh}
+                  />
+                )}
+              </>
             )}
             <div className="flex justify-end gap-2 mt-6">
               <button
@@ -172,7 +242,11 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
               Choose one or more repositories. The primary repo drives issue integration and project
               naming.
             </p>
-            <GitHubRepoSelect multiple value={selectedRepos} onChange={handleReposChange} />
+            {formData.gitProvider === 'github' ? (
+              <GitHubRepoSelect multiple value={selectedRepos} onChange={handleReposChange} />
+            ) : (
+              <GitLabRepoSelect multiple value={selectedRepos} onChange={handleReposChange} />
+            )}
             {selectedRepos.length > 1 && (
               <div className="mt-3 border dark:border-gray-600 rounded divide-y dark:divide-gray-600">
                 <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-700">
