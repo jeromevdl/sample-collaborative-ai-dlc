@@ -10,7 +10,7 @@ import { questionAnchorId } from '@/lib/questionAnchor';
 import { projectsService, type Project } from '@/services/projects';
 import { reviewsService } from '@/services/reviews';
 import { questionsService } from '@/services/questions';
-import { githubService, type PRComment } from '@/services/github';
+import { getGitProviderService, type GitComment } from '@/services/gitProvider';
 import { sprintGraphService, extractPrs, type PrInfo } from '@/services/sprintGraph';
 import { sprintsService } from '@/services/sprints';
 import { agentsService } from '@/services/agents';
@@ -150,7 +150,7 @@ export default function ReviewPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [prs, setPrs] = useState<PrInfo[]>([]);
   const [selectedPrId, setSelectedPrId] = useState<string>('');
-  const [prComments, setPrComments] = useState<PRComment[]>([]);
+  const [prComments, setPrComments] = useState<GitComment[]>([]);
   const [prBranch, setPrBranch] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState('main');
   const [newComment, setNewComment] = useState('');
@@ -266,15 +266,13 @@ export default function ReviewPage() {
 
   // Load PR comments for the selected PR
   useEffect(() => {
-    if (!activePrNumber || !activeRepo) return;
-    const [owner, repo] = activeRepo.split('/');
-    if (!owner || !repo) return;
+    if (!activePrNumber || !activeRepo || !project) return;
     let cancelled = false;
     // Clear previous PR's comments so a slow response can't show them under the
     // newly selected PR, and guard against out-of-order resolution on fast switches.
     setPrComments([]);
-    githubService
-      .getPRComments(owner, repo, parseInt(activePrNumber))
+    getGitProviderService(project.gitProvider)
+      .getPullRequestComments(activeRepo, parseInt(activePrNumber))
       .then((res) => {
         if (!cancelled) setPrComments(res.comments);
       })
@@ -282,7 +280,7 @@ export default function ReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [activePrNumber, activeRepo]);
+  }, [activePrNumber, activeRepo, project]);
 
   const pendingQuestions = questions
     .filter((q) => !q.structuredAnswer)
@@ -359,15 +357,18 @@ export default function ReviewPage() {
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || !activePrNumber || !activeRepo) return;
+    if (!newComment.trim() || !activePrNumber || !activeRepo || !project) return;
     setSubmittingComment(true);
     try {
-      const [owner, repo] = activeRepo.split('/');
-      await githubService.addPRComment(owner, repo, parseInt(activePrNumber), {
+      const gitService = getGitProviderService(project.gitProvider);
+      await gitService.addPullRequestComment(activeRepo, parseInt(activePrNumber), {
         body: newComment,
       });
       setNewComment('');
-      const comments = await githubService.getPRComments(owner, repo, parseInt(activePrNumber));
+      const comments = await gitService.getPullRequestComments(
+        activeRepo,
+        parseInt(activePrNumber),
+      );
       setPrComments(comments.comments);
     } catch (err) {
       alert('Failed to add comment: ' + (err instanceof Error ? err.message : 'Unknown error'));
@@ -929,7 +930,6 @@ export default function ReviewPage() {
                 }}
                 onSendToGitHub={async () => {
                   if (!review || !sprint?.prNumber || !project?.gitRepo) return;
-                  const [owner, repo] = project.gitRepo.split('/');
                   const emoji =
                     review.status === 'PASSED' ? '✅' : review.status === 'FAILED' ? '❌' : '⚠️';
                   const body = [
@@ -939,9 +939,11 @@ export default function ReviewPage() {
                     '',
                     review.comments ? review.comments : '_No comments provided._',
                   ].join('\n');
-                  await githubService.addPRComment(owner, repo, parseInt(sprint.prNumber), {
-                    body,
-                  });
+                  await getGitProviderService(project.gitProvider).addPullRequestComment(
+                    project.gitRepo,
+                    parseInt(sprint.prNumber),
+                    { body },
+                  );
                   if (review.status === 'PASSED') {
                     await sprintsService.update(projectId, sprintId, { phase: 'COMPLETED' });
                     // sprint.phaseChanged is a server-origin event emitted by
@@ -1042,6 +1044,7 @@ export default function ReviewPage() {
       {/* Branch selector for manual PR creation */}
       {showCreatePrBranch && project && (
         <BranchSelector
+          provider={project.gitProvider}
           gitRepo={project.gitRepo}
           onSelect={(branch, baseBranch) => handleCreatePr(branch, baseBranch)}
           onCancel={() => setShowCreatePrBranch(false)}

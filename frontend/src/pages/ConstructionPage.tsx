@@ -39,7 +39,7 @@ import { ArtifactCard } from '@/components/domain/ArtifactCard';
 import QuestionEditor from '@/components/QuestionEditor';
 import { BranchSelector } from '@/components/BranchSelector';
 import CodeFileViewer from '@/components/CodeFileViewer';
-import { GitHubFileBrowser } from '@/components/GitHubFileBrowser';
+import { GitFileBrowser } from '@/components/GitFileBrowser';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -817,6 +817,7 @@ export default function ConstructionPage() {
       {/* Branch selector modal (only shown when branch not yet stored) */}
       {showBranchSelector && project && (
         <BranchSelector
+          provider={project.gitProvider}
           gitRepo={project.gitRepo}
           onSelect={(branch, baseBranch) =>
             branchSelectorMode === 'create-pr'
@@ -827,27 +828,22 @@ export default function ConstructionPage() {
         />
       )}
 
-      {/* GitHub file browser */}
-      {showGitHub &&
-        project &&
-        (() => {
-          const [owner, repo] = project.gitRepo.split('/');
-          return (
-            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8">
-              <Card className="w-full max-w-5xl max-h-[80vh] overflow-hidden">
-                <CardHeader className="py-2 px-4 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm">Repository Files</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowGitHub(false)}>
-                    Close
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <GitHubFileBrowser owner={owner} repo={repo} />
-                </CardContent>
-              </Card>
-            </div>
-          );
-        })()}
+      {/* Repository file browser */}
+      {showGitHub && project && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8">
+          <Card className="w-full max-w-5xl max-h-[80vh] overflow-hidden">
+            <CardHeader className="py-2 px-4 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Repository Files</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowGitHub(false)}>
+                Close
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              <GitFileBrowser provider={project.gitProvider} repoId={project.gitRepo} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Task Settings */}
       {sprintId && settingsTask && (

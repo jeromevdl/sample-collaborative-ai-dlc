@@ -61,120 +61,117 @@ export interface GitComment {
 }
 
 // =============================================================================
-// Provider service interface — implemented by both GitHub and GitLab services.
+// Provider service interface — implemented by both GitHub and GitLab.
+//
+// Every method takes the repo's canonical `repoId` (its fullName: "owner/repo"
+// for GitHub, "group/project" — possibly nested — for GitLab). Each service
+// adapts the repoId to its own URL shape internally, so callers stay
+// provider-agnostic and never split owner/repo or build provider URLs.
 // =============================================================================
 
 export interface GitProviderService {
   getAuthUrl: () => Promise<{ url: string }>;
   getStatus: () => Promise<GitProviderStatus>;
   listRepos: () => Promise<GitRepo[]>;
-  listBranches: (...args: string[]) => Promise<{ branches: string[] }>;
   disconnect: () => Promise<unknown>;
+  listBranches: (repoId: string) => Promise<{ branches: string[] }>;
   getRepoTree: (repoId: string, branch?: string) => Promise<{ tree: GitFile[] }>;
   getFileContents: (repoId: string, path: string, branch?: string) => Promise<GitFileContent>;
+  // PR (GitHub) / MR (GitLab) comments. prNumber is the GitHub PR number or the
+  // GitLab MR iid.
+  getPullRequestComments: (repoId: string, prNumber: number) => Promise<{ comments: GitComment[] }>;
+  addPullRequestComment: (
+    repoId: string,
+    prNumber: number,
+    comment: { body: string; path?: string; line?: number; side?: string },
+  ) => Promise<{ id: number; body: string; createdAt: string }>;
 }
 
 // =============================================================================
-// GitHub service implementation
+// GitHub service implementation — splits the "owner/repo" repoId into the
+// two path segments the GitHub routes expect.
 // =============================================================================
 
-export const githubService: GitProviderService & {
-  listBranches: (owner: string, repo: string) => Promise<{ branches: string[] }>;
-  getRepoTree: (owner: string, repo: string, branch?: string) => Promise<{ tree: GitFile[] }>;
-  getFileContents: (
-    owner: string,
-    repo: string,
-    path: string,
-    branch?: string,
-  ) => Promise<GitFileContent>;
-  getPRComments: (
-    owner: string,
-    repo: string,
-    prNumber: number,
-  ) => Promise<{ comments: GitComment[] }>;
-  addPRComment: (
-    owner: string,
-    repo: string,
-    prNumber: number,
-    comment: { body: string; path?: string; line?: number; side?: string },
-  ) => Promise<{ id: number; body: string; createdAt: string }>;
-} = {
+const splitOwnerRepo = (repoId: string): [string, string] => {
+  const [owner, repo] = repoId.split('/');
+  return [owner, repo];
+};
+
+export const githubService: GitProviderService = {
   getAuthUrl: () => api.get<{ url: string }>('/github/auth'),
   getStatus: () => api.get<GitProviderStatus>('/github/status'),
   listRepos: () => api.get<GitRepo[]>('/github/repos'),
-  listBranches: (owner: string, repo: string) =>
-    api.get<{ branches: string[] }>(`/github/repos/${owner}/${repo}/branches`),
   disconnect: () => api.delete('/github/disconnect'),
-  getRepoTree: (owner: string, repo?: string, branch?: string) =>
-    api.get<{ tree: GitFile[] }>(
+  listBranches: (repoId: string) => {
+    const [owner, repo] = splitOwnerRepo(repoId);
+    return api.get<{ branches: string[] }>(`/github/repos/${owner}/${repo}/branches`);
+  },
+  getRepoTree: (repoId: string, branch?: string) => {
+    const [owner, repo] = splitOwnerRepo(repoId);
+    return api.get<{ tree: GitFile[] }>(
       `/github/repos/${owner}/${repo}/tree${branch ? `?branch=${branch}` : ''}`,
-    ),
-  getFileContents: (owner: string, repo?: string, path?: string, branch?: string) =>
-    api.get<GitFileContent>(
-      `/github/repos/${owner}/${repo}/contents?path=${encodeURIComponent(path!)}${branch ? `&branch=${branch}` : ''}`,
-    ),
-  getPRComments: (owner: string, repo: string, prNumber: number) =>
-    api.get<{ comments: GitComment[] }>(
+    );
+  },
+  getFileContents: (repoId: string, path: string, branch?: string) => {
+    const [owner, repo] = splitOwnerRepo(repoId);
+    return api.get<GitFileContent>(
+      `/github/repos/${owner}/${repo}/contents?path=${encodeURIComponent(path)}${branch ? `&branch=${branch}` : ''}`,
+    );
+  },
+  getPullRequestComments: (repoId: string, prNumber: number) => {
+    const [owner, repo] = splitOwnerRepo(repoId);
+    return api.get<{ comments: GitComment[] }>(
       `/github/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
-    ),
-  addPRComment: (
-    owner: string,
-    repo: string,
+    );
+  },
+  addPullRequestComment: (
+    repoId: string,
     prNumber: number,
     comment: { body: string; path?: string; line?: number; side?: string },
-  ) =>
-    api.post<{ id: number; body: string; createdAt: string }>(
+  ) => {
+    const [owner, repo] = splitOwnerRepo(repoId);
+    return api.post<{ id: number; body: string; createdAt: string }>(
       `/github/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
       comment,
-    ),
+    );
+  },
 };
 
 // =============================================================================
-// GitLab service implementation
+// GitLab service implementation — GitLab project paths are namespaced
+// (group/project, often deeper). Encoded slashes in an API Gateway path
+// segment are fragile, so the repoId travels as a `?project=` query string;
+// the backend re-encodes it into the GitLab API path.
 // =============================================================================
 
-export const gitlabService: GitProviderService & {
-  listBranches: (projectId: string) => Promise<{ branches: string[] }>;
-  getRepoTree: (projectId: string, branch?: string) => Promise<{ tree: GitFile[] }>;
-  getFileContents: (projectId: string, path: string, branch?: string) => Promise<GitFileContent>;
-  getMRComments: (projectId: string, mrIid: number) => Promise<{ comments: GitComment[] }>;
-  addMRComment: (
-    projectId: string,
-    mrIid: number,
-    comment: { body: string; path?: string; line?: number },
-  ) => Promise<{ id: number; body: string; createdAt: string }>;
-} = {
+export const gitlabService: GitProviderService = {
   getAuthUrl: () => api.get<{ url: string }>('/gitlab/auth'),
   getStatus: () => api.get<GitProviderStatus>('/gitlab/status'),
   listRepos: () => api.get<GitRepo[]>('/gitlab/repos'),
-  // GitLab project paths are namespaced (group/project, often deeper). Encoded
-  // slashes in an API Gateway path segment are fragile, so the project ref is
-  // sent as a `?project=` query string instead of a path segment. The backend
-  // re-encodes it into the GitLab API path (GitLab's required format).
-  listBranches: (projectId: string) =>
-    api.get<{ branches: string[] }>(
-      `/gitlab/projects/branches?project=${encodeURIComponent(projectId)}`,
-    ),
   disconnect: () => api.delete('/gitlab/disconnect'),
-  getRepoTree: (projectId: string, branch?: string) =>
+  listBranches: (repoId: string) =>
+    api.get<{ branches: string[] }>(
+      `/gitlab/projects/branches?project=${encodeURIComponent(repoId)}`,
+    ),
+  getRepoTree: (repoId: string, branch?: string) =>
     api.get<{ tree: GitFile[] }>(
-      `/gitlab/projects/tree?project=${encodeURIComponent(projectId)}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`,
+      `/gitlab/projects/tree?project=${encodeURIComponent(repoId)}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`,
     ),
-  getFileContents: (projectId: string, path: string, branch?: string) =>
+  getFileContents: (repoId: string, path: string, branch?: string) =>
     api.get<GitFileContent>(
-      `/gitlab/projects/contents?project=${encodeURIComponent(projectId)}&path=${encodeURIComponent(path)}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`,
+      `/gitlab/projects/contents?project=${encodeURIComponent(repoId)}&path=${encodeURIComponent(path)}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`,
     ),
-  getMRComments: (projectId: string, mrIid: number) =>
+  getPullRequestComments: (repoId: string, mrIid: number) =>
     api.get<{ comments: GitComment[] }>(
-      `/gitlab/projects/merge_requests/${mrIid}/notes?project=${encodeURIComponent(projectId)}`,
+      `/gitlab/projects/merge_requests/${mrIid}/notes?project=${encodeURIComponent(repoId)}`,
     ),
-  addMRComment: (
-    projectId: string,
+  addPullRequestComment: (
+    repoId: string,
     mrIid: number,
-    comment: { body: string; path?: string; line?: number },
+    comment: { body: string; path?: string; line?: number; side?: string },
   ) =>
     api.post<{ id: number; body: string; createdAt: string }>(
-      `/gitlab/projects/merge_requests/${mrIid}/notes?project=${encodeURIComponent(projectId)}`,
+      `/gitlab/projects/merge_requests/${mrIid}/notes?project=${encodeURIComponent(repoId)}`,
       comment,
     ),
 };
