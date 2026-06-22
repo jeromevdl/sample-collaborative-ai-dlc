@@ -8,12 +8,7 @@
 // route-shape descriptor that says how to extract a repoId from the path.
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import {
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  DeleteCommand,
-} from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { SSMClient, PutParameterCommand, DeleteParameterCommand } from '@aws-sdk/client-ssm';
 import { buildResponse } from './response.js';
@@ -24,6 +19,7 @@ import {
   resolveGitTokenFull,
   getUserId,
 } from './git-oauth.js';
+import { getGitConnection, putGitConnection, deleteGitConnection } from './git-connection-store.js';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const secrets = new SecretsManagerClient({});
@@ -43,21 +39,12 @@ export const createGitHandler = (provider, routes) => {
   const secretName = () => process.env[provider.oauth.secretEnvName];
   const redirectUri = () => process.env[provider.oauth.redirectUriEnvName];
 
-  // Resolve the caller's git-connections row ONLY when it belongs to this
-  // provider. The table is keyed by userId alone (one row per user), so a row
-  // written by a different provider must not satisfy this provider's routes —
-  // otherwise a GitHub connection would make GitLab look connected (and the
-  // GitLab endpoints would call GitLab APIs with a GitHub token, or vice
-  // versa). Legacy rows predate the `provider` field and are treated as GitHub.
-  const getConnection = async (userId) => {
-    const { Item } = await ddb.send(
-      new GetCommand({ TableName: process.env.GIT_CONNECTIONS_TABLE, Key: { userId } }),
-    );
-    if (!Item) return null;
-    const rowProvider = Item.provider || 'github';
-    if (rowProvider !== provider.id) return null;
-    return Item;
-  };
+  // Resolve the caller's connection row for THIS provider. Backed by the
+  // composite-key git-provider-connections table; a user can hold a GitHub and
+  // a GitLab connection at once. Connections written before the cutover are
+  // lazily migrated out of the legacy single-key table on first read (see
+  // git-connection-store). Returns null when this provider isn't connected.
+  const getConnection = async (userId) => getGitConnection(ddb, userId, provider.id);
 
   // Build a provider ctx that refreshes (and persists) the token on 401 when
   // the provider supports it (GitLab). GitHub's oauth has no refreshAccessToken
@@ -90,12 +77,11 @@ export const createGitHandler = (provider, routes) => {
             Overwrite: true,
           }),
         );
-        await ddb.send(
-          new PutCommand({
-            TableName: process.env.GIT_CONNECTIONS_TABLE,
-            Item: { ...item, scope: refreshed.scope, updatedAt: new Date().toISOString() },
-          }),
-        );
+        await putGitConnection(ddb, {
+          ...item,
+          scope: refreshed.scope,
+          updatedAt: new Date().toISOString(),
+        });
         return refreshed.accessToken;
       };
     }
@@ -161,7 +147,11 @@ export const createGitHandler = (provider, routes) => {
           redirectUri: redirectUri(),
         });
 
-        const parameterName = `/${process.env.GIT_TOKEN_SSM_PREFIX}/${statePayload.userId}`;
+        // Per-provider SSM token path. The 5th `provider.id` segment keeps a
+        // user's GitHub and GitLab tokens from colliding (both used to write to
+        // /PREFIX/userId). Legacy connections kept the 4-segment path; their
+        // parameterName is read from the stored row, so they remain valid.
+        const parameterName = `/${process.env.GIT_TOKEN_SSM_PREFIX}/${statePayload.userId}/${provider.id}`;
         // GitLab stores a refresh token (+ expiry so the construction path can
         // refresh just-in-time); GitHub does not. Match each provider's
         // historical SSM value shape (key order matters for existing assertions).
@@ -183,18 +173,13 @@ export const createGitHandler = (provider, routes) => {
             Overwrite: true,
           }),
         );
-        await ddb.send(
-          new PutCommand({
-            TableName: process.env.GIT_CONNECTIONS_TABLE,
-            Item: {
-              userId: statePayload.userId,
-              provider: provider.id,
-              parameterName,
-              scope: tokens.scope,
-              createdAt: new Date().toISOString(),
-            },
-          }),
-        );
+        await putGitConnection(ddb, {
+          userId: statePayload.userId,
+          provider: provider.id,
+          parameterName,
+          scope: tokens.scope,
+          createdAt: new Date().toISOString(),
+        });
         return response(200, { success: true });
       }
 
@@ -219,9 +204,8 @@ export const createGitHandler = (provider, routes) => {
       if (httpMethod === 'DELETE' && path.endsWith('/disconnect')) {
         if (!userId) return response(401, { error: 'Unauthorized' });
         const Item = await getConnection(userId);
-        // Only remove the connection when it belongs to this provider — never
-        // delete another provider's row (getConnection already scopes by
-        // provider, so a null Item means "nothing of ours to disconnect").
+        // getConnection scopes by provider, so a null Item means "nothing of
+        // ours to disconnect".
         if (!Item) return response(200, { success: true });
         if (Item.parameterName) {
           try {
@@ -230,9 +214,9 @@ export const createGitHandler = (provider, routes) => {
             console.error('Failed to delete git token parameter:', e.message);
           }
         }
-        await ddb.send(
-          new DeleteCommand({ TableName: process.env.GIT_CONNECTIONS_TABLE, Key: { userId } }),
-        );
+        // Delete from BOTH the new and legacy tables so a stale legacy row
+        // can't resurrect this connection via migrate-on-read.
+        await deleteGitConnection(ddb, userId, provider.id);
         return response(200, { success: true });
       }
 

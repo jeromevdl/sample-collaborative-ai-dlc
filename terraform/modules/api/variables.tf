@@ -226,6 +226,18 @@ variable "git_connections_table_name" {
   default     = ""
 }
 
+variable "git_provider_connections_table_name" {
+  description = "DynamoDB table name for per-provider git connections (composite key userId+provider)"
+  type        = string
+  default     = ""
+}
+
+variable "git_provider_connections_table_arn" {
+  description = "DynamoDB table ARN for per-provider git connections"
+  type        = string
+  default     = ""
+}
+
 variable "agent_outputs_table_name" {
   description = "DynamoDB agent outputs table name"
   type        = string

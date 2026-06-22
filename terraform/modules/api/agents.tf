@@ -28,17 +28,18 @@ module "agents_lambda" {
   vpc_security_group_ids = var.lambda_security_group_ids
 
   environment_variables = {
-    ECS_CLUSTER_ARN           = var.ecs_cluster_arn
-    AGENT_TASK_DEFINITION_ARN = var.agent_task_definition_arn
-    POOL_TABLE                = var.agent_pool_table_name
-    POOL_SIZE                 = tostring(var.pool_size)
-    POOL_VERSION              = var.agent_image_tag
-    PRIVATE_SUBNET_IDS        = jsonencode(var.private_subnet_ids)
-    AGENT_SECURITY_GROUP_ID   = var.agent_security_group_id
-    QUESTIONS_TABLE           = var.agent_questions_table_name
-    NEPTUNE_ENDPOINT          = var.neptune_endpoint
-    AGENT_OUTPUTS_TABLE       = var.agent_outputs_table_name
-    GIT_CONNECTIONS_TABLE     = var.git_connections_table_name
+    ECS_CLUSTER_ARN                = var.ecs_cluster_arn
+    AGENT_TASK_DEFINITION_ARN      = var.agent_task_definition_arn
+    POOL_TABLE                     = var.agent_pool_table_name
+    POOL_SIZE                      = tostring(var.pool_size)
+    POOL_VERSION                   = var.agent_image_tag
+    PRIVATE_SUBNET_IDS             = jsonencode(var.private_subnet_ids)
+    AGENT_SECURITY_GROUP_ID        = var.agent_security_group_id
+    QUESTIONS_TABLE                = var.agent_questions_table_name
+    NEPTUNE_ENDPOINT               = var.neptune_endpoint
+    AGENT_OUTPUTS_TABLE            = var.agent_outputs_table_name
+    GIT_CONNECTIONS_TABLE          = var.git_connections_table_name
+    GIT_PROVIDER_CONNECTIONS_TABLE = var.git_provider_connections_table_name
     # GitLab OAuth secret name — used by POST /git/refresh-token to refresh an
     # expired GitLab access token for long-running construction jobs.
     GITLAB_OAUTH_SECRET_NAME  = var.gitlab_oauth_secret_name

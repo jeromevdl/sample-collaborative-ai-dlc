@@ -22,6 +22,7 @@ import {
   mapBinding,
   fetchMembershipRole,
 } from '../shared/trackers.js';
+import { getGitConnection, deleteGitConnection } from '../shared/git-connection-store.js';
 import { getProvider, KNOWN_PROVIDERS, ProviderError } from './providers/index.js';
 import {
   buildAuthorizeUrl,
@@ -273,16 +274,19 @@ const handleProviderError = (response, err) => {
 // (still the only place GitHub PATs live, by design) and
 // tracker-connections (Phase 3 will start writing Jira rows here).
 const listTrackerConnections = async (response, userId) => {
-  // Disjoint reads on different tables — fire concurrently. Each branch
-  // catches its own error so a failure in one doesn't blank out the other.
-  const [gitItem, trackerItems] = await Promise.all([
-    ddb
-      .send(new GetCommand({ TableName: process.env.GIT_CONNECTIONS_TABLE, Key: { userId } }))
-      .then((r) => r.Item ?? null)
-      .catch((err) => {
-        console.error('Failed to read git-connections:', err.message);
-        return null;
-      }),
+  // Git connections (github/gitlab) and tracker-only connections (Jira) live in
+  // separate tables. A user can now hold BOTH a GitHub and a GitLab connection,
+  // so probe each git provider individually (the store also lazily migrates
+  // legacy rows on read). Tracker-only providers come from tracker-connections.
+  const [gitGithub, gitGitlab, trackerItems] = await Promise.all([
+    getGitConnection(ddb, userId, 'github').catch((err) => {
+      console.error('Failed to read github connection:', err.message);
+      return null;
+    }),
+    getGitConnection(ddb, userId, 'gitlab').catch((err) => {
+      console.error('Failed to read gitlab connection:', err.message);
+      return null;
+    }),
     process.env.TRACKER_CONNECTIONS_TABLE
       ? ddb
           .send(
@@ -301,19 +305,24 @@ const listTrackerConnections = async (response, userId) => {
   ]);
 
   const out = [];
-  if (gitItem) {
-    // The single git-connections row holds whichever git provider the user
-    // connected; surface the matching issue-tracker provider id.
+  if (gitGithub) {
     out.push({
-      provider: gitItem.provider === 'gitlab' ? 'gitlab-issues' : 'github-issues',
+      provider: 'github-issues',
       instance: 'public',
-      connectedAt: gitItem.createdAt || null,
-      scope: gitItem.scope || null,
+      connectedAt: gitGithub.createdAt || null,
+      scope: gitGithub.scope || null,
     });
   }
-  // tracker-connections is keyed (userId, provider#instance). Empty in Phase 2;
-  // populated by Jira in Phase 3. Scan with a userId filter is fine — N is
-  // small (one row per provider per user).
+  if (gitGitlab) {
+    out.push({
+      provider: 'gitlab-issues',
+      instance: 'public',
+      connectedAt: gitGitlab.createdAt || null,
+      scope: gitGitlab.scope || null,
+    });
+  }
+  // tracker-connections is keyed (userId, provider#instance) — Jira etc. Scan
+  // with a userId filter is fine; N is small (one row per provider per user).
   for (const item of trackerItems) {
     const [provider, instance] = (item.providerInstance || '').split('#');
     if (!provider) continue;
@@ -330,12 +339,10 @@ const listTrackerConnections = async (response, userId) => {
 // DELETE /trackers/{provider}/{instance}
 const disconnectTracker = async (response, userId, provider, instance) => {
   if ((provider === 'github-issues' || provider === 'gitlab-issues') && instance === 'public') {
-    const { Item } = await ddb.send(
-      new GetCommand({
-        TableName: process.env.GIT_CONNECTIONS_TABLE,
-        Key: { userId },
-      }),
-    );
+    // github-issues/gitlab-issues reuse the git connection. Map the tracker id
+    // to its git provider and resolve the row (lazily migrating if needed).
+    const gitProvider = provider === 'gitlab-issues' ? 'gitlab' : 'github';
+    const Item = await getGitConnection(ddb, userId, gitProvider);
     if (Item?.parameterName) {
       try {
         await ssm.send(new DeleteParameterCommand({ Name: Item.parameterName }));
@@ -343,12 +350,8 @@ const disconnectTracker = async (response, userId, provider, instance) => {
         console.error('Failed to delete git token parameter:', e.message);
       }
     }
-    await ddb.send(
-      new DeleteCommand({
-        TableName: process.env.GIT_CONNECTIONS_TABLE,
-        Key: { userId },
-      }),
-    );
+    // Remove from both the new and legacy tables.
+    await deleteGitConnection(ddb, userId, gitProvider);
     return response(200, { success: true });
   }
   if (provider === 'jira-cloud' && instance === 'cloud') {
@@ -717,25 +720,13 @@ export const handler = async (event) => {
 
       // Require an active connection so the binding is actually usable.
       if (provider === 'github-issues') {
-        const { Item } = await ddb.send(
-          new GetCommand({
-            TableName: process.env.GIT_CONNECTIONS_TABLE,
-            Key: { userId },
-          }),
-        );
-        // git-connections is keyed by userId alone — ensure the row is a GitHub
-        // connection (legacy rows without `provider` are treated as GitHub).
-        if (!Item || (Item.provider && Item.provider !== 'github')) {
+        const Item = await getGitConnection(ddb, userId, 'github');
+        if (!Item) {
           return response(400, { error: 'GitHub not connected' });
         }
       } else if (provider === 'gitlab-issues') {
-        const { Item } = await ddb.send(
-          new GetCommand({
-            TableName: process.env.GIT_CONNECTIONS_TABLE,
-            Key: { userId },
-          }),
-        );
-        if (!Item || (Item.provider && Item.provider !== 'gitlab')) {
+        const Item = await getGitConnection(ddb, userId, 'gitlab');
+        if (!Item) {
           return response(400, { error: 'GitLab not connected' });
         }
       } else if (provider === 'jira-cloud') {

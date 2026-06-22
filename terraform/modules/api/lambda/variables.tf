@@ -72,6 +72,18 @@ variable "git_connections_table_arn" {
   default     = ""
 }
 
+variable "git_provider_connections_table_name" {
+  description = "DynamoDB table name for per-provider git connections (composite key userId+provider)"
+  type        = string
+  default     = ""
+}
+
+variable "git_provider_connections_table_arn" {
+  description = "DynamoDB table ARN for per-provider git connections"
+  type        = string
+  default     = ""
+}
+
 variable "tracker_connections_table_name" {
   description = "DynamoDB table name for tracker connections (Jira / GitHub Issues / …)"
   type        = string

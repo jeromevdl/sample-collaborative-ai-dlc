@@ -4,7 +4,10 @@ const { GetParameterCommand, PutParameterCommand } = require('@aws-sdk/client-ss
 const { GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { PutCommand } = require('@aws-sdk/lib-dynamodb');
 
-const GIT_TOKEN_PARAM_PATTERN = /^\/[\w-]+\/[\w-]+\/[\w-]+\/[\w-]+$/;
+// Matches the git-token SSM parameter path. Legacy connections used a
+// 4-segment path (/PREFIX/env/git-token/userId); per-provider connections add a
+// 5th provider segment. Both are valid: migrated rows keep their 4-segment path.
+const GIT_TOKEN_PARAM_PATTERN = /^\/[\w-]+\/[\w-]+\/[\w-]+\/[\w-]+(\/[\w-]+)?$/;
 
 // Refresh a GitLab access token when it is within this many ms of expiry (or
 // has no recorded expiry). GitLab access tokens live ~2h; refreshing a little

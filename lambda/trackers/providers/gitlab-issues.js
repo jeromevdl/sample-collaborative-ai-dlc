@@ -1,7 +1,7 @@
-import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { GetParameterCommand, PutParameterCommand } from '@aws-sdk/client-ssm';
 import { GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { ProviderError } from './errors.js';
+import { getGitConnection, putGitConnection } from '../../shared/git-connection-store.js';
 
 // Provider for GitLab Issues. Mirrors the github-issues provider's shape and
 // DTOs (same `code: 'NOT_CONNECTED'` contract, same normalized issue/comment
@@ -12,7 +12,7 @@ import { ProviderError } from './errors.js';
 // reuses the GitHub connection. The access token expires, so reads refresh it
 // on 401 using the stored refresh token + the GitLab OAuth secret.
 
-const GIT_TOKEN_PARAM_PATTERN = /^\/[\w-]+\/[\w-]+\/[\w-]+\/[\w-]+$/;
+const GIT_TOKEN_PARAM_PATTERN = /^\/[\w-]+\/[\w-]+\/[\w-]+\/[\w-]+(\/[\w-]+)?$/;
 const API_BASE = 'https://gitlab.com/api/v4';
 
 const requireEnv = (name) => {
@@ -34,16 +34,11 @@ const encodeProject = (externalProjectKey) => {
 // ---------------------------------------------------------------------------
 
 const getGitlabConnection = async (ddb, userId) => {
-  const { Item } = await ddb.send(
-    new GetCommand({ TableName: process.env.GIT_CONNECTIONS_TABLE, Key: { userId } }),
-  );
+  // GitLab issues reuse the GitLab git connection (one OAuth token backs both
+  // repo and issue operations). The store returns null unless the user has a
+  // GitLab connection (and lazily migrates legacy rows on read).
+  const Item = await getGitConnection(ddb, userId, 'gitlab');
   if (!Item) {
-    const err = new Error('GitLab not connected');
-    err.code = 'NOT_CONNECTED';
-    throw err;
-  }
-  if (Item.provider && Item.provider !== 'gitlab') {
-    // The single-key git-connections row currently holds a different provider.
     const err = new Error('GitLab not connected');
     err.code = 'NOT_CONNECTED';
     throw err;
@@ -109,12 +104,7 @@ const refreshToken = async ({ ddb, ssm, secrets, item, refreshTokenValue }) => {
       Overwrite: true,
     }),
   );
-  await ddb.send(
-    new PutCommand({
-      TableName: process.env.GIT_CONNECTIONS_TABLE,
-      Item: { ...item, scope: data.scope, updatedAt: new Date().toISOString() },
-    }),
-  );
+  await putGitConnection(ddb, { ...item, scope: data.scope, updatedAt: new Date().toISOString() });
   return data.access_token;
 };
 

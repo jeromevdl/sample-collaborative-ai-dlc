@@ -2,7 +2,11 @@
 
 const crypto = require('crypto');
 
-const GIT_TOKEN_PARAM_PATTERN = /^\/[\w-]+\/[\w-]+\/[\w-]+\/[\w-]+$/;
+// Matches the git-token SSM parameter path. Legacy connections used a
+// 4-segment path (/PREFIX/env/git-token/userId); per-provider connections add a
+// 5th provider segment (/PREFIX/env/git-token/userId/provider). Both are valid:
+// migrated rows keep their original 4-segment parameterName.
+const GIT_TOKEN_PARAM_PATTERN = /^\/[\w-]+\/[\w-]+\/[\w-]+\/[\w-]+(\/[\w-]+)?$/;
 
 /**
  * Validates an SSM parameter name against the expected pattern.

@@ -20,6 +20,7 @@ const secretsMock = mockClient(SecretsManagerClient);
 const ssmMock = mockClient(SSMClient);
 
 const CONNECTIONS_TABLE = 'test-git-connections';
+const PROVIDER_CONNECTIONS_TABLE = 'test-git-provider-connections';
 const OAUTH_SECRET_NAME = 'test/gitlab-oauth';
 const REDIRECT_URI = 'https://app.example.com/gitlab/callback';
 const SSM_PREFIX = 'test/git/tokens';
@@ -89,6 +90,7 @@ describe('gitlab handler', () => {
     secretsMock.reset();
     ssmMock.reset();
     vi.stubEnv('GIT_CONNECTIONS_TABLE', CONNECTIONS_TABLE);
+    vi.stubEnv('GIT_PROVIDER_CONNECTIONS_TABLE', PROVIDER_CONNECTIONS_TABLE);
     vi.stubEnv('GITLAB_OAUTH_SECRET_NAME', OAUTH_SECRET_NAME);
     vi.stubEnv('GITLAB_REDIRECT_URI', REDIRECT_URI);
     vi.stubEnv('GIT_TOKEN_SSM_PREFIX', SSM_PREFIX);
@@ -271,7 +273,7 @@ describe('gitlab handler', () => {
       expect(JSON.parse(res.body)).toEqual({ success: true });
 
       expect(ssmMock).toHaveReceivedCommandWith(PutParameterCommand, {
-        Name: `/${SSM_PREFIX}/${USER_ID}`,
+        Name: `/${SSM_PREFIX}/${USER_ID}/gitlab`,
         Value: JSON.stringify({
           accessToken: 'glpat-new',
           refreshToken: 'refresh-new',
@@ -282,11 +284,11 @@ describe('gitlab handler', () => {
       });
 
       expect(ddbMock).toHaveReceivedCommandWith(PutCommand, {
-        TableName: CONNECTIONS_TABLE,
+        TableName: PROVIDER_CONNECTIONS_TABLE,
         Item: expect.objectContaining({
           userId: USER_ID,
           provider: 'gitlab',
-          parameterName: `/${SSM_PREFIX}/${USER_ID}`,
+          parameterName: `/${SSM_PREFIX}/${USER_ID}/gitlab`,
           scope: 'api read_user',
         }),
       });
@@ -392,9 +394,14 @@ describe('gitlab handler', () => {
     });
 
     it('returns connected: false when the only connection belongs to GitHub', async () => {
-      // git-connections is keyed by userId alone; a GitHub row must NOT make
-      // GitLab look connected (otherwise GitLab APIs get a GitHub token).
-      ddbMock.on(GetCommand).resolves({
+      // The user's only git connection is a legacy GitHub row (keyed by userId
+      // alone). It must NOT make GitLab look connected — the store's new-table
+      // read (keyed userId+gitlab) misses, and the legacy fallback rejects the
+      // github row for a gitlab request.
+      ddbMock
+        .on(GetCommand, { TableName: PROVIDER_CONNECTIONS_TABLE })
+        .resolves({ Item: undefined });
+      ddbMock.on(GetCommand, { TableName: CONNECTIONS_TABLE }).resolves({
         Item: { userId: USER_ID, provider: 'github', parameterName: `/${SSM_PREFIX}/${USER_ID}` },
       });
 
@@ -406,7 +413,10 @@ describe('gitlab handler', () => {
     });
 
     it('does not use a GitHub connection for GitLab repo listing', async () => {
-      ddbMock.on(GetCommand).resolves({
+      ddbMock
+        .on(GetCommand, { TableName: PROVIDER_CONNECTIONS_TABLE })
+        .resolves({ Item: undefined });
+      ddbMock.on(GetCommand, { TableName: CONNECTIONS_TABLE }).resolves({
         Item: { userId: USER_ID, provider: 'github', parameterName: `/${SSM_PREFIX}/${USER_ID}` },
       });
 
@@ -418,7 +428,10 @@ describe('gitlab handler', () => {
     });
 
     it('does not delete a GitHub connection on GitLab disconnect', async () => {
-      ddbMock.on(GetCommand).resolves({
+      ddbMock
+        .on(GetCommand, { TableName: PROVIDER_CONNECTIONS_TABLE })
+        .resolves({ Item: undefined });
+      ddbMock.on(GetCommand, { TableName: CONNECTIONS_TABLE }).resolves({
         Item: { userId: USER_ID, provider: 'github', parameterName: `/${SSM_PREFIX}/${USER_ID}` },
       });
       ssmMock.on(DeleteParameterCommand).resolves({});

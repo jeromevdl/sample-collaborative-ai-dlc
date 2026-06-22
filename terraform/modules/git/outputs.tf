@@ -30,6 +30,14 @@ output "git_connections_table_arn" {
   value = aws_dynamodb_table.git_connections.arn
 }
 
+output "git_provider_connections_table_name" {
+  value = aws_dynamodb_table.git_provider_connections.name
+}
+
+output "git_provider_connections_table_arn" {
+  value = aws_dynamodb_table.git_provider_connections.arn
+}
+
 output "tracker_connections_table_name" {
   value = aws_dynamodb_table.tracker_connections.name
 }

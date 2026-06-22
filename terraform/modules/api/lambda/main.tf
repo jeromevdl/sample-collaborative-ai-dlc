@@ -76,7 +76,7 @@ resource "aws_iam_role_policy" "neptune_reader" {
       {
         Effect   = "Allow"
         Action   = ["dynamodb:GetItem"]
-        Resource = [var.git_connections_table_arn]
+        Resource = compact([var.git_connections_table_arn, var.git_provider_connections_table_arn])
       }
     ]
   })
@@ -142,6 +142,7 @@ resource "aws_iam_role_policy" "github_connector" {
         Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:Query"]
         Resource = compact([
           var.git_connections_table_arn,
+          var.git_provider_connections_table_arn,
           var.tracker_connections_table_arn,
         ])
       },
@@ -194,6 +195,7 @@ resource "aws_iam_role_policy" "trackers" {
           Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
           Resource = compact([
             var.git_connections_table_arn,
+            var.git_provider_connections_table_arn,
             var.tracker_connections_table_arn,
           ])
         },
@@ -309,7 +311,9 @@ resource "aws_iam_role_policy" "agents_orchestrator" {
           [for arn in var.dynamodb_table_arns : "${arn}/index/*"],
           compact([
             var.git_connections_table_arn,
-            var.git_connections_table_arn != "" ? "${var.git_connections_table_arn}/index/*" : ""
+            var.git_connections_table_arn != "" ? "${var.git_connections_table_arn}/index/*" : "",
+            var.git_provider_connections_table_arn,
+            var.git_provider_connections_table_arn != "" ? "${var.git_provider_connections_table_arn}/index/*" : ""
           ])
         )
       },
@@ -458,11 +462,12 @@ module "projects_lambda" {
   vpc_security_group_ids = [aws_security_group.lambda.id]
 
   environment_variables = {
-    NEPTUNE_ENDPOINT      = var.neptune_endpoint
-    ENVIRONMENT           = var.environment
-    CORS_ALLOWED_ORIGINS  = var.cors_allowed_origins
-    GIT_CONNECTIONS_TABLE = var.git_connections_table_name
-    ARTIFACTS_BUCKET      = var.artifacts_bucket_name
+    NEPTUNE_ENDPOINT               = var.neptune_endpoint
+    ENVIRONMENT                    = var.environment
+    CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
+    GIT_CONNECTIONS_TABLE          = var.git_connections_table_name
+    GIT_PROVIDER_CONNECTIONS_TABLE = var.git_provider_connections_table_name
+    ARTIFACTS_BUCKET               = var.artifacts_bucket_name
   }
 }
 
@@ -837,12 +842,13 @@ module "github_lambda" {
   lambda_role = aws_iam_role.github_connector.arn
 
   environment_variables = {
-    GITHUB_OAUTH_SECRET_NAME = var.github_oauth_secret_name
-    GIT_CONNECTIONS_TABLE    = var.git_connections_table_name
-    GIT_TOKEN_SSM_PREFIX     = "${var.project_name}/${var.environment}/git-token"
-    GITHUB_REDIRECT_URI      = var.github_redirect_uri
-    ENVIRONMENT              = var.environment
-    CORS_ALLOWED_ORIGINS     = var.cors_allowed_origins
+    GITHUB_OAUTH_SECRET_NAME       = var.github_oauth_secret_name
+    GIT_CONNECTIONS_TABLE          = var.git_connections_table_name
+    GIT_PROVIDER_CONNECTIONS_TABLE = var.git_provider_connections_table_name
+    GIT_TOKEN_SSM_PREFIX           = "${var.project_name}/${var.environment}/git-token"
+    GITHUB_REDIRECT_URI            = var.github_redirect_uri
+    ENVIRONMENT                    = var.environment
+    CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
   }
 }
 
@@ -869,7 +875,7 @@ resource "aws_iam_role_policy" "gitlab_connector" {
       {
         Effect   = "Allow"
         Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
-        Resource = [var.git_connections_table_arn]
+        Resource = compact([var.git_connections_table_arn, var.git_provider_connections_table_arn])
       },
       {
         Effect   = "Allow"
@@ -909,12 +915,13 @@ module "gitlab_lambda" {
   lambda_role = aws_iam_role.gitlab_connector.arn
 
   environment_variables = {
-    GITLAB_OAUTH_SECRET_NAME = var.gitlab_oauth_secret_name
-    GIT_CONNECTIONS_TABLE    = var.git_connections_table_name
-    GIT_TOKEN_SSM_PREFIX     = "${var.project_name}/${var.environment}/git-token"
-    GITLAB_REDIRECT_URI      = var.gitlab_redirect_uri
-    ENVIRONMENT              = var.environment
-    CORS_ALLOWED_ORIGINS     = var.cors_allowed_origins
+    GITLAB_OAUTH_SECRET_NAME       = var.gitlab_oauth_secret_name
+    GIT_CONNECTIONS_TABLE          = var.git_connections_table_name
+    GIT_PROVIDER_CONNECTIONS_TABLE = var.git_provider_connections_table_name
+    GIT_TOKEN_SSM_PREFIX           = "${var.project_name}/${var.environment}/git-token"
+    GITLAB_REDIRECT_URI            = var.gitlab_redirect_uri
+    ENVIRONMENT                    = var.environment
+    CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
   }
 }
 
@@ -949,17 +956,18 @@ module "trackers_lambda" {
   vpc_security_group_ids = [aws_security_group.lambda.id]
 
   environment_variables = {
-    NEPTUNE_ENDPOINT          = var.neptune_endpoint
-    GIT_CONNECTIONS_TABLE     = var.git_connections_table_name
-    TRACKER_CONNECTIONS_TABLE = var.tracker_connections_table_name
-    GIT_TOKEN_SSM_PREFIX      = "${var.project_name}/${var.environment}/git-token"
-    JIRA_OAUTH_SECRET_NAME    = var.jira_oauth_secret_name
-    JIRA_REDIRECT_URI         = var.jira_redirect_uri
-    JIRA_TOKEN_SSM_PREFIX     = "${var.project_name}/${var.environment}/jira-token"
-    GITHUB_OAUTH_SECRET_NAME  = var.github_oauth_secret_name
-    GITLAB_OAUTH_SECRET_NAME  = var.gitlab_oauth_secret_name
-    ENVIRONMENT               = var.environment
-    CORS_ALLOWED_ORIGINS      = var.cors_allowed_origins
+    NEPTUNE_ENDPOINT               = var.neptune_endpoint
+    GIT_CONNECTIONS_TABLE          = var.git_connections_table_name
+    GIT_PROVIDER_CONNECTIONS_TABLE = var.git_provider_connections_table_name
+    TRACKER_CONNECTIONS_TABLE      = var.tracker_connections_table_name
+    GIT_TOKEN_SSM_PREFIX           = "${var.project_name}/${var.environment}/git-token"
+    JIRA_OAUTH_SECRET_NAME         = var.jira_oauth_secret_name
+    JIRA_REDIRECT_URI              = var.jira_redirect_uri
+    JIRA_TOKEN_SSM_PREFIX          = "${var.project_name}/${var.environment}/jira-token"
+    GITHUB_OAUTH_SECRET_NAME       = var.github_oauth_secret_name
+    GITLAB_OAUTH_SECRET_NAME       = var.gitlab_oauth_secret_name
+    ENVIRONMENT                    = var.environment
+    CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
   }
 }
 

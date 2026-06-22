@@ -22,6 +22,7 @@ const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 const { getUrlAndHeaders } = require('gremlin-aws-sigv4/lib/utils');
 const { buildResponse } = require('./shared/response');
 const { resolveGitToken, ensureFreshGitToken } = require('./shared/git-token');
+const { getGitConnection } = require('./shared/git-connection-store');
 const { validateMcpServersJson } = require('./shared/mcp-validator');
 const { broadcastToSprintChannel } = require('./shared/ws-fanout');
 const { normalizeCliModels, parseCliModels } = require('./shared/cli-models');
@@ -453,18 +454,9 @@ exports.handler = async (event) => {
       const refreshUserId = input.userId;
       const refreshProvider = input.gitProvider || 'github';
       if (!refreshUserId) return response(400, { error: 'userId is required' });
-      if (!process.env.GIT_CONNECTIONS_TABLE) {
-        return response(500, { error: 'GIT_CONNECTIONS_TABLE not configured' });
-      }
       try {
-        const { Item } = await ddb.send(
-          new GetCommand({
-            TableName: process.env.GIT_CONNECTIONS_TABLE,
-            Key: { userId: refreshUserId },
-          }),
-        );
-        const connectionProvider = Item?.provider || 'github';
-        if (!Item?.parameterName || connectionProvider !== refreshProvider) {
+        const Item = await getGitConnection(ddb, refreshUserId, refreshProvider);
+        if (!Item?.parameterName) {
           return response(400, { error: `${refreshProvider} not connected` });
         }
         const accessToken = await ensureFreshGitToken({
@@ -858,16 +850,14 @@ exports.handler = async (event) => {
         gitRepo = '';
         gitRepos = [];
       }
-      if (!isDiscussion && userId && process.env.GIT_CONNECTIONS_TABLE) {
+      if (!isDiscussion && userId) {
         try {
-          const { Item } = await ddb.send(
-            new GetCommand({
-              TableName: process.env.GIT_CONNECTIONS_TABLE,
-              Key: { userId },
-            }),
-          );
-          const connectionProvider = Item?.provider || 'github';
-          if ((Item?.parameterName || Item?.accessToken) && connectionProvider === gitProvider) {
+          // Resolve the user's connection for the project's git provider (the
+          // store lazily migrates legacy rows). A non-matching/absent provider
+          // yields null, leaving gitToken empty → the "not connected" guard
+          // below fires.
+          const Item = await getGitConnection(ddb, userId, gitProvider);
+          if (Item?.parameterName) {
             gitToken = await resolveGitToken(ssm, Item);
           }
         } catch (e) {

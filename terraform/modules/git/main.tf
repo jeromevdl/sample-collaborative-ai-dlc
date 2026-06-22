@@ -24,7 +24,12 @@ resource "aws_secretsmanager_secret" "jira_oauth" {
   tags = var.tags
 }
 
-# DynamoDB table for user GitHub connections (access tokens)
+# Legacy DynamoDB table for user git connections, keyed by userId ALONE.
+# Superseded by git_provider_connections (composite key userId+provider) so a
+# user can connect more than one git provider at once. Kept in place — NOT
+# deleted — so connections written before the cutover keep working: readers
+# fall back to this table on a miss and lazily move each row into the new table
+# (migrate-on-read). Retire in a separate, deliberate step once it has drained.
 resource "aws_dynamodb_table" "git_connections" {
   name         = "${var.project_name}-${var.environment}-git-connections"
   billing_mode = "PAY_PER_REQUEST"
@@ -32,6 +37,41 @@ resource "aws_dynamodb_table" "git_connections" {
 
   attribute {
     name = "userId"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
+
+  tags = var.tags
+}
+
+# DynamoDB table for user git connections, keyed by (userId, providerInstance).
+# Replaces the single-key git_connections table: the composite key lets one user
+# hold a GitHub connection AND a GitLab connection simultaneously (each project
+# pins its own git_provider). For github/gitlab the stored OAuth token backs BOTH
+# repo operations (clone/push/PR) and issue operations — they share one row.
+# Tracker-only providers (Jira) live in tracker_connections, not here.
+#
+# providerInstance mirrors tracker_connections: '<provider>#<instance>' (e.g.
+# 'github#public', 'gitlab#public'). Only the 'public' SaaS instance exists
+# today; the composite value is stored now so future self-hosted/enterprise
+# instances (e.g. 'gitlab#self-hosted') slot in with no data migration.
+resource "aws_dynamodb_table" "git_provider_connections" {
+  name         = "${var.project_name}-${var.environment}-git-provider-connections"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "userId"
+  range_key    = "providerInstance"
+
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
+  attribute {
+    name = "providerInstance"
     type = "S"
   }
 
