@@ -5,13 +5,23 @@ import { getTrackerProvider } from '@/lib/trackerProviders';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-export default function GitHubCallback() {
+interface Props {
+  // Tracker provider id whose OAuth app backs this git connection
+  // (github-issues / gitlab-issues). The callback path and display label are
+  // derived from the tracker registry — no per-provider hardcoding.
+  trackerProviderId: string;
+}
+
+// Shared OAuth-callback page for the git providers (GitHub, GitLab). Exchanges
+// the `?code`/`?state` for a stored token via the provider's callback endpoint,
+// then returns the user to the create-project flow.
+export function GitOAuthCallback({ trackerProviderId }: Props) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
 
-  const meta = getTrackerProvider('github-issues');
+  const meta = getTrackerProvider(trackerProviderId);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -31,14 +41,14 @@ export default function GitHubCallback() {
           setTimeout(() => navigate('/dashboard?reopenCreateProject=1'), 1500);
         } else {
           setStatus('error');
-          setError(data.error || 'Failed to connect GitHub');
+          setError(data.error || `Failed to connect ${meta.tabLabel}`);
         }
       })
       .catch(() => {
         setStatus('error');
-        setError('Failed to connect GitHub');
+        setError(`Failed to connect ${meta.tabLabel}`);
       });
-  }, [searchParams, navigate, meta.callbackPath]);
+  }, [searchParams, navigate, meta.callbackPath, meta.tabLabel]);
 
   return <OAuthCallbackShell status={status} providerLabel={meta.tabLabel} errorMessage={error} />;
 }
