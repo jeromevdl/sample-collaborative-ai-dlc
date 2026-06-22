@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { projectsService, type CreateProjectInput } from '../services/projects';
 import { trackersService } from '../services/trackers';
-import { useGitHubStatus } from '../hooks/useGitHubStatus';
-import { useGitLabStatus } from '../hooks/useGitLabStatus';
+import { useGitProviderStatus } from '../hooks/useGitProviderStatus';
 import { GitConnectButton } from './GitConnectButton';
 import { GitRepoSelect } from './GitRepoSelect';
 import type { GitRepo } from '../services/gitProvider';
@@ -15,18 +14,6 @@ interface Props {
 const repoShortName = (fullName: string) => fullName.split('/').pop() || '';
 
 export function CreateProjectModal({ onClose, onCreated }: Props) {
-  const {
-    status: githubStatus,
-    loading: githubStatusLoading,
-    error: githubStatusError,
-    refresh: githubRefresh,
-  } = useGitHubStatus();
-  const {
-    status: gitlabStatus,
-    loading: gitlabStatusLoading,
-    error: gitlabStatusError,
-    refresh: gitlabRefresh,
-  } = useGitLabStatus();
   const [step, setStep] = useState(1);
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   const [primaryRepo, setPrimaryRepo] = useState<string>('');
@@ -36,6 +23,15 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
     gitRepo: '',
     issueIntegrationEnabled: false,
   });
+  // Only the selected provider's connection status is needed — the modal shows
+  // one provider at a time. Switching providers re-fetches via the hook's
+  // provider-keyed effect.
+  const {
+    status: gitStatus,
+    loading: gitStatusLoading,
+    error: gitStatusError,
+    refresh: gitRefresh,
+  } = useGitProviderStatus(formData.gitProvider);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,8 +105,7 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
     }
   };
 
-  const canProceedStep1 =
-    formData.gitProvider === 'github' ? githubStatus?.connected : gitlabStatus?.connected;
+  const canProceedStep1 = gitStatus?.connected;
   const canProceedStep2 = selectedRepos.length > 0;
 
   return (
@@ -178,41 +173,19 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
                 GitLab
               </button>
             </div>
-            {formData.gitProvider === 'github' && (
-              <>
-                {githubStatusError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                    {githubStatusError}
-                  </div>
-                )}
-                {githubStatusLoading ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
-                ) : (
-                  <GitConnectButton
-                    provider="github"
-                    connected={githubStatus?.connected || false}
-                    onDisconnect={githubRefresh}
-                  />
-                )}
-              </>
+            {gitStatusError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+                {gitStatusError}
+              </div>
             )}
-            {formData.gitProvider === 'gitlab' && (
-              <>
-                {gitlabStatusError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                    {gitlabStatusError}
-                  </div>
-                )}
-                {gitlabStatusLoading ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
-                ) : (
-                  <GitConnectButton
-                    provider="gitlab"
-                    connected={gitlabStatus?.connected || false}
-                    onDisconnect={gitlabRefresh}
-                  />
-                )}
-              </>
+            {gitStatusLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
+            ) : (
+              <GitConnectButton
+                provider={formData.gitProvider}
+                connected={gitStatus?.connected || false}
+                onDisconnect={gitRefresh}
+              />
             )}
             <div className="flex justify-end gap-2 mt-6">
               <button
