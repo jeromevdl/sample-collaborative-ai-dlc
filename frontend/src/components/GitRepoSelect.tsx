@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getGitProviderService, type GitRepo } from '../services/gitProvider';
+import { getGitProviderService, type GitProvider, type GitRepo } from '../services/gitProvider';
 
 interface SingleProps {
-  provider: 'github' | 'gitlab';
+  provider: GitProvider;
   multiple?: false;
   value: string;
   onChange: (repo: GitRepo | null) => void;
@@ -10,7 +10,7 @@ interface SingleProps {
 }
 
 interface MultiProps {
-  provider: 'github' | 'gitlab';
+  provider: GitProvider;
   multiple: true;
   value: string[];
   onChange: (repos: GitRepo[]) => void;

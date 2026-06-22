@@ -4,6 +4,11 @@ import { api } from './api';
 // Shared types — provider-agnostic shapes returned by both GitHub and GitLab.
 // =============================================================================
 
+// The set of supported git providers. Kept as a string-literal union (not a TS
+// enum) because the values are wire strings sent to/from the API and stored in
+// the DB — a union assigns directly from those strings with zero runtime cost.
+export type GitProvider = 'github' | 'gitlab';
+
 export interface GitRepo {
   id: number;
   name: string;
@@ -164,6 +169,6 @@ export const gitlabService: GitProviderService & {
 // Provider lookup — given a `gitProvider` field, return the matching service.
 // =============================================================================
 
-export const getGitProviderService = (provider: 'github' | 'gitlab'): GitProviderService => {
+export const getGitProviderService = (provider: GitProvider): GitProviderService => {
   return provider === 'gitlab' ? gitlabService : githubService;
 };

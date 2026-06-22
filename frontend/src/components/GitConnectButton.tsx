@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { getGitProviderService } from '../services/gitProvider';
+import { getGitProviderService, type GitProvider } from '../services/gitProvider';
 import { ApiError } from '../services/api';
 import { useTrackerProviders } from '@/hooks/useTrackerProviders';
 
 export interface GitConnectButtonProps {
-  provider: 'github' | 'gitlab';
+  provider: GitProvider;
   connected: boolean;
   onDisconnect: () => void;
 }

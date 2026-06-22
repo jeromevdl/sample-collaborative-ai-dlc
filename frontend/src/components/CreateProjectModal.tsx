@@ -4,7 +4,7 @@ import { trackersService } from '../services/trackers';
 import { useGitProviderStatus } from '../hooks/useGitProviderStatus';
 import { GitConnectButton } from './GitConnectButton';
 import { GitRepoSelect } from './GitRepoSelect';
-import type { GitRepo } from '../services/gitProvider';
+import type { GitProvider, GitRepo } from '../services/gitProvider';
 
 interface Props {
   onClose: () => void;
@@ -54,7 +54,7 @@ export function CreateProjectModal({ onClose, onCreated }: Props) {
     );
   };
 
-  const handleProviderChange = (provider: 'github' | 'gitlab') => {
+  const handleProviderChange = (provider: GitProvider) => {
     setFormData((prev) => ({ ...prev, gitProvider: provider, gitRepo: '' }));
     setSelectedRepos([]);
     setPrimaryRepo('');

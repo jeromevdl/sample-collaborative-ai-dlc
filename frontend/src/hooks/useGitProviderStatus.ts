@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getGitProviderService, type GitProviderStatus } from '../services/gitProvider';
+import {
+  getGitProviderService,
+  type GitProvider,
+  type GitProviderStatus,
+} from '../services/gitProvider';
 import { ApiError } from '../services/api';
 
 /**
  * Unified hook for checking git provider connection status.
- * Replaces the provider-specific useGitHubStatus / useGitLabStatus hooks.
  */
-export function useGitProviderStatus(provider: 'github' | 'gitlab') {
+export function useGitProviderStatus(provider: GitProvider) {
   const [status, setStatus] = useState<GitProviderStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
