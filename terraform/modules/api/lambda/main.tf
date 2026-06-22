@@ -213,7 +213,7 @@ resource "aws_iam_role_policy" "trackers" {
         },
       ],
       # Tracker OAuth secrets — read for OAuth flows, write from the
-      # Admin "Tracker OAuth Apps" panel. Both Jira and GitHub now flow
+      # Admin "Tracker OAuth Apps" panel. Jira, GitHub and GitLab all flow
       # through the trackers Lambda's admin endpoints.
       var.jira_oauth_secret_arn != "" ? [
         {
@@ -227,6 +227,13 @@ resource "aws_iam_role_policy" "trackers" {
           Effect   = "Allow"
           Action   = ["secretsmanager:GetSecretValue", "secretsmanager:PutSecretValue"]
           Resource = [var.github_oauth_secret_arn]
+        }
+      ] : [],
+      var.gitlab_oauth_secret_arn != "" ? [
+        {
+          Effect   = "Allow"
+          Action   = ["secretsmanager:GetSecretValue", "secretsmanager:PutSecretValue"]
+          Resource = [var.gitlab_oauth_secret_arn]
         }
       ] : [],
     )
@@ -950,6 +957,7 @@ module "trackers_lambda" {
     JIRA_REDIRECT_URI         = var.jira_redirect_uri
     JIRA_TOKEN_SSM_PREFIX     = "${var.project_name}/${var.environment}/jira-token"
     GITHUB_OAUTH_SECRET_NAME  = var.github_oauth_secret_name
+    GITLAB_OAUTH_SECRET_NAME  = var.gitlab_oauth_secret_name
     ENVIRONMENT               = var.environment
     CORS_ALLOWED_ORIGINS      = var.cors_allowed_origins
   }
