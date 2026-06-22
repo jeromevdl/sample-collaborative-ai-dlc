@@ -545,7 +545,11 @@ const mergeBranch = async (ctx, repoId, { base, head, message }) => {
     { method: 'PUT' },
   );
   if (mergeRes.ok) return 'merged';
-  if (mergeRes.status === 405 || mergeRes.status === 406 || mergeRes.status === 409) {
+  // Per the GitLab merge API, an un-mergeable MR surfaces as 405 (cannot be
+  // merged), 409 (SHA mismatch), or 422 (branch cannot be merged — e.g. a real
+  // conflict). Treat all of these as a conflict so the orchestrator handles it
+  // as "auto-merge couldn't complete" rather than an infrastructure error.
+  if ([405, 406, 409, 422].includes(mergeRes.status)) {
     return 'conflict';
   }
   const text = await mergeRes.text().catch(() => '');
