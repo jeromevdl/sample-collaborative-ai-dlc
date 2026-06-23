@@ -243,4 +243,30 @@ describe('OAuth metadata', () => {
     expect(getProvider('gitlab').oauth.refreshAccessToken).toBeTypeOf('function');
     expect(getProvider('github').oauth.refreshAccessToken).toBeUndefined();
   });
+
+  it('gitlab refreshAccessToken sends redirect_uri (GitLab rejects refresh without it)', async () => {
+    let capturedBody = null;
+    const fetchImpl = async (_url, opts) => {
+      capturedBody = JSON.parse(opts.body);
+      return {
+        json: async () => ({
+          access_token: 'new-at',
+          refresh_token: 'new-rt',
+          token_type: 'bearer',
+          expires_in: 7200,
+          scope: 'api read_user',
+        }),
+      };
+    };
+    const out = await getProvider('gitlab').oauth.refreshAccessToken({
+      clientId: 'cid',
+      clientSecret: 'csec',
+      refreshToken: 'r1',
+      redirectUri: 'https://app.example.com/gitlab/callback',
+      fetchImpl,
+    });
+    expect(capturedBody.grant_type).toBe('refresh_token');
+    expect(capturedBody.redirect_uri).toBe('https://app.example.com/gitlab/callback');
+    expect(out.accessToken).toBe('new-at');
+  });
 });

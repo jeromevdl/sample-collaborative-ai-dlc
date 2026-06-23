@@ -59,6 +59,7 @@ export const createGitHandler = (provider, routes) => {
           clientId: creds.client_id,
           clientSecret: creds.client_secret,
           refreshToken: tokens.refreshToken,
+          redirectUri: redirectUri(),
         });
         await ssm.send(
           new PutParameterCommand({

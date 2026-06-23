@@ -966,6 +966,7 @@ module "trackers_lambda" {
     JIRA_TOKEN_SSM_PREFIX          = "${var.project_name}/${var.environment}/jira-token"
     GITHUB_OAUTH_SECRET_NAME       = var.github_oauth_secret_name
     GITLAB_OAUTH_SECRET_NAME       = var.gitlab_oauth_secret_name
+    GITLAB_REDIRECT_URI            = var.gitlab_redirect_uri
     ENVIRONMENT                    = var.environment
     CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
   }

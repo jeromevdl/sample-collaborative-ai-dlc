@@ -40,11 +40,10 @@ module "agents_lambda" {
     AGENT_OUTPUTS_TABLE            = var.agent_outputs_table_name
     GIT_CONNECTIONS_TABLE          = var.git_connections_table_name
     GIT_PROVIDER_CONNECTIONS_TABLE = var.git_provider_connections_table_name
-    # GitLab OAuth secret name — used by POST /git/refresh-token to refresh an
-    # expired GitLab access token for long-running construction jobs.
-    GITLAB_OAUTH_SECRET_NAME  = var.gitlab_oauth_secret_name
-    AGENT_SETTINGS_SSM_PREFIX = "/${var.project_name}/${var.environment}"
-    CORS_ALLOWED_ORIGINS      = var.cors_allowed_origins
+    GITLAB_OAUTH_SECRET_NAME       = var.gitlab_oauth_secret_name
+    GITLAB_REDIRECT_URI            = var.gitlab_redirect_uri
+    AGENT_SETTINGS_SSM_PREFIX      = "/${var.project_name}/${var.environment}"
+    CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
     # Server-origin question.answered fanout: the agents lambda pushes the
     # event to sprint-channel WS connections.
     CONNECTIONS_TABLE  = var.connections_table_name

@@ -762,6 +762,7 @@ exports.handler = async (event) => {
       let projectCliModels = {};
       let gitRepos = [];
       let gitProvider = 'github';
+      let projectCreatedBy = '';
       let isMember = false;
       await withNeptune(async (g) => {
         const result = await g.V().has('Project', 'id', projectId).valueMap().next();
@@ -770,6 +771,7 @@ exports.handler = async (event) => {
           projectAgentCli = result.value.get('agent_cli')?.[0] || 'kiro';
           projectCliModels = parseCliModels(result.value.get('cli_models')?.[0] || '{}');
           gitProvider = result.value.get('git_provider')?.[0] || 'github';
+          projectCreatedBy = result.value.get('created_by')?.[0] || '';
         }
         // Fetch all Repository vertices linked to the project (multi-repo support)
         const repoVertices = await g
@@ -816,6 +818,17 @@ exports.handler = async (event) => {
         });
       }
 
+      // Resolve the GIT identity, which is distinct from the AUTH identity
+      // (`userId` / claims.sub). Orchestrator-launched sub-agents and system
+      // re-triggers authenticate as the synthetic 'orchestrator'/'system'
+      // principals (so they bypass the membership/preflight gates above), but
+      // those principals own no git connection. The git token + its just-in-time
+      // refresh must key off a REAL user — the project owner (`created_by`) — so
+      // long-running GitLab jobs can renew the expiring access token rather than
+      // re-using a stale one. For genuine human callers the two are identical.
+      const isSyntheticCaller = userId === 'system' || userId === 'orchestrator';
+      const gitIdentityUserId = isSyntheticCaller ? projectCreatedBy : userId;
+
       // Pre-flight: verify the project's selected CLI has credentials configured.
       // Without this check, a misconfigured CLI (missing/invalid SSM key) would
       // cause the pool worker's authenticate() to silently fail, the CLI would
@@ -839,24 +852,24 @@ exports.handler = async (event) => {
         }
       }
 
-      // Look up the user's git token from the connections table. The table is
-      // keyed by userId alone (one row per user), so we must confirm the stored
-      // connection is for THIS project's provider — otherwise a GitHub token
-      // could be handed to a GitLab clone (or vice versa). Legacy rows predate
-      // the `provider` field and are treated as GitHub.
+      // Look up the git token for the resolved git identity (the project owner
+      // for synthetic callers, otherwise the requesting user). The connection
+      // store confirms the stored connection is for THIS project's provider —
+      // otherwise a GitHub token could be handed to a GitLab clone (or vice
+      // versa) — and lazily migrates legacy rows.
       // Discussion assists have no repository — skip the git plumbing entirely.
       let gitToken = '';
       if (isDiscussion) {
         gitRepo = '';
         gitRepos = [];
       }
-      if (!isDiscussion && userId) {
+      if (!isDiscussion && gitIdentityUserId) {
         try {
-          // Resolve the user's connection for the project's git provider (the
-          // store lazily migrates legacy rows). A non-matching/absent provider
-          // yields null, leaving gitToken empty → the "not connected" guard
-          // below fires.
-          const Item = await getGitConnection(ddb, userId, gitProvider);
+          // Resolve the owner's connection for the project's git provider. A
+          // non-matching/absent provider yields null, leaving gitToken empty →
+          // the "not connected" guard below fires (or we fall back to the
+          // token passed in the re-trigger body).
+          const Item = await getGitConnection(ddb, gitIdentityUserId, gitProvider);
           if (Item?.parameterName) {
             gitToken = await resolveGitToken(ssm, Item);
           }
@@ -916,7 +929,12 @@ exports.handler = async (event) => {
         gitRepo,
         gitRepos,
         gitProvider,
-        userId: userId || '',
+        // The worker uses job.userId solely as the GIT identity: it becomes
+        // GIT_USER_ID and keys the just-in-time GitLab token refresh. Carry the
+        // resolved git identity (project owner for synthetic callers) so the
+        // worker/MCP can refresh the owner's expiring token instead of failing
+        // the lookup for 'system'/'orchestrator'.
+        userId: gitIdentityUserId || '',
         sprintId: input.sprintId || '',
         taskId: input.taskId || '',
         branch: input.branch || '',

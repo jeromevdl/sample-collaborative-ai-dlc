@@ -12,7 +12,7 @@ const secretsMock = mockClient(SecretsManagerClient);
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
 const PARAM = '/proj/dev/git-token/user-1';
-const ITEM = { userId: 'user-1', parameterName: PARAM };
+const ITEM = { userId: 'user-1', provider: 'gitlab', parameterName: PARAM };
 
 const ssm = new SSMClient({});
 const secrets = new SecretsManagerClient({});
@@ -45,6 +45,7 @@ describe('ensureFreshGitToken', () => {
     ddbMock.reset();
     vi.stubEnv('GITLAB_OAUTH_SECRET_NAME', 'test/gitlab-oauth');
     vi.stubEnv('GIT_CONNECTIONS_TABLE', 'test-git-connections');
+    vi.stubEnv('GIT_PROVIDER_CONNECTIONS_TABLE', 'test-git-provider-connections');
     delete globalThis.fetch;
   });
 
@@ -73,6 +74,7 @@ describe('ensureFreshGitToken', () => {
   });
 
   it('refreshes a GitLab token that is near expiry and persists the rotation', async () => {
+    vi.stubEnv('GITLAB_REDIRECT_URI', 'https://app.example.com/gitlab/callback');
     storeToken({
       accessToken: 'old',
       refreshToken: 'r1',
@@ -96,6 +98,10 @@ describe('ensureFreshGitToken', () => {
     const out = await ensureFreshGitToken({ ssm, secrets, ddb, item: ITEM, gitProvider: 'gitlab' });
 
     expect(out).toBe('fresh');
+    // GitLab requires redirect_uri on the refresh_token grant — assert it is sent.
+    const refreshBody = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(refreshBody.grant_type).toBe('refresh_token');
+    expect(refreshBody.redirect_uri).toBe('https://app.example.com/gitlab/callback');
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://gitlab.com/oauth/token',
       expect.objectContaining({ method: 'POST' }),
@@ -106,6 +112,13 @@ describe('ensureFreshGitToken', () => {
     expect(persisted.accessToken).toBe('fresh');
     expect(persisted.refreshToken).toBe('r2');
     expect(persisted.expiresAt).toBeGreaterThan(Date.now());
+    // Connection metadata persisted to the authoritative composite-key table
+    // (userId + providerInstance), NOT the legacy single-key table.
+    const ddbPut = ddbMock.commandCalls(PutCommand)[0].args[0].input;
+    expect(ddbPut.TableName).toBe('test-git-provider-connections');
+    expect(ddbPut.Item.userId).toBe('user-1');
+    expect(ddbPut.Item.providerInstance).toBe('gitlab#public');
+    expect(ddbPut.Item.scope).toBe('api read_user');
   });
 
   it('refreshes when no expiresAt is recorded (legacy row)', async () => {

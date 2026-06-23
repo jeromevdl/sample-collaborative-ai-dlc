@@ -58,7 +58,11 @@ const glFetch = async (ctx, url, options = {}) => {
       const newToken = await ctx.onRefresh();
       ctx.token = newToken;
       return doFetch(url, withAuth(newToken));
-    } catch {
+    } catch (e) {
+      console.error('[gitlab:glFetch] token refresh failed, returning original 401', {
+        url,
+        error: e && e.message ? e.message : String(e),
+      });
       return res;
     }
   }
@@ -109,7 +113,17 @@ const oauth = {
 
   // GitLab access tokens expire; refresh exchanges the refresh token for a new
   // pair. Returns the same shape as exchangeCode so the handler can persist it.
-  async refreshAccessToken({ clientId, clientSecret, refreshToken, fetchImpl = fetch }) {
+  // NOTE: GitLab REQUIRES `redirect_uri` on the refresh_token grant and it must
+  // match the one used in the original authorization request — omitting it makes
+  // GitLab reject the refresh with `invalid_grant` ("...does not match the
+  // redirection URI..."). See https://docs.gitlab.com/api/oauth2/.
+  async refreshAccessToken({
+    clientId,
+    clientSecret,
+    refreshToken,
+    redirectUri,
+    fetchImpl = fetch,
+  }) {
     const res = await fetchImpl('https://gitlab.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,12 +132,20 @@ const oauth = {
         refresh_token: refreshToken,
         client_id: clientId,
         client_secret: clientSecret,
+        ...(redirectUri ? { redirect_uri: redirectUri } : {}),
       }),
     });
     const data = await res.json();
     if (data.error) {
+      console.error('[gitlab:refresh] failed', {
+        httpStatus: res.status,
+        error: data.error,
+        errorDescription: data.error_description,
+        hasRedirectUri: Boolean(redirectUri),
+      });
       throw new ProviderError(400, data.error_description || data.error);
     }
+    console.log('[gitlab:refresh] ok', { expiresIn: data.expires_in });
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
@@ -167,6 +189,10 @@ const listBranches = async (ctx, repoId) => {
   if (res.status === 404) return [];
   const data = await res.json();
   if (!Array.isArray(data)) {
+    console.error('[gitlab:listBranches] non-array response', {
+      httpStatus: res.status,
+      message: data && (data.message || data.error),
+    });
     throw new ProviderError(400, data.message || 'Failed to fetch branches');
   }
   return data.map((b) => b.name);

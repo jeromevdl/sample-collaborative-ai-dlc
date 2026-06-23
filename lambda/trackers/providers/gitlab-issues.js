@@ -78,6 +78,9 @@ const getOAuthCredentials = async (secrets) => {
 
 const refreshToken = async ({ ddb, ssm, secrets, item, refreshTokenValue }) => {
   const { client_id, client_secret } = await getOAuthCredentials(secrets);
+  // GitLab requires redirect_uri on the refresh_token grant, matching the one
+  // used at authorization time — without it GitLab returns `invalid_grant`.
+  const redirectUri = process.env.GITLAB_REDIRECT_URI;
   const res = await fetch('https://gitlab.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -86,10 +89,18 @@ const refreshToken = async ({ ddb, ssm, secrets, item, refreshTokenValue }) => {
       refresh_token: refreshTokenValue,
       client_id,
       client_secret,
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
     }),
   });
   const data = await res.json();
   if (data.error) {
+    console.error('[gitlab-issues:refresh] failed', {
+      httpStatus: res.status,
+      error: data.error,
+      errorDescription: data.error_description,
+      userId: item?.userId,
+      hasRedirectUri: Boolean(redirectUri),
+    });
     throw new ProviderError(401, data.error_description || data.error);
   }
   await ssm.send(
@@ -99,6 +110,10 @@ const refreshToken = async ({ ddb, ssm, secrets, item, refreshTokenValue }) => {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         tokenType: data.token_type,
+        // Record expiry so the construction path (ensureFreshGitToken) can tell
+        // whether a token last rotated here is still valid, instead of always
+        // treating it as stale.
+        ...(data.expires_in ? { expiresAt: Date.now() + Number(data.expires_in) * 1000 } : {}),
       }),
       Type: 'SecureString',
       Overwrite: true,

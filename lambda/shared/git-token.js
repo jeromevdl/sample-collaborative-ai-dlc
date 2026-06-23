@@ -2,7 +2,7 @@
 
 const { GetParameterCommand, PutParameterCommand } = require('@aws-sdk/client-ssm');
 const { GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
-const { PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { putGitConnection } = require('./git-connection-store');
 
 // Matches the git-token SSM parameter path. Legacy connections used a
 // 4-segment path (/PREFIX/env/git-token/userId); per-provider connections add a
@@ -52,6 +52,9 @@ const refreshGitlabToken = async ({ ssm, secrets, ddb, item, tokens }) => {
     return tokens.accessToken;
   }
   const { client_id, client_secret } = await getGitlabOAuthCredentials(secrets);
+  // GitLab requires redirect_uri on the refresh_token grant, matching the one
+  // used at authorization time — without it GitLab returns `invalid_grant`.
+  const redirectUri = process.env.GITLAB_REDIRECT_URI;
   const res = await fetch('https://gitlab.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -60,12 +63,21 @@ const refreshGitlabToken = async ({ ssm, secrets, ddb, item, tokens }) => {
       refresh_token: tokens.refreshToken,
       client_id,
       client_secret,
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
     }),
   });
   const data = await res.json();
   if (data.error) {
+    console.error('[git-token:refresh] failed', {
+      httpStatus: res.status,
+      error: data.error,
+      errorDescription: data.error_description,
+      userId: item?.userId,
+      hasRedirectUri: Boolean(redirectUri),
+    });
     throw new Error(data.error_description || data.error);
   }
+  console.log('[git-token:refresh] ok', { userId: item?.userId, expiresIn: data.expires_in });
   const expiresAt = data.expires_in ? Date.now() + Number(data.expires_in) * 1000 : undefined;
   const newValue = {
     accessToken: data.access_token,
@@ -81,13 +93,23 @@ const refreshGitlabToken = async ({ ssm, secrets, ddb, item, tokens }) => {
       Overwrite: true,
     }),
   );
-  if (ddb && process.env.GIT_CONNECTIONS_TABLE) {
-    await ddb.send(
-      new PutCommand({
-        TableName: process.env.GIT_CONNECTIONS_TABLE,
-        Item: { ...item, scope: data.scope, updatedAt: new Date().toISOString() },
-      }),
-    );
+  // Persist the rotated refresh-token metadata (the access token itself lives
+  // in SSM, written above). Use putGitConnection so the row lands in the
+  // authoritative composite-key table (userId + providerInstance) — writing the
+  // raw item to the legacy single-key table would mismatch its schema. The SSM
+  // parameterName never changes, so the stored token reference stays valid.
+  if (ddb && item?.userId && item?.provider) {
+    try {
+      await putGitConnection(ddb, {
+        ...item,
+        scope: data.scope,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      // Best-effort: the access token is already persisted in SSM, so a failure
+      // here only loses the metadata refresh, not the token itself.
+      console.error('Failed to persist refreshed git connection metadata:', e.message);
+    }
   }
   return data.access_token;
 };

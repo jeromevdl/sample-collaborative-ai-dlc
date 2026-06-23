@@ -132,6 +132,12 @@ variable "gitlab_oauth_secret_name" {
   default     = ""
 }
 
+variable "gitlab_redirect_uri" {
+  description = "GitLab OAuth redirect URI. Required on the refresh_token grant (must match the original authorization request) — without it GitLab rejects refresh with invalid_grant. Used by the agents Lambda's POST /git/refresh-token."
+  type        = string
+  default     = ""
+}
+
 variable "github_lambda_invoke_arn" {
   description = "Invoke ARN of the github Lambda"
   type        = string
