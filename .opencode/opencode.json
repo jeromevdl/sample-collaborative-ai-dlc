@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "amazon-bedrock": {
+      "options": {
+        "region": "us-east-1"
+      }
+    }
+  },
+  "model": "amazon-bedrock/us.anthropic.claude-opus-4-6-v1",
+  "instructions": [
+    ".opencode/rules/*.md"
+  ]
+}

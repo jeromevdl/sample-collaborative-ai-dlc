@@ -1,12 +1,10 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
-const { SFNClient, SendTaskSuccessCommand } = require('@aws-sdk/client-sfn');
 const gremlin = require('gremlin');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 const { getUrlAndHeaders } = require('gremlin-aws-sigv4/lib/utils');
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const sfn = new SFNClient({});
 
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
@@ -81,15 +79,6 @@ exports.handler = async (event) => {
     } catch (e) {
       console.error('Failed to update Sprint status:', e.message);
     }
-  }
-
-  if (question.Item.taskToken) {
-    await sfn.send(
-      new SendTaskSuccessCommand({
-        taskToken: question.Item.taskToken,
-        output: JSON.stringify({ questionId, structuredAnswer: structuredAnswerJson }),
-      }),
-    );
   }
 
   return { statusCode: 200, body: JSON.stringify({ success: true }) };
