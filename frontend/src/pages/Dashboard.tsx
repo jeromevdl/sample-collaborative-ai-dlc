@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createInitialProvider, setCreateInitialProvider] = useState<GitProvider>('github');
+  const [createInitialProvider, setCreateInitialProvider] = useState<GitProvider | ''>('');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,7 +99,13 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Button
+            onClick={() => {
+              setCreateInitialProvider('');
+              setShowCreateModal(true);
+            }}
+            className="gap-2"
+          >
             <Plus className="h-4 w-4" />
             New Project
           </Button>
@@ -175,7 +181,13 @@ export default function Dashboard() {
                 Create your first project to start building with AI-powered collaborative
                 development.
               </p>
-              <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <Button
+                onClick={() => {
+                  setCreateInitialProvider('');
+                  setShowCreateModal(true);
+                }}
+                className="gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 Create Your First Project
               </Button>

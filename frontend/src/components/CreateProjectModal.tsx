@@ -13,16 +13,21 @@ interface Props {
   onCreated: () => void;
   // Provider to preselect — used to restore the user's choice after an OAuth
   // round-trip (the redirect to the provider and back resets in-memory state).
-  initialProvider?: GitProvider;
+  // Empty string (the default) leaves the provider UNSELECTED so opening the
+  // modal does not trigger a connection check / OAuth login until the user picks.
+  initialProvider?: GitProvider | '';
 }
 
 const repoShortName = (fullName: string) => fullName.split('/').pop() || '';
 
-export function CreateProjectModal({ onClose, onCreated, initialProvider = 'github' }: Props) {
+// Local form shape: gitProvider may be '' before the user selects one.
+type ProjectForm = Omit<CreateProjectInput, 'gitProvider'> & { gitProvider: GitProvider | '' };
+
+export function CreateProjectModal({ onClose, onCreated, initialProvider = '' }: Props) {
   const [step, setStep] = useState(1);
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   const [primaryRepo, setPrimaryRepo] = useState<string>('');
-  const [formData, setFormData] = useState<CreateProjectInput>({
+  const [formData, setFormData] = useState<ProjectForm>({
     name: '',
     gitProvider: initialProvider,
     gitRepo: '',
@@ -78,8 +83,15 @@ export function CreateProjectModal({ onClose, onCreated, initialProvider = 'gith
     setSubmitting(true);
     setError(null);
     try {
+      const gitProvider = formData.gitProvider;
+      if (!gitProvider) {
+        setError('Select a git provider.');
+        setSubmitting(false);
+        return;
+      }
       const input: CreateProjectInput = {
         ...formData,
+        gitProvider,
         repos: selectedRepos.map((url) => ({
           url,
           role: url === primaryRepo ? ('primary' as const) : ('secondary' as const),
@@ -88,7 +100,7 @@ export function CreateProjectModal({ onClose, onCreated, initialProvider = 'gith
       const project = await projectsService.create(input);
       if (formData.issueIntegrationEnabled && formData.gitRepo) {
         // GitHub and GitLab issues both reuse the project's git connection.
-        const trackerProvider = trackerIdForGitProvider(formData.gitProvider);
+        const trackerProvider = trackerIdForGitProvider(gitProvider);
         try {
           await trackersService.addToProject(project.id, {
             provider: trackerProvider,
@@ -188,7 +200,11 @@ export function CreateProjectModal({ onClose, onCreated, initialProvider = 'gith
                 {gitStatusError}
               </div>
             )}
-            {gitStatusLoading ? (
+            {!formData.gitProvider ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Select a git provider to continue.
+              </p>
+            ) : gitStatusLoading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Checking connection...</p>
             ) : (
               <GitConnectButton
@@ -215,8 +231,8 @@ export function CreateProjectModal({ onClose, onCreated, initialProvider = 'gith
           </div>
         )}
 
-        {/* Step 2: Select Repositories */}
-        {step === 2 && (
+        {/* Step 2: Select Repositories (provider is always set past step 1) */}
+        {step === 2 && formData.gitProvider && (
           <div>
             <h3 className="font-medium mb-1 text-gray-900 dark:text-white">Select Repositories</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
@@ -279,7 +295,7 @@ export function CreateProjectModal({ onClose, onCreated, initialProvider = 'gith
         )}
 
         {/* Step 3: Project Details */}
-        {step === 3 && (
+        {step === 3 && formData.gitProvider && (
           <form onSubmit={handleSubmit}>
             <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Project Details</h3>
             <div className="mb-4">
