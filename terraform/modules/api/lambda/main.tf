@@ -214,7 +214,7 @@ resource "aws_iam_role_policy" "trackers" {
         },
         {
           Effect   = "Allow"
-          Action   = ["ssm:GetParameter", "ssm:DeleteParameter"]
+          Action   = ["ssm:GetParameter", "ssm:PutParameter", "ssm:DeleteParameter"]
           Resource = "arn:${local.partition}:ssm:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/git-token/*"
         },
         # Jira Cloud (Phase 3 / #197): the trackers lambda owns the Jira OAuth

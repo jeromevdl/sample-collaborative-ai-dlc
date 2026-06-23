@@ -113,7 +113,11 @@ const putGitConnection = async (ddb, item) => {
 
 // Remove a user's connection for a provider from BOTH tables. Deleting the
 // legacy row too prevents a stale legacy row from "resurrecting" a disconnected
-// connection via migrate-on-read on the next read.
+// connection via migrate-on-read on the next read — but ONLY when that legacy
+// row actually belongs to the provider being disconnected. The legacy table is
+// keyed by userId alone (one row per user, in practice GitHub), so deleting it
+// unconditionally would wipe an unmigrated GitHub connection when the user
+// disconnects a DIFFERENT provider (e.g. GitLab). Guard on the row's provider.
 const deleteGitConnection = async (ddb, userId, provider) => {
   if (!userId || !provider) return;
   const ops = [];
@@ -128,7 +132,13 @@ const deleteGitConnection = async (ddb, userId, provider) => {
     );
   }
   if (legacyTable()) {
-    ops.push(ddb.send(new DeleteCommand({ TableName: legacyTable(), Key: { userId } })));
+    // Only delete the legacy single-key row if it belongs to THIS provider.
+    const { Item: legacy } = await ddb.send(
+      new GetCommand({ TableName: legacyTable(), Key: { userId } }),
+    );
+    if (legacy && rowProvider(legacy) === provider) {
+      ops.push(ddb.send(new DeleteCommand({ TableName: legacyTable(), Key: { userId } })));
+    }
   }
   await Promise.all(ops);
 };

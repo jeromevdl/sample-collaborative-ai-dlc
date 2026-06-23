@@ -164,7 +164,11 @@ describe('putGitConnection', () => {
 });
 
 describe('deleteGitConnection', () => {
-  it('deletes from BOTH the new and legacy tables', async () => {
+  it('deletes from BOTH tables when the legacy row matches the provider', async () => {
+    // Legacy row is a GitHub connection; disconnecting GitHub should remove both.
+    ddbMock.on(GetCommand, { TableName: LEGACY_TABLE }).resolves({
+      Item: { userId: USER, provider: 'github', parameterName: '/p/dev/git-token/user-1' },
+    });
     ddbMock.on(DeleteCommand).resolves({});
 
     await deleteGitConnection(ddb, USER, 'github');
@@ -173,6 +177,43 @@ describe('deleteGitConnection', () => {
       TableName: NEW_TABLE,
       Key: { userId: USER, providerInstance: 'github#public' },
     });
+    expect(ddbMock).toHaveReceivedCommandWith(DeleteCommand, {
+      TableName: LEGACY_TABLE,
+      Key: { userId: USER },
+    });
+  });
+
+  it('preserves an unmigrated legacy GitHub row when disconnecting a different provider (GitLab)', async () => {
+    // User has a new-table GitLab row + an unmigrated legacy GitHub row.
+    // Disconnecting GitLab must NOT delete the legacy GitHub connection.
+    ddbMock.on(GetCommand, { TableName: LEGACY_TABLE }).resolves({
+      Item: { userId: USER, provider: 'github', parameterName: '/p/dev/git-token/user-1' },
+    });
+    ddbMock.on(DeleteCommand).resolves({});
+
+    await deleteGitConnection(ddb, USER, 'gitlab');
+
+    // The new-table GitLab row is deleted...
+    expect(ddbMock).toHaveReceivedCommandWith(DeleteCommand, {
+      TableName: NEW_TABLE,
+      Key: { userId: USER, providerInstance: 'gitlab#public' },
+    });
+    // ...but the legacy GitHub row is left intact (no delete against LEGACY_TABLE).
+    const legacyDeletes = ddbMock
+      .commandCalls(DeleteCommand)
+      .filter((c) => c.args[0].input.TableName === LEGACY_TABLE);
+    expect(legacyDeletes).toHaveLength(0);
+  });
+
+  it('deletes the legacy row when it has no provider attribute (defaults to github)', async () => {
+    // Pre-provider legacy rows lack `provider` and are treated as github.
+    ddbMock.on(GetCommand, { TableName: LEGACY_TABLE }).resolves({
+      Item: { userId: USER, parameterName: '/p/dev/git-token/user-1' },
+    });
+    ddbMock.on(DeleteCommand).resolves({});
+
+    await deleteGitConnection(ddb, USER, 'github');
+
     expect(ddbMock).toHaveReceivedCommandWith(DeleteCommand, {
       TableName: LEGACY_TABLE,
       Key: { userId: USER },
