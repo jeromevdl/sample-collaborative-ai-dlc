@@ -36,15 +36,6 @@ resource "aws_iam_role_policy" "answer_lambda" {
         Action   = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
         Resource = var.agent_questions_table_arn
       },
-      # states:SendTaskSuccess / SendTaskFailure must use Resource = "*" per AWS IAM service
-      # authorization reference — these actions do not support resource-level permissions
-      # (the target task token is opaque). Scoping is achieved via the execution context:
-      # only this Lambda (triggered by our SQS answer queue) can obtain a valid task token.
-      {
-        Effect   = "Allow"
-        Action   = ["states:SendTaskSuccess", "states:SendTaskFailure"]
-        Resource = "*"
-      },
       {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
