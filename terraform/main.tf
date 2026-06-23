@@ -175,7 +175,6 @@ module "lambda" {
   jira_oauth_secret_name         = module.git.jira_oauth_secret_name
   jira_oauth_secret_arn          = module.git.jira_oauth_secret_arn
   jira_redirect_uri              = "https://${module.frontend.cloudfront_domain_name}/trackers/callback/jira-cloud"
-  state_machine_arn              = "arn:${local.partition}:states:${var.aws_region}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.project_name}-agent-workflow-${var.environment}"
   agent_questions_table_name     = module.dynamodb.agent_questions_table_name
   agent_questions_table_arn      = module.dynamodb.agent_questions_table_arn
   cognito_user_pool_id           = module.auth.user_pool_id
@@ -240,7 +239,6 @@ module "api" {
   trackers_lambda_name              = module.lambda.trackers_lambda_name
   cognito_users_lambda_invoke_arn   = module.lambda.cognito_users_lambda_invoke_arn
   cognito_users_lambda_name         = module.lambda.cognito_users_lambda_name
-  state_machine_arn                 = module.orchestration.state_machine_arn
   agent_questions_table_name        = module.dynamodb.agent_questions_table_name
   agent_outputs_table_name          = module.dynamodb.agent_outputs_table_name
   agents_lambda_role_arn            = module.lambda.agents_orchestrator_role_arn
