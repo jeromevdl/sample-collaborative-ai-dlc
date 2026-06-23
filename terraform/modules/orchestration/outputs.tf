@@ -1,18 +1,3 @@
-output "state_machine_arn" {
-  description = "ARN of the agent workflow state machine"
-  value       = aws_sfn_state_machine.agent_workflow.arn
-}
-
-output "state_machine_name" {
-  description = "Name of the agent workflow state machine"
-  value       = aws_sfn_state_machine.agent_workflow.name
-}
-
-output "step_functions_role_arn" {
-  description = "ARN of the Step Functions IAM role"
-  value       = aws_iam_role.step_functions.arn
-}
-
 output "agent_answers_queue_url" {
   description = "URL of the agent answers SQS queue"
   value       = aws_sqs_queue.agent_answers.url
